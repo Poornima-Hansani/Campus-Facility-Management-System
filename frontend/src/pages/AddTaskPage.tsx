@@ -164,119 +164,145 @@ export default function AddTaskPage() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.container}>
-        <div style={styles.topRow}>
-          <h1 style={styles.title}>{editingTask ? "Edit Task" : "Add New Task"}</h1>
-          <button type="button" style={styles.backButton} onClick={() => navigate("/")}>
-            Back
-          </button>
+      <header style={styles.navbar}>
+        <div style={styles.navBrandWrap}>
+          <div style={styles.logoBox}>🎓</div>
+          <div style={styles.navBrand}>UNIMANAGE</div>
         </div>
 
-        <p style={styles.subtitle}>
-          Add assignments and exams with reminders using the white and green theme.
-        </p>
+        <div style={styles.navActions}>
+          <button
+            type="button"
+            style={styles.activeNavButton}
+            onClick={() => navigate("/")}
+          >
+            Student Portal
+          </button>
+          <button type="button" style={styles.navButton}>
+            Management
+          </button>
+        </div>
+      </header>
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.gridTwo}>
+      <main style={styles.main}>
+        <section style={styles.heroSection}>
+          <div style={styles.badge}>Task Management</div>
+          <h1 style={styles.heroTitle}>
+            {editingTask ? "Edit Task" : "Add New Task"}
+          </h1>
+          <p style={styles.heroSubtitle}>
+            Add assignments and exams with deadlines and reminder settings to
+            stay organized and never miss submissions.
+          </p>
+        </section>
+
+        <section style={styles.formCard}>
+          <div style={styles.formHeader}>
             <div>
-              <label style={styles.label}>TYPE</label>
-              <select
-                name="type"
-                value={form.type}
-                onChange={handleChange}
-                style={styles.input}
-                required
-              >
-                <option value="assignment">Assignment</option>
-                <option value="exam">Exam</option>
-              </select>
+              <h2 style={styles.sectionTitle}>Task Details</h2>
+              <p style={styles.helperText}>
+                Fill in the information below and choose reminder timings.
+              </p>
             </div>
 
-            <div>
-              <label style={styles.label}>TASK NAME</label>
-              <input
-                type="text"
-                name="title"
-                placeholder="eg: Data Structures Lab"
-                value={form.title}
-                onChange={handleChange}
-                style={styles.input}
-                required
-              />
-            </div>
-
-            <div>
-              <label style={styles.label}>MODULE / COURSE</label>
-              <input
-                type="text"
-                name="moduleCode"
-                placeholder="eg: IT2030"
-                value={form.moduleCode}
-                onChange={handleChange}
-                style={styles.input}
-                required
-              />
-            </div>
-
-            <div>
-              <label style={styles.label}>DEADLINE</label>
-              <input
-                type="datetime-local"
-                name="dueDateTime"
-                value={form.dueDateTime}
-                onChange={handleChange}
-                style={styles.input}
-                required
-              />
-            </div>
+            <button
+              type="button"
+              style={styles.backButton}
+              onClick={() => navigate("/")}
+            >
+              Back to Portal
+            </button>
           </div>
 
-          <div>
-            <label style={styles.label}>DESCRIPTION</label>
+          <form onSubmit={handleSubmit} style={styles.formGrid}>
+            <select
+              name="type"
+              value={form.type}
+              onChange={handleChange}
+              style={styles.input}
+              required
+            >
+              <option value="assignment">Assignment</option>
+              <option value="exam">Exam</option>
+            </select>
+
+            <input
+              type="text"
+              name="title"
+              placeholder="Task Title"
+              value={form.title}
+              onChange={handleChange}
+              style={styles.input}
+              required
+            />
+
+            <input
+              type="text"
+              name="moduleCode"
+              placeholder="Module Code"
+              value={form.moduleCode}
+              onChange={handleChange}
+              style={styles.input}
+              required
+            />
+
+            <input
+              type="datetime-local"
+              name="dueDateTime"
+              value={form.dueDateTime}
+              onChange={handleChange}
+              style={styles.input}
+              required
+            />
+
             <textarea
               name="description"
-              placeholder="Brief notes about this task..."
+              placeholder="Task Description"
               value={form.description}
               onChange={handleChange}
               style={styles.textarea}
             />
-          </div>
 
-          <div>
-            <label style={styles.label}>REMINDERS</label>
-            <div style={styles.chipRow}>
-              {reminderOptions.map((option) => {
-                const active = form.reminders.includes(option);
+            <div style={styles.reminderBox}>
+              <label style={styles.label}>Reminder Options</label>
+              <div style={styles.chipRow}>
+                {reminderOptions.map((option) => {
+                  const active = form.reminders.includes(option);
 
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => toggleReminder(option)}
-                    style={{
-                      ...styles.chip,
-                      ...(active ? styles.chipActive : {}),
-                    }}
-                  >
-                    {active ? "✓ " : ""}
-                    {option}
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => toggleReminder(option)}
+                      style={{
+                        ...styles.chip,
+                        ...(active ? styles.chipActive : {}),
+                      }}
+                    >
+                      {active ? "✓ " : ""}
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          <div style={styles.actionRow}>
-            <button type="submit" style={styles.submitButton}>
-              {editingTask ? "Update Task" : "Save Task"}
-            </button>
+            <div style={styles.buttonRow}>
+              <button type="submit" style={styles.primaryButton}>
+                {editingTask ? "Update Task" : "Save Task"}
+              </button>
 
-            <button type="button" onClick={() => navigate("/")} style={styles.cancelButton}>
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
+              <button
+                type="button"
+                style={styles.secondaryButton}
+                onClick={() => navigate("/")}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </section>
+      </main>
     </div>
   );
 }
@@ -284,80 +310,161 @@ export default function AddTaskPage() {
 const styles: { [key: string]: React.CSSProperties } = {
   page: {
     minHeight: "100vh",
-    background: "#edf0ed",
-    padding: "40px 20px",
+    background: "#f8faf8",
+    fontFamily: "Arial, sans-serif",
   },
-  container: {
-    maxWidth: 900,
-    margin: "0 auto",
+  navbar: {
+    height: 84,
     background: "#ffffff",
-    borderRadius: 16,
-    padding: 28,
-    border: "1px solid #cfe6d7",
-    boxShadow: "0 10px 24px rgba(63, 92, 74, 0.16)",
+    borderBottom: "1px solid #e5e7eb",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "0 40px",
   },
-  topRow: {
+  navBrandWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+  },
+  logoBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    background: "#edf7ef",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 24,
+  },
+  navBrand: {
+    fontSize: 20,
+    fontWeight: 800,
+    color: "#111827",
+  },
+  navActions: {
+    display: "flex",
+    gap: 12,
+    flexWrap: "wrap",
+  },
+  navButton: {
+    padding: "12px 20px",
+    borderRadius: 12,
+    border: "1px solid #e5e7eb",
+    background: "#ffffff",
+    color: "#4b5563",
+    cursor: "pointer",
+    fontWeight: 600,
+  },
+  activeNavButton: {
+    padding: "12px 20px",
+    borderRadius: 12,
+    border: "none",
+    background: "#15803d",
+    color: "#ffffff",
+    cursor: "pointer",
+    fontWeight: 700,
+    boxShadow: "0 6px 14px rgba(21,128,61,0.18)",
+  },
+  main: {
+    maxWidth: 1100,
+    margin: "0 auto",
+    padding: "42px 20px 60px",
+  },
+  heroSection: {
+    textAlign: "center",
+    marginBottom: 30,
+  },
+  badge: {
+    display: "inline-block",
+    padding: "8px 16px",
+    borderRadius: 999,
+    background: "#eaf7ed",
+    color: "#15803d",
+    fontWeight: 700,
+    fontSize: 14,
+    marginBottom: 18,
+  },
+  heroTitle: {
+    fontSize: 56,
+    fontWeight: 800,
+    color: "#0f172a",
+    marginBottom: 14,
+  },
+  heroSubtitle: {
+    maxWidth: 760,
+    margin: "0 auto",
+    fontSize: 17,
+    lineHeight: 1.7,
+    color: "#6b7280",
+  },
+  formCard: {
+    background: "#ffffff",
+    border: "1px solid #e8efe9",
+    borderRadius: 20,
+    padding: 24,
+    boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
+  },
+  formHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     gap: 12,
     flexWrap: "wrap",
+    marginBottom: 16,
   },
-  title: {
-    fontSize: 36,
-    color: "#1f5b46",
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: 800,
+    color: "#0f172a",
+    marginBottom: 6,
   },
-  subtitle: {
-    marginTop: 8,
-    marginBottom: 24,
-    color: "#5c7667",
+  helperText: {
+    fontSize: 14,
+    color: "#6b7280",
   },
   backButton: {
     background: "#edf7ef",
-    color: "#1f5b46",
-    border: "1px solid #b7dfc0",
-    borderRadius: 999,
-    padding: "10px 16px",
+    color: "#14532d",
+    border: "1px solid #bbdfc6",
+    borderRadius: 12,
+    padding: "12px 18px",
     cursor: "pointer",
     fontWeight: 700,
   },
-  form: {
+  formGrid: {
     display: "grid",
-    gap: 18,
-  },
-  gridTwo: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: 14,
-  },
-  label: {
-    display: "block",
-    fontSize: 13,
-    fontWeight: 700,
-    color: "#557565",
-    marginBottom: 6,
+    gap: 16,
   },
   input: {
     width: "100%",
-    padding: "12px 14px",
-    borderRadius: 8,
-    border: "1px solid #b7dfc0",
+    padding: "14px 16px",
+    borderRadius: 12,
+    border: "1px solid #dce8de",
     outline: "none",
     fontSize: 15,
-    background: "#dff0e2",
-    color: "#23463b",
+    background: "#ffffff",
   },
   textarea: {
     width: "100%",
-    padding: "12px 14px",
-    borderRadius: 8,
-    border: "1px solid #b7dfc0",
+    minHeight: 120,
+    padding: "14px 16px",
+    borderRadius: 12,
+    border: "1px solid #dce8de",
     outline: "none",
     fontSize: 15,
-    background: "#dff0e2",
-    color: "#23463b",
-    minHeight: 100,
+    background: "#ffffff",
     resize: "vertical",
+  },
+  reminderBox: {
+    marginTop: 4,
+  },
+  label: {
+    display: "block",
+    marginBottom: 10,
+    fontSize: 14,
+    fontWeight: 700,
+    color: "#374151",
   },
   chipRow: {
     display: "flex",
@@ -365,39 +472,41 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: 10,
   },
   chip: {
-    border: "1px solid #b7dfc0",
-    background: "#f4fbf5",
-    color: "#567564",
-    padding: "8px 12px",
+    border: "1px solid #bbdfc6",
+    background: "#ffffff",
+    color: "#14532d",
+    padding: "10px 14px",
     borderRadius: 999,
     cursor: "pointer",
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: 600,
   },
   chipActive: {
-    background: "#2d7d52",
+    background: "#16a34a",
     color: "#ffffff",
-    border: "1px solid #2d7d52",
+    border: "1px solid #16a34a",
   },
-  actionRow: {
+  buttonRow: {
     display: "flex",
     gap: 12,
     flexWrap: "wrap",
+    marginTop: 8,
   },
-  submitButton: {
-    background: "#275d3f",
+  primaryButton: {
+    background: "#16a34a",
     color: "#ffffff",
     border: "none",
-    borderRadius: 999,
+    borderRadius: 12,
     padding: "12px 18px",
     cursor: "pointer",
     fontWeight: 700,
-    boxShadow: "0 6px 10px rgba(39, 93, 63, 0.2)",
+    boxShadow: "0 6px 14px rgba(22,163,74,0.18)",
   },
-  cancelButton: {
-    background: "#f0f5f1",
-    color: "#275d3f",
-    border: "1px solid #b7dfc0",
-    borderRadius: 999,
+  secondaryButton: {
+    background: "#ffffff",
+    color: "#14532d",
+    border: "1px solid #bbdfc6",
+    borderRadius: 12,
     padding: "12px 18px",
     cursor: "pointer",
     fontWeight: 700,

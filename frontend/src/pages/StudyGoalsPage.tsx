@@ -152,94 +152,117 @@ export default function StudyGoalsPage() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.container}>
-        <div style={styles.topRow}>
-          <h1 style={styles.title}>Study Goals</h1>
-          <button type="button" style={styles.backButton} onClick={() => navigate("/")}>
-            Back
-          </button>
+      <header style={styles.navbar}>
+        <div style={styles.navBrandWrap}>
+          <div style={styles.logoBox}>🎓</div>
+          <div style={styles.navBrand}>UNIMANAGE</div>
         </div>
 
-        <p style={styles.subtitle}>
-          Set daily, weekly, and monthly study targets to stay consistent.
-        </p>
+        <div style={styles.navActions}>
+          <button
+            type="button"
+            style={styles.activeNavButton}
+            onClick={() => navigate("/")}
+          >
+            Student Portal
+          </button>
+          <button type="button" style={styles.navButton}>
+            Management
+          </button>
+        </div>
+      </header>
 
-        <div style={styles.statsGrid}>
+      <main style={styles.main}>
+        <section style={styles.heroSection}>
+          <div style={styles.badge}>Progress Tracking</div>
+          <h1 style={styles.heroTitle}>Study Goals</h1>
+          <p style={styles.heroSubtitle}>
+            Set daily, weekly, and monthly academic goals and track your progress
+            with a clear and organized study plan.
+          </p>
+        </section>
+
+        <section style={styles.statsGrid}>
           <StatCard label="TOTAL GOALS" value={stats.total} />
           <StatCard label="PENDING" value={stats.pending} />
           <StatCard label="COMPLETED" value={stats.completed} />
-        </div>
+        </section>
 
-        <section style={styles.section}>
-          <h2 style={styles.sectionTitle}>
-            {editingId ? "Edit Goal" : "Add New Goal"}
-          </h2>
-
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <div style={styles.gridTwo}>
-              <div>
-                <label style={styles.label}>GOAL TITLE</label>
-                <input
-                  type="text"
-                  name="title"
-                  placeholder="eg: Finish database revision"
-                  value={form.title}
-                  onChange={handleChange}
-                  style={styles.input}
-                  required
-                />
-              </div>
-
-              <div>
-                <label style={styles.label}>GOAL TYPE</label>
-                <select
-                  name="goalType"
-                  value={form.goalType}
-                  onChange={handleChange}
-                  style={styles.input}
-                  required
-                >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={styles.label}>TARGET HOURS</label>
-                <input
-                  type="number"
-                  name="targetHours"
-                  placeholder="eg: 10"
-                  value={form.targetHours}
-                  onChange={handleChange}
-                  style={styles.input}
-                  min="1"
-                  required
-                />
-              </div>
-
-              <div>
-                <label style={styles.label}>ACHIEVED HOURS</label>
-                <input
-                  type="number"
-                  name="achievedHours"
-                  placeholder="eg: 4"
-                  value={form.achievedHours}
-                  onChange={handleChange}
-                  style={styles.input}
-                  min="0"
-                />
-              </div>
+        <section style={styles.formCard}>
+          <div style={styles.formHeader}>
+            <div>
+              <h2 style={styles.sectionTitle}>
+                {editingId ? "Edit Study Goal" : "Create New Goal"}
+              </h2>
+              <p style={styles.helperText}>
+                Add your goal type, target hours, and current progress.
+              </p>
             </div>
 
-            <div style={styles.actionRow}>
-              <button type="submit" style={styles.submitButton}>
-                {editingId ? "Update Goal" : "Add Goal"}
+            <button
+              type="button"
+              style={styles.backButton}
+              onClick={() => navigate("/")}
+            >
+              Back to Portal
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} style={styles.formGrid}>
+            <input
+              type="text"
+              name="title"
+              placeholder="Goal Title"
+              value={form.title}
+              onChange={handleChange}
+              style={styles.input}
+              required
+            />
+
+            <select
+              name="goalType"
+              value={form.goalType}
+              onChange={handleChange}
+              style={styles.input}
+              required
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+
+            <input
+              type="number"
+              name="targetHours"
+              placeholder="Target Hours"
+              value={form.targetHours}
+              onChange={handleChange}
+              style={styles.input}
+              min="1"
+              required
+            />
+
+            <input
+              type="number"
+              name="achievedHours"
+              placeholder="Achieved Hours"
+              value={form.achievedHours}
+              onChange={handleChange}
+              style={styles.input}
+              min="0"
+            />
+
+            <div style={styles.buttonRow}>
+              <button type="submit" style={styles.primaryButton}>
+                {editingId ? "Update Goal" : "Save Goal"}
               </button>
 
               {editingId && (
-                <button type="button" onClick={resetForm} style={styles.cancelButton}>
+                <button
+                  type="button"
+                  style={styles.secondaryButton}
+                  onClick={resetForm}
+                >
                   Cancel
                 </button>
               )}
@@ -247,7 +270,7 @@ export default function StudyGoalsPage() {
           </form>
         </section>
 
-        <section style={styles.section}>
+        <section style={styles.goalsSection}>
           <h2 style={styles.sectionTitle}>Your Goals</h2>
 
           {goals.length === 0 ? (
@@ -256,58 +279,75 @@ export default function StudyGoalsPage() {
               <p style={styles.emptyText}>No study goals added yet.</p>
             </div>
           ) : (
-            <div style={styles.goalList}>
-              {goals.map((goal) => (
-                <div key={goal.id} style={styles.goalCard}>
-                  <div style={styles.goalTop}>
-                    <div>
-                      <h3 style={styles.goalTitle}>{goal.title}</h3>
-                      <p style={styles.goalMeta}>
-                        {goal.goalType.toUpperCase()} GOAL
-                      </p>
+            <div style={styles.goalGrid}>
+              {goals.map((goal) => {
+                const progress = Math.min(
+                  (goal.achievedHours / goal.targetHours) * 100,
+                  100
+                );
+
+                return (
+                  <div key={goal.id} style={styles.goalCard}>
+                    <div style={styles.goalTop}>
+                      <div>
+                        <h3 style={styles.goalTitle}>{goal.title}</h3>
+                        <p style={styles.goalMeta}>
+                          {goal.goalType.toUpperCase()} GOAL
+                        </p>
+                      </div>
+
+                      <span
+                        style={{
+                          ...styles.statusBadge,
+                          ...(goal.status === "completed"
+                            ? styles.statusCompleted
+                            : styles.statusPending),
+                        }}
+                      >
+                        {goal.status}
+                      </span>
                     </div>
 
-                    <span
-                      style={{
-                        ...styles.statusPill,
-                        ...(goal.status === "completed"
-                          ? styles.statusCompleted
-                          : styles.statusPending),
-                      }}
-                    >
-                      {goal.status}
-                    </span>
-                  </div>
+                    <p style={styles.goalInfo}>
+                      <strong>Target Hours:</strong> {goal.targetHours}
+                    </p>
+                    <p style={styles.goalInfo}>
+                      <strong>Achieved Hours:</strong> {goal.achievedHours}
+                    </p>
 
-                  <p style={styles.goalMeta}>Target Hours: {goal.targetHours}</p>
-                  <p style={styles.goalMeta}>Achieved Hours: {goal.achievedHours}</p>
+                    <div style={styles.progressOuter}>
+                      <div
+                        style={{
+                          ...styles.progressInner,
+                          width: `${progress}%`,
+                        }}
+                      />
+                    </div>
 
-                  <div style={styles.progressOuter}>
-                    <div
-                      style={{
-                        ...styles.progressInner,
-                        width: `${Math.min(
-                          (goal.achievedHours / goal.targetHours) * 100,
-                          100
-                        )}%`,
-                      }}
-                    />
-                  </div>
+                    <div style={styles.goalButtons}>
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(goal)}
+                        style={styles.secondaryMiniButton}
+                      >
+                        Edit
+                      </button>
 
-                  <div style={styles.actionButtons}>
-                    <button type="button" onClick={() => handleEdit(goal)} style={styles.editButton}>
-                      Edit
-                    </button>
-                    <button type="button" onClick={() => handleDelete(goal.id)} style={styles.deleteButton}>
-                      Delete
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(goal.id)}
+                        style={styles.deleteMiniButton}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
-      </div>
+      </main>
     </div>
   );
 }
@@ -324,128 +364,203 @@ function StatCard({ label, value }: { label: string; value: number }) {
 const styles: { [key: string]: React.CSSProperties } = {
   page: {
     minHeight: "100vh",
-    background: "#edf0ed",
-    padding: "40px 20px",
+    background: "#f8faf8",
+    fontFamily: "Arial, sans-serif",
   },
-  container: {
-    maxWidth: 950,
-    margin: "0 auto",
+  navbar: {
+    height: 84,
     background: "#ffffff",
-    borderRadius: 16,
-    padding: 28,
-    border: "1px solid #cfe6d7",
-    boxShadow: "0 10px 24px rgba(63, 92, 74, 0.16)",
+    borderBottom: "1px solid #e5e7eb",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "0 40px",
   },
-  topRow: {
+  navBrandWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+  },
+  logoBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    background: "#edf7ef",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 24,
+  },
+  navBrand: {
+    fontSize: 20,
+    fontWeight: 800,
+    color: "#111827",
+  },
+  navActions: {
+    display: "flex",
+    gap: 12,
+    flexWrap: "wrap",
+  },
+  navButton: {
+    padding: "12px 20px",
+    borderRadius: 12,
+    border: "1px solid #e5e7eb",
+    background: "#ffffff",
+    color: "#4b5563",
+    cursor: "pointer",
+    fontWeight: 600,
+  },
+  activeNavButton: {
+    padding: "12px 20px",
+    borderRadius: 12,
+    border: "none",
+    background: "#15803d",
+    color: "#ffffff",
+    cursor: "pointer",
+    fontWeight: 700,
+    boxShadow: "0 6px 14px rgba(21,128,61,0.18)",
+  },
+  main: {
+    maxWidth: 1100,
+    margin: "0 auto",
+    padding: "42px 20px 60px",
+  },
+  heroSection: {
+    textAlign: "center",
+    marginBottom: 30,
+  },
+  badge: {
+    display: "inline-block",
+    padding: "8px 16px",
+    borderRadius: 999,
+    background: "#eaf7ed",
+    color: "#15803d",
+    fontWeight: 700,
+    fontSize: 14,
+    marginBottom: 18,
+  },
+  heroTitle: {
+    fontSize: 56,
+    fontWeight: 800,
+    color: "#0f172a",
+    marginBottom: 14,
+  },
+  heroSubtitle: {
+    maxWidth: 760,
+    margin: "0 auto",
+    fontSize: 17,
+    lineHeight: 1.7,
+    color: "#6b7280",
+  },
+  statsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 18,
+    marginBottom: 28,
+  },
+  statCard: {
+    background: "#ffffff",
+    border: "1px solid #e8efe9",
+    borderRadius: 18,
+    padding: "24px 18px",
+    textAlign: "center",
+    boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
+  },
+  statValue: {
+    fontSize: 34,
+    fontWeight: 800,
+    color: "#166534",
+  },
+  statLabel: {
+    marginTop: 8,
+    fontSize: 13,
+    color: "#6b7280",
+    letterSpacing: 0.4,
+  },
+  formCard: {
+    background: "#ffffff",
+    border: "1px solid #e8efe9",
+    borderRadius: 20,
+    padding: 24,
+    boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
+    marginBottom: 28,
+  },
+  formHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     gap: 12,
     flexWrap: "wrap",
+    marginBottom: 16,
   },
-  title: {
-    fontSize: 36,
-    color: "#1f5b46",
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: 800,
+    color: "#0f172a",
+    marginBottom: 6,
   },
-  subtitle: {
-    marginTop: 8,
-    marginBottom: 24,
-    color: "#5c7667",
+  helperText: {
+    fontSize: 14,
+    color: "#6b7280",
   },
   backButton: {
     background: "#edf7ef",
-    color: "#1f5b46",
-    border: "1px solid #b7dfc0",
-    borderRadius: 999,
-    padding: "10px 16px",
+    color: "#14532d",
+    border: "1px solid #bbdfc6",
+    borderRadius: 12,
+    padding: "12px 18px",
     cursor: "pointer",
     fontWeight: 700,
   },
-  statsGrid: {
+  formGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 14,
-    marginBottom: 24,
-  },
-  statCard: {
-    background: "#edf7ef",
-    border: "1px solid #cfe6d7",
-    borderRadius: 10,
-    padding: "16px 10px",
-    textAlign: "center",
-  },
-  statValue: {
-    fontSize: 26,
-    fontWeight: 700,
-    color: "#1f5b46",
-  },
-  statLabel: {
-    marginTop: 6,
-    fontSize: 11,
-    color: "#628371",
-  },
-  section: {
-    marginTop: 24,
-  },
-  sectionTitle: {
-    fontSize: 28,
-    color: "#1f5b46",
-    marginBottom: 18,
-  },
-  form: {
-    display: "grid",
-    gap: 18,
-  },
-  gridTwo: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: 14,
-  },
-  label: {
-    display: "block",
-    fontSize: 13,
-    fontWeight: 700,
-    color: "#557565",
-    marginBottom: 6,
+    gap: 16,
   },
   input: {
     width: "100%",
-    padding: "12px 14px",
-    borderRadius: 8,
-    border: "1px solid #b7dfc0",
+    padding: "14px 16px",
+    borderRadius: 12,
+    border: "1px solid #dce8de",
     outline: "none",
     fontSize: 15,
-    background: "#dff0e2",
-    color: "#23463b",
+    background: "#ffffff",
   },
-  actionRow: {
+  buttonRow: {
     display: "flex",
     gap: 12,
     flexWrap: "wrap",
+    marginTop: 4,
   },
-  submitButton: {
-    background: "#275d3f",
+  primaryButton: {
+    background: "#16a34a",
     color: "#ffffff",
     border: "none",
-    borderRadius: 999,
+    borderRadius: 12,
+    padding: "12px 18px",
+    cursor: "pointer",
+    fontWeight: 700,
+    boxShadow: "0 6px 14px rgba(22,163,74,0.18)",
+  },
+  secondaryButton: {
+    background: "#ffffff",
+    color: "#14532d",
+    border: "1px solid #bbdfc6",
+    borderRadius: 12,
     padding: "12px 18px",
     cursor: "pointer",
     fontWeight: 700,
   },
-  cancelButton: {
-    background: "#f0f5f1",
-    color: "#275d3f",
-    border: "1px solid #b7dfc0",
-    borderRadius: 999,
-    padding: "12px 18px",
-    cursor: "pointer",
-    fontWeight: 700,
+  goalsSection: {
+    background: "#ffffff",
+    border: "1px solid #e8efe9",
+    borderRadius: 20,
+    padding: 24,
+    boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
   },
   emptyState: {
-    marginTop: 10,
-    border: "1px dashed #cfe6d7",
-    borderRadius: 14,
-    padding: "32px 20px",
+    border: "1px dashed #d9e8dd",
+    borderRadius: 16,
+    padding: "36px 20px",
     textAlign: "center",
     background: "#fbfffc",
   },
@@ -454,17 +569,17 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: 10,
   },
   emptyText: {
-    color: "#6c8679",
-    fontSize: 14,
+    color: "#6b7280",
+    fontSize: 15,
   },
-  goalList: {
+  goalGrid: {
     display: "grid",
-    gap: 14,
+    gap: 16,
   },
   goalCard: {
-    border: "1px solid #d6eadb",
-    borderRadius: 14,
-    padding: 16,
+    border: "1px solid #e8efe9",
+    borderRadius: 18,
+    padding: 18,
     background: "#fbfffc",
   },
   goalTop: {
@@ -472,56 +587,61 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: "space-between",
     gap: 12,
     flexWrap: "wrap",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   goalTitle: {
-    color: "#1f5b46",
-    fontSize: 22,
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: 800,
+    color: "#111827",
+    marginBottom: 6,
   },
   goalMeta: {
-    color: "#5c7667",
+    color: "#6b7280",
     fontSize: 14,
-    marginTop: 4,
+  },
+  goalInfo: {
+    color: "#374151",
+    fontSize: 14,
+    marginBottom: 8,
   },
   progressOuter: {
     width: "100%",
     height: 12,
-    background: "#e6efe8",
+    background: "#e8f0ea",
     borderRadius: 999,
-    marginTop: 14,
     overflow: "hidden",
+    marginTop: 10,
   },
   progressInner: {
     height: "100%",
-    background: "#2d7d52",
+    background: "#16a34a",
     borderRadius: 999,
   },
-  actionButtons: {
+  goalButtons: {
     marginTop: 14,
     display: "flex",
     gap: 10,
     flexWrap: "wrap",
   },
-  editButton: {
-    background: "#e6f2e8",
-    color: "#1f5b46",
-    border: "1px solid #b7dfc0",
+  secondaryMiniButton: {
+    background: "#edf7ef",
+    color: "#14532d",
+    border: "1px solid #bbdfc6",
     borderRadius: 999,
     padding: "10px 16px",
     cursor: "pointer",
     fontWeight: 700,
   },
-  deleteButton: {
-    background: "#fbe9e9",
-    color: "#9d2d2d",
-    border: "1px solid #efc4c4",
+  deleteMiniButton: {
+    background: "#fef2f2",
+    color: "#b91c1c",
+    border: "1px solid #fecaca",
     borderRadius: 999,
     padding: "10px 16px",
     cursor: "pointer",
     fontWeight: 700,
   },
-  statusPill: {
+  statusBadge: {
     padding: "8px 12px",
     borderRadius: 999,
     fontSize: 12,
@@ -530,11 +650,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     textTransform: "capitalize",
   },
   statusPending: {
-    background: "#e7f4ea",
-    color: "#2d7d52",
+    background: "#ecfdf3",
+    color: "#15803d",
   },
   statusCompleted: {
-    background: "#dff1e4",
-    color: "#1f5b46",
+    background: "#dcfce7",
+    color: "#166534",
   },
 };

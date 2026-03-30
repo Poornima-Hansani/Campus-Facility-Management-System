@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 interface Lecture {
@@ -23,88 +23,201 @@ export default function LectureAvailabilityPage() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        const parsedLectures: Lecture[] = JSON.parse(saved);
-        setLectures(parsedLectures);
-      } catch (error) {
-        console.error("Failed to load lecture availability data:", error);
+        setLectures(JSON.parse(saved));
+      } catch {
         localStorage.removeItem(STORAGE_KEY);
       }
     }
   }, []);
 
-  const filteredLectures = lectures.filter((lecture) => {
-    const matchesSearch =
-      lecture.module.toLowerCase().includes(search.toLowerCase()) ||
-      lecture.name.toLowerCase().includes(search.toLowerCase());
+  const filteredLectures = useMemo(() => {
+    return lectures.filter((lecture) => {
+      const matchesSearch =
+        lecture.module.toLowerCase().includes(search.toLowerCase()) ||
+        lecture.name.toLowerCase().includes(search.toLowerCase());
 
-    const matchesDay = dayFilter === "All" ? true : lecture.day === dayFilter;
+      const matchesDay = dayFilter === "All" ? true : lecture.day === dayFilter;
 
-    return matchesSearch && matchesDay;
-  });
+      return matchesSearch && matchesDay;
+    });
+  }, [lectures, search, dayFilter]);
+
+  const groupedLectures = useMemo(() => {
+    const order = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday",
+    ];
+
+    const grouped: Record<string, Lecture[]> = {};
+
+    filteredLectures.forEach((lecture) => {
+      if (!grouped[lecture.day]) {
+        grouped[lecture.day] = [];
+      }
+      grouped[lecture.day].push(lecture);
+    });
+
+    order.forEach((day) => {
+      if (grouped[day]) {
+        grouped[day].sort((a, b) => a.time.localeCompare(b.time));
+      }
+    });
+
+    return order.filter((day) => grouped[day]?.length > 0).map((day) => ({
+      day,
+      lectures: grouped[day],
+    }));
+  }, [filteredLectures]);
 
   return (
     <div style={styles.page}>
-      <div style={styles.container}>
-        <div style={styles.topRow}>
-          <h1 style={styles.title}>Lecture Availability</h1>
-          <button type="button" style={styles.backButton} onClick={() => navigate("/")}>
-            Back
+      <header style={styles.navbar}>
+        <div style={styles.navBrandWrap}>
+          <div style={styles.logoBox}>🎓</div>
+          <div style={styles.navBrand}>UNIMANAGE</div>
+        </div>
+
+        <div style={styles.navActions}>
+          <button
+            type="button"
+            style={styles.activeNavButton}
+            onClick={() => navigate("/")}
+          >
+            Student Portal
+          </button>
+          <button type="button" style={styles.navButton}>
+            Management
           </button>
         </div>
+      </header>
 
-        <p style={styles.subtitle}>
-          Search lectures by module code or module name and filter by day.
-        </p>
+      <main style={styles.main}>
+        <section style={styles.heroSection}>
+          <div style={styles.badge}>Academic Support</div>
+          <h1 style={styles.heroTitle}>Lecture Availability</h1>
+          <p style={styles.heroSubtitle}>
+            Search lectures by module code or module name and filter them by day
+            to quickly find available lecture halls and lab sessions.
+          </p>
+        </section>
 
-        <div style={styles.filterSection}>
-          <input
-            type="text"
-            placeholder="Search by module code or module name"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={styles.input}
-          />
+        <section style={styles.topCard}>
+          <div style={styles.topCardHeader}>
+            <div>
+              <h2 style={styles.sectionTitle}>Search & Filter</h2>
+              <p style={styles.helperText}>
+                Find lectures faster using module details and weekday filters.
+              </p>
+            </div>
 
-          <select
-            value={dayFilter}
-            onChange={(e) => setDayFilter(e.target.value)}
-            style={styles.input}
-          >
-            <option value="All">All Days</option>
-            <option value="Monday">Monday</option>
-            <option value="Tuesday">Tuesday</option>
-            <option value="Wednesday">Wednesday</option>
-            <option value="Thursday">Thursday</option>
-            <option value="Friday">Friday</option>
-            <option value="Saturday">Saturday</option>
-            <option value="Sunday">Sunday</option>
-          </select>
-        </div>
+            <button
+              type="button"
+              style={styles.backButton}
+              onClick={() => navigate("/")}
+            >
+              Back to Portal
+            </button>
+          </div>
 
-        <div style={styles.list}>
-          {filteredLectures.length === 0 ? (
-            <div style={styles.emptyBox}>No lectures found for your search.</div>
-          ) : (
-            filteredLectures.map((lecture) => (
-              <div key={lecture.id} style={styles.card}>
-                <h3 style={styles.cardTitle}>{lecture.module}</h3>
-                <p style={styles.cardText}>
-                  <strong>Module Name:</strong> {lecture.name}
-                </p>
-                <p style={styles.cardText}>
-                  <strong>Day:</strong> {lecture.day}
-                </p>
-                <p style={styles.cardText}>
-                  <strong>Time:</strong> {lecture.time}
-                </p>
-                <p style={styles.cardText}>
-                  <strong>Location:</strong> {lecture.location}
-                </p>
+          <div style={styles.filterGrid}>
+            <input
+              type="text"
+              placeholder="Search by module code or module name"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={styles.input}
+            />
+
+            <select
+              value={dayFilter}
+              onChange={(e) => setDayFilter(e.target.value)}
+              style={styles.input}
+            >
+              <option value="All">All Days</option>
+              <option value="Monday">Monday</option>
+              <option value="Tuesday">Tuesday</option>
+              <option value="Wednesday">Wednesday</option>
+              <option value="Thursday">Thursday</option>
+              <option value="Friday">Friday</option>
+              <option value="Saturday">Saturday</option>
+              <option value="Sunday">Sunday</option>
+            </select>
+          </div>
+
+          <div style={styles.quickStats}>
+            <div style={styles.statCard}>
+              <div style={styles.statValue}>{lectures.length}</div>
+              <div style={styles.statLabel}>TOTAL SESSIONS</div>
+            </div>
+            <div style={styles.statCard}>
+              <div style={styles.statValue}>{filteredLectures.length}</div>
+              <div style={styles.statLabel}>MATCHING RESULTS</div>
+            </div>
+            <div style={styles.statCard}>
+              <div style={styles.statValue}>{groupedLectures.length}</div>
+              <div style={styles.statLabel}>DAYS AVAILABLE</div>
+            </div>
+          </div>
+        </section>
+
+        {filteredLectures.length === 0 ? (
+          <section style={styles.emptySection}>
+            <div style={styles.emptyIcon}>🏫</div>
+            <h3 style={styles.emptyTitle}>No lectures found</h3>
+            <p style={styles.emptyText}>
+              Try a different module code, module name, or day filter.
+            </p>
+          </section>
+        ) : (
+          <section style={styles.daySectionWrap}>
+            {groupedLectures.map((group) => (
+              <div key={group.day} style={styles.dayCard}>
+                <div style={styles.dayHeader}>
+                  <h2 style={styles.dayTitle}>{group.day}</h2>
+                  <span style={styles.dayCount}>
+                    {group.lectures.length} session
+                    {group.lectures.length > 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                <div style={styles.lectureGrid}>
+                  {group.lectures.map((lecture) => (
+                    <div key={lecture.id} style={styles.lectureCard}>
+                      <div style={styles.lectureTop}>
+                        <div style={styles.iconBadge}>📘</div>
+                        <div>
+                          <h3 style={styles.lectureModule}>{lecture.module}</h3>
+                          <p style={styles.lectureName}>{lecture.name}</p>
+                        </div>
+                      </div>
+
+                      <div style={styles.infoRow}>
+                        <span style={styles.infoLabel}>Time</span>
+                        <span style={styles.infoValue}>{lecture.time}</span>
+                      </div>
+
+                      <div style={styles.infoRow}>
+                        <span style={styles.infoLabel}>Location</span>
+                        <span style={styles.infoValue}>{lecture.location}</span>
+                      </div>
+
+                      <div style={styles.infoRow}>
+                        <span style={styles.infoLabel}>Type</span>
+                        <span style={styles.infoValue}>Lecture / Lab Session</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))
-          )}
-        </div>
-      </div>
+            ))}
+          </section>
+        )}
+      </main>
     </div>
   );
 }
@@ -112,83 +225,276 @@ export default function LectureAvailabilityPage() {
 const styles: { [key: string]: React.CSSProperties } = {
   page: {
     minHeight: "100vh",
-    background: "#edf0ed",
-    padding: "40px 20px",
+    background: "#f8faf8",
+    fontFamily: "Arial, sans-serif",
   },
-  container: {
-    maxWidth: "950px",
-    margin: "0 auto",
+  navbar: {
+    height: 84,
     background: "#ffffff",
-    borderRadius: "16px",
-    padding: "28px",
-    border: "1px solid #cfe6d7",
-    boxShadow: "0 10px 24px rgba(63, 92, 74, 0.16)",
+    borderBottom: "1px solid #e5e7eb",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "0 40px",
   },
-  topRow: {
+  navBrandWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+  },
+  logoBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    background: "#edf7ef",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 24,
+  },
+  navBrand: {
+    fontSize: 20,
+    fontWeight: 800,
+    color: "#111827",
+  },
+  navActions: {
+    display: "flex",
+    gap: 12,
+    flexWrap: "wrap",
+  },
+  navButton: {
+    padding: "12px 20px",
+    borderRadius: 12,
+    border: "1px solid #e5e7eb",
+    background: "#ffffff",
+    color: "#4b5563",
+    cursor: "pointer",
+    fontWeight: 600,
+  },
+  activeNavButton: {
+    padding: "12px 20px",
+    borderRadius: 12,
+    border: "none",
+    background: "#15803d",
+    color: "#ffffff",
+    cursor: "pointer",
+    fontWeight: 700,
+    boxShadow: "0 6px 14px rgba(21,128,61,0.18)",
+  },
+  main: {
+    maxWidth: 1180,
+    margin: "0 auto",
+    padding: "42px 20px 60px",
+  },
+  heroSection: {
+    textAlign: "center",
+    marginBottom: 30,
+  },
+  badge: {
+    display: "inline-block",
+    padding: "8px 16px",
+    borderRadius: 999,
+    background: "#eaf7ed",
+    color: "#15803d",
+    fontWeight: 700,
+    fontSize: 14,
+    marginBottom: 18,
+  },
+  heroTitle: {
+    fontSize: 56,
+    fontWeight: 800,
+    color: "#0f172a",
+    marginBottom: 14,
+  },
+  heroSubtitle: {
+    maxWidth: 760,
+    margin: "0 auto",
+    fontSize: 17,
+    lineHeight: 1.7,
+    color: "#6b7280",
+  },
+  topCard: {
+    background: "#ffffff",
+    border: "1px solid #e8efe9",
+    borderRadius: 20,
+    padding: 24,
+    boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
+    marginBottom: 28,
+  },
+  topCardHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: "12px",
+    gap: 12,
     flexWrap: "wrap",
+    marginBottom: 16,
   },
-  title: {
-    fontSize: "36px",
-    color: "#1f5b46",
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: 800,
+    color: "#0f172a",
+    marginBottom: 6,
   },
-  subtitle: {
-    marginTop: "8px",
-    marginBottom: "24px",
-    color: "#5c7667",
+  helperText: {
+    fontSize: 14,
+    color: "#6b7280",
   },
   backButton: {
     background: "#edf7ef",
-    color: "#1f5b46",
-    border: "1px solid #b7dfc0",
-    borderRadius: "999px",
-    padding: "10px 16px",
+    color: "#14532d",
+    border: "1px solid #bbdfc6",
+    borderRadius: 12,
+    padding: "12px 18px",
     cursor: "pointer",
     fontWeight: 700,
   },
-  filterSection: {
+  filterGrid: {
     display: "grid",
-    gap: "12px",
-    marginBottom: "24px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: 16,
+    marginBottom: 20,
   },
   input: {
     width: "100%",
-    padding: "12px 14px",
-    borderRadius: "8px",
-    border: "1px solid #b7dfc0",
+    padding: "14px 16px",
+    borderRadius: 12,
+    border: "1px solid #dce8de",
     outline: "none",
-    fontSize: "15px",
-    background: "#dff0e2",
-    color: "#23463b",
+    fontSize: 15,
+    background: "#ffffff",
   },
-  list: {
+  quickStats: {
     display: "grid",
-    gap: "14px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 16,
   },
-  emptyBox: {
-    background: "#fbfffc",
-    border: "1px dashed #cfe6d7",
-    borderRadius: "12px",
-    padding: "24px",
+  statCard: {
+    background: "#f8fcf9",
+    border: "1px solid #e5f0e7",
+    borderRadius: 16,
+    padding: "22px 16px",
     textAlign: "center",
-    color: "#6c8679",
   },
-  card: {
-    border: "1px solid #d6eadb",
-    borderRadius: "14px",
-    padding: "16px",
+  statValue: {
+    fontSize: 30,
+    fontWeight: 800,
+    color: "#166534",
+  },
+  statLabel: {
+    marginTop: 8,
+    fontSize: 12,
+    color: "#6b7280",
+    letterSpacing: 0.4,
+  },
+  emptySection: {
+    background: "#ffffff",
+    border: "1px solid #e8efe9",
+    borderRadius: 20,
+    padding: "46px 20px",
+    textAlign: "center",
+    boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
+  },
+  emptyIcon: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: 800,
+    color: "#0f172a",
+    marginBottom: 8,
+  },
+  emptyText: {
+    color: "#6b7280",
+    fontSize: 15,
+  },
+  daySectionWrap: {
+    display: "grid",
+    gap: 20,
+  },
+  dayCard: {
+    background: "#ffffff",
+    border: "1px solid #e8efe9",
+    borderRadius: 20,
+    padding: 24,
+    boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
+  },
+  dayHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    flexWrap: "wrap",
+    marginBottom: 18,
+  },
+  dayTitle: {
+    fontSize: 26,
+    fontWeight: 800,
+    color: "#0f172a",
+  },
+  dayCount: {
+    padding: "8px 14px",
+    borderRadius: 999,
+    background: "#ecfdf3",
+    color: "#15803d",
+    fontWeight: 700,
+    fontSize: 13,
+  },
+  lectureGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: 18,
+  },
+  lectureCard: {
+    border: "1px solid #e8efe9",
+    borderRadius: 18,
+    padding: 18,
     background: "#fbfffc",
   },
-  cardTitle: {
-    color: "#1f5b46",
-    fontSize: "22px",
-    marginBottom: "8px",
+  lectureTop: {
+    display: "flex",
+    gap: 14,
+    alignItems: "flex-start",
+    marginBottom: 16,
   },
-  cardText: {
-    color: "#355648",
-    marginBottom: "6px",
+  iconBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    background: "#edf7ef",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 22,
+    flexShrink: 0,
+  },
+  lectureModule: {
+    fontSize: 18,
+    fontWeight: 800,
+    color: "#111827",
+    marginBottom: 4,
+  },
+  lectureName: {
+    fontSize: 14,
+    color: "#6b7280",
+    lineHeight: 1.5,
+  },
+  infoRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    padding: "10px 0",
+    borderTop: "1px solid #eef3ef",
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: "#6b7280",
+    fontWeight: 600,
+  },
+  infoValue: {
+    fontSize: 14,
+    color: "#111827",
+    fontWeight: 600,
+    textAlign: "right",
   },
 };
