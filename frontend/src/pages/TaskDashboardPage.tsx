@@ -15,11 +15,23 @@ interface Task {
   reminders: string[];
 }
 
+interface Lecture {
+  id: string;
+  module: string;
+  name: string;
+  day: string;
+  time: string;
+  location: string;
+}
+
 const STORAGE_KEY = "assignment_exam_manager_tasks";
+const TIMETABLE_STORAGE_KEY = "timetable";
 
 export default function TaskDashboardPage() {
   const navigate = useNavigate();
+
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [lectures, setLectures] = useState<Lecture[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "pending" | "completed" | "missed">("all");
 
@@ -30,6 +42,19 @@ export default function TaskDashboardPage() {
         setTasks(JSON.parse(saved));
       } catch {
         localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const savedLectures = localStorage.getItem(TIMETABLE_STORAGE_KEY);
+    if (savedLectures) {
+      try {
+        const parsedLectures: Lecture[] = JSON.parse(savedLectures);
+        setLectures(parsedLectures);
+      } catch (error) {
+        console.error("Failed to load timetable data:", error);
+        localStorage.removeItem(TIMETABLE_STORAGE_KEY);
       }
     }
   }, []);
@@ -88,6 +113,23 @@ export default function TaskDashboardPage() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   };
 
+  const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
+
+  const todayLectures = lectures.filter((lecture) => lecture.day === todayName);
+
+  const sortedTodayLectures = [...todayLectures].sort((a, b) =>
+    a.time.localeCompare(b.time)
+  );
+
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const upcomingTodayLectures = sortedTodayLectures.filter((lecture) => {
+    const [hours, minutes] = lecture.time.split(":").map(Number);
+    const lectureMinutes = hours * 60 + minutes;
+    return lectureMinutes >= currentMinutes;
+  });
+
   return (
     <div style={styles.page}>
       <div style={styles.hero}>
@@ -109,47 +151,95 @@ export default function TaskDashboardPage() {
           <StatCard label="COMPLETED" value={stats.completed} />
         </div>
 
-       <div style={styles.topActionRow}>
-  <button
-    type="button"
-    style={styles.secondaryButton}
-    onClick={() => navigate("/study-goals")}
-  >
-    Study Goals
-  </button>
+        <div style={styles.topActionRow}>
+          <button
+            type="button"
+            style={styles.secondaryButton}
+            onClick={() => navigate("/study-goals")}
+          >
+            Study Goals
+          </button>
 
-  <button
-    type="button"
-    style={styles.secondaryButton}
-    onClick={() => navigate("/help")}
-  >
-    Help Requests
-  </button>
+          <button
+            type="button"
+            style={styles.secondaryButton}
+            onClick={() => navigate("/help")}
+          >
+            Help Requests
+          </button>
 
-  <button
-    type="button"
-    style={styles.secondaryButton}
-    onClick={() => navigate("/timetable")}
-  >
-    Timetable
-  </button>
+          <button
+            type="button"
+            style={styles.secondaryButton}
+            onClick={() => navigate("/timetable")}
+          >
+            Timetable
+          </button>
 
-  <button
-    type="button"
-    style={styles.secondaryButton}
-    onClick={() => navigate("/lecture-availability")}
-  >
-    Lecture Availability
-  </button>
+          <button
+            type="button"
+            style={styles.secondaryButton}
+            onClick={() => navigate("/lecture-availability")}
+          >
+            Lecture Availability
+          </button>
 
-  <button
-    type="button"
-    style={styles.addTaskButton}
-    onClick={() => navigate("/add-task")}
-  >
-    + Add New Task
-  </button>
-</div>
+          <button
+            type="button"
+            style={styles.addTaskButton}
+            onClick={() => navigate("/add-task")}
+          >
+            + Add New Task
+          </button>
+        </div>
+
+        <section style={styles.section}>
+          <h2 style={styles.sectionTitle}>Upcoming Lecture Reminders</h2>
+
+          <div style={styles.reminderSection}>
+            <div style={styles.reminderCard}>
+              <h3 style={styles.reminderTitle}>Today</h3>
+              <p style={styles.reminderText}>
+                <strong>Day:</strong> {todayName}
+              </p>
+
+              {sortedTodayLectures.length === 0 ? (
+                <p style={styles.reminderEmpty}>No lectures scheduled for today.</p>
+              ) : (
+                sortedTodayLectures.map((lecture) => (
+                  <div key={lecture.id} style={styles.reminderItem}>
+                    <p style={styles.reminderText}>
+                      <strong>{lecture.module}</strong> - {lecture.name}
+                    </p>
+                    <p style={styles.reminderText}>
+                      {lecture.time} · {lecture.location}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div style={styles.reminderCard}>
+              <h3 style={styles.reminderTitle}>Starts Soon</h3>
+
+              {upcomingTodayLectures.length === 0 ? (
+                <p style={styles.reminderEmpty}>No more lectures coming up today.</p>
+              ) : (
+                upcomingTodayLectures.slice(0, 3).map((lecture) => (
+                  <div key={lecture.id} style={styles.reminderItem}>
+                    <p style={styles.reminderText}>
+                      <strong>{lecture.module}</strong> - {lecture.name}
+                    </p>
+                    <p style={styles.reminderText}>
+                      {lecture.time} · {lecture.location}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </section>
+
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>Your Tasks</h2>
 
@@ -344,33 +434,34 @@ const styles: { [key: string]: React.CSSProperties } = {
     letterSpacing: 0.5,
   },
   topActionRow: {
-  display: "flex",
-  justifyContent: "flex-end",
-  alignItems: "center",
-  gap: 12,
-  flexWrap: "wrap",
-  marginTop: 18,
-},
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 12,
+    flexWrap: "wrap",
+    marginTop: 18,
+  },
   addTaskButton: {
     background: "#275d3f",
     color: "#ffffff",
     border: "none",
     borderRadius: 999,
-    padding: "12px 18px",
+    padding: "12px 22px",
     cursor: "pointer",
     fontWeight: 700,
     boxShadow: "0 6px 10px rgba(39, 93, 63, 0.2)",
+    whiteSpace: "nowrap",
   },
   secondaryButton: {
-  background: "#edf7ef",
-  color: "#1f5b46",
-  border: "1px solid #b7dfc0",
-  borderRadius: 999,
-  padding: "12px 18px",
-  cursor: "pointer",
-  fontWeight: 700,
-  whiteSpace: "nowrap",
-},
+    background: "#edf7ef",
+    color: "#1f5b46",
+    border: "1px solid #b7dfc0",
+    borderRadius: 999,
+    padding: "12px 18px",
+    cursor: "pointer",
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+  },
   section: {
     marginTop: 24,
   },
@@ -378,6 +469,36 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: 30,
     color: "#1f5b46",
     marginBottom: 18,
+  },
+  reminderSection: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gap: 16,
+    marginBottom: 10,
+  },
+  reminderCard: {
+    border: "1px solid #d6eadb",
+    borderRadius: 14,
+    padding: 16,
+    background: "#fbfffc",
+  },
+  reminderTitle: {
+    color: "#1f5b46",
+    fontSize: 22,
+    marginBottom: 10,
+  },
+  reminderItem: {
+    padding: "10px 0",
+    borderBottom: "1px solid #e7f2ea",
+  },
+  reminderText: {
+    color: "#355648",
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  reminderEmpty: {
+    color: "#6c8679",
+    fontSize: 14,
   },
   searchInput: {
     flex: 1,
@@ -438,11 +559,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginTop: 10,
     color: "#355648",
     fontSize: 14,
-  },
-  reminderText: {
-    marginTop: 10,
-    color: "#355648",
-    fontSize: 13,
   },
   taskActions: {
     marginTop: 14,
