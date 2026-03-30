@@ -24,6 +24,8 @@ export default function TimetablePage() {
   const navigate = useNavigate();
 
   const [lectures, setLectures] = useState<Lecture[]>([]);
+  const [search, setSearch] = useState("");
+  const [dayFilter, setDayFilter] = useState("All");
   const [form, setForm] = useState<LectureFormData>({
     module: "",
     name: "",
@@ -123,6 +125,16 @@ export default function TimetablePage() {
     setLectures((prev) => prev.filter((lecture) => lecture.id !== id));
   };
 
+  const filteredLectures = lectures.filter((lecture) => {
+    const matchesSearch =
+      lecture.module.toLowerCase().includes(search.toLowerCase()) ||
+      lecture.name.toLowerCase().includes(search.toLowerCase());
+
+    const matchesDay = dayFilter === "All" ? true : lecture.day === dayFilter;
+
+    return matchesSearch && matchesDay;
+  });
+
   return (
     <div style={styles.page}>
       <div style={styles.container}>
@@ -198,11 +210,36 @@ export default function TimetablePage() {
           </button>
         </form>
 
+        <div style={styles.filterSection}>
+          <input
+            type="text"
+            placeholder="Search by module code or module name"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={styles.input}
+          />
+
+          <select
+            value={dayFilter}
+            onChange={(e) => setDayFilter(e.target.value)}
+            style={styles.input}
+          >
+            <option value="All">All Days</option>
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+            <option value="Sunday">Sunday</option>
+          </select>
+        </div>
+
         <div style={styles.list}>
-          {lectures.length === 0 ? (
-            <div style={styles.emptyBox}>No lectures added yet.</div>
+          {filteredLectures.length === 0 ? (
+            <div style={styles.emptyBox}>No lectures found.</div>
           ) : (
-            lectures.map((lecture) => (
+            filteredLectures.map((lecture) => (
               <div key={lecture.id} style={styles.card}>
                 <h3 style={styles.cardTitle}>{lecture.module}</h3>
                 <p style={styles.cardText}>
@@ -275,6 +312,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 700,
   },
   form: {
+    display: "grid",
+    gap: "12px",
+    marginBottom: "24px",
+  },
+  filterSection: {
     display: "grid",
     gap: "12px",
     marginBottom: "24px",
