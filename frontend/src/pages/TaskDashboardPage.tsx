@@ -109,40 +109,47 @@ export default function TaskDashboardPage() {
           <StatCard label="COMPLETED" value={stats.completed} />
         </div>
 
-        <div style={styles.topActionRow}>
-          <button
-            type="button"
-            style={styles.secondaryButton}
-            onClick={() => navigate("/study-goals")}
-          >
-            Study Goals
-          </button>
+       <div style={styles.topActionRow}>
+  <button
+    type="button"
+    style={styles.secondaryButton}
+    onClick={() => navigate("/study-goals")}
+  >
+    Study Goals
+  </button>
 
-          <button
-            type="button"
-            style={styles.secondaryButton}
-            onClick={() => navigate("/help")}
-          >
-            Help Requests
-          </button>
+  <button
+    type="button"
+    style={styles.secondaryButton}
+    onClick={() => navigate("/help")}
+  >
+    Help Requests
+  </button>
 
-          <button
-            type="button"
-            style={styles.secondaryButton}
-            onClick={() => navigate("/timetable")}
-          >
-            Timetable
-          </button>
+  <button
+    type="button"
+    style={styles.secondaryButton}
+    onClick={() => navigate("/timetable")}
+  >
+    Timetable
+  </button>
 
-          <button
-            type="button"
-            style={styles.addTaskButton}
-            onClick={() => navigate("/add-task")}
-          >
-            + Add New Task
-          </button>
-        </div>
+  <button
+    type="button"
+    style={styles.secondaryButton}
+    onClick={() => navigate("/lecture-availability")}
+  >
+    Lecture Availability
+  </button>
 
+  <button
+    type="button"
+    style={styles.addTaskButton}
+    onClick={() => navigate("/add-task")}
+  >
+    + Add New Task
+  </button>
+</div>
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>Your Tasks</h2>
 
@@ -337,12 +344,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     letterSpacing: 0.5,
   },
   topActionRow: {
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: 10,
-    flexWrap: "wrap",
-    marginTop: 18,
-  },
+  display: "flex",
+  justifyContent: "flex-end",
+  alignItems: "center",
+  gap: 12,
+  flexWrap: "wrap",
+  marginTop: 18,
+},
   addTaskButton: {
     background: "#275d3f",
     color: "#ffffff",
@@ -354,14 +362,15 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 6px 10px rgba(39, 93, 63, 0.2)",
   },
   secondaryButton: {
-    background: "#edf7ef",
-    color: "#1f5b46",
-    border: "1px solid #b7dfc0",
-    borderRadius: 999,
-    padding: "12px 18px",
-    cursor: "pointer",
-    fontWeight: 700,
-  },
+  background: "#edf7ef",
+  color: "#1f5b46",
+  border: "1px solid #b7dfc0",
+  borderRadius: 999,
+  padding: "12px 18px",
+  cursor: "pointer",
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+},
   section: {
     marginTop: 24,
   },

@@ -4,6 +4,7 @@ import AddTaskPage from "./pages/AddTaskPage";
 import StudyGoalsPage from "./pages/StudyGoalsPage";
 import HelpRequestPage from "./pages/HelpRequestPage";
 import TimetablePage from "./pages/TimetablePage";
+import LectureAvailabilityPage from "./pages/LectureAvailabilityPage";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/study-goals" element={<StudyGoalsPage />} />
         <Route path="/help" element={<HelpRequestPage />} />
         <Route path="/timetable" element={<TimetablePage />} />
+        <Route path="/lecture-availability" element={<LectureAvailabilityPage />} />
       </Routes>
     </BrowserRouter>
   );
