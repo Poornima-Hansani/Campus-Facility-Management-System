@@ -522,6 +522,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   padding: 24,
   border: "1px solid #cfe6d7",
   boxShadow: "0 10px 24px rgba(63, 92, 74, 0.16)",
+  whiteSpace: "nowrap",
 },
   statsGrid: {
     display: "grid",
@@ -641,6 +642,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
     fontWeight: 700,
     boxShadow: "0 6px 10px rgba(39, 93, 63, 0.2)",
+    whiteSpace: "nowrap",
   },
   cancelButton: {
     background: "#f0f5f1",

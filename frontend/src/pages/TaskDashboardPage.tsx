@@ -460,6 +460,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
     fontWeight: 700,
     boxShadow: "0 6px 14px rgba(21,128,61,0.18)",
+   
   },
   main: {
     maxWidth: 1180,
@@ -487,12 +488,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: 14,
   },
   heroSubtitle: {
-    maxWidth: 760,
-    margin: "0 auto",
-    fontSize: 17,
-    lineHeight: 1.7,
-    color: "#6b7280",
-  },
+  maxWidth: 760,
+  margin: "0 auto",
+  fontSize: "clamp(14px, 2.5vw, 17px)",
+  lineHeight: 1.7,
+  color: "#6b7280",
+},
   statsGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
@@ -506,6 +507,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "24px 18px",
     textAlign: "center",
     boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
+    
   },
   statValue: {
     fontSize: 34,
@@ -530,6 +532,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: 20,
     padding: 26,
     boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
+   
   },
   featureIcon: {
     width: 58,
@@ -563,6 +566,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
     fontWeight: 700,
     boxShadow: "0 6px 14px rgba(22,163,74,0.18)",
+    
   },
   reminderBlock: {
     marginBottom: 30,
@@ -578,6 +582,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: 20,
     padding: 24,
     boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
+    
   },
   sectionTitle: {
     fontSize: 26,
@@ -605,6 +610,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: 20,
     padding: 24,
     boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
+  
   },
   tasksHeader: {
     display: "flex",

@@ -280,6 +280,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
     fontWeight: 700,
     boxShadow: "0 6px 14px rgba(21,128,61,0.18)",
+    whiteSpace: "nowrap",
   },
   main: {
     maxWidth: 1180,
@@ -306,19 +307,20 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#0f172a",
     marginBottom: 14,
   },
-  heroSubtitle: {
-    maxWidth: 760,
-    margin: "0 auto",
-    fontSize: 17,
-    lineHeight: 1.7,
-    color: "#6b7280",
-  },
+heroSubtitle: {
+  maxWidth: 760,
+  margin: "0 auto",
+  fontSize: "clamp(14px, 2.5vw, 17px)",
+  lineHeight: 1.7,
+  color: "#6b7280",
+},
   topCard: {
     background: "#ffffff",
     border: "1px solid #e8efe9",
     borderRadius: 20,
     padding: 24,
     boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
+    whiteSpace: "nowrap",
     marginBottom: 28,
   },
   topCardHeader: {
@@ -393,6 +395,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "46px 20px",
     textAlign: "center",
     boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
+    whiteSpace: "nowrap",
   },
   emptyIcon: {
     fontSize: 40,
@@ -418,6 +421,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: 20,
     padding: 24,
     boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
+    whiteSpace: "nowrap",
   },
   dayHeader: {
     display: "flex",
