@@ -5,7 +5,6 @@ import StudyGoalsPage from "./pages/StudyGoalsPage";
 import HelpRequestPage from "./pages/HelpRequestPage";
 import TimetablePage from "./pages/TimetablePage";
 
-
 function App() {
   return (
     <BrowserRouter>

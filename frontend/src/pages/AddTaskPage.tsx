@@ -61,7 +61,7 @@ export default function AddTaskPage() {
     "1 week before",
     "1 day before",
     "12 hrs before",
-    "1 hr before",
+    "1 hour before",
     "30 min before",
   ];
 
@@ -99,13 +99,28 @@ export default function AddTaskPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!form.title.trim() || !form.moduleCode.trim() || !form.dueDateTime) {
-      alert("Please fill all required fields.");
+    if (!form.title.trim()) {
+      alert("Task title is required.");
+      return;
+    }
+
+    if (!form.moduleCode.trim()) {
+      alert("Module code is required.");
+      return;
+    }
+
+    if (!form.dueDateTime) {
+      alert("Deadline is required.");
       return;
     }
 
     if (new Date(form.dueDateTime) <= new Date()) {
-      alert("Please choose a future date and time.");
+      alert("Deadline must be a future date and time.");
+      return;
+    }
+
+    if (form.reminders.length === 0) {
+      alert("Please select at least one reminder.");
       return;
     }
 
@@ -118,9 +133,9 @@ export default function AddTaskPage() {
           ? {
               ...task,
               type: form.type,
-              title: form.title,
-              moduleCode: form.moduleCode,
-              description: form.description,
+              title: form.title.trim(),
+              moduleCode: form.moduleCode.trim(),
+              description: form.description.trim(),
               dueDateTime: form.dueDateTime,
               status: form.status,
               reminders: form.reminders,
@@ -133,9 +148,9 @@ export default function AddTaskPage() {
       const newTask: Task = {
         id: Date.now().toString(),
         type: form.type,
-        title: form.title,
-        moduleCode: form.moduleCode,
-        description: form.description,
+        title: form.title.trim(),
+        moduleCode: form.moduleCode.trim(),
+        description: form.description.trim(),
         dueDateTime: form.dueDateTime,
         status: "pending",
         reminders: form.reminders,
@@ -152,7 +167,7 @@ export default function AddTaskPage() {
       <div style={styles.container}>
         <div style={styles.topRow}>
           <h1 style={styles.title}>{editingTask ? "Edit Task" : "Add New Task"}</h1>
-          <button style={styles.backButton} onClick={() => navigate("/")}>
+          <button type="button" style={styles.backButton} onClick={() => navigate("/")}>
             Back
           </button>
         </div>
@@ -170,6 +185,7 @@ export default function AddTaskPage() {
                 value={form.type}
                 onChange={handleChange}
                 style={styles.input}
+                required
               >
                 <option value="assignment">Assignment</option>
                 <option value="exam">Exam</option>
@@ -185,6 +201,7 @@ export default function AddTaskPage() {
                 value={form.title}
                 onChange={handleChange}
                 style={styles.input}
+                required
               />
             </div>
 
@@ -197,6 +214,7 @@ export default function AddTaskPage() {
                 value={form.moduleCode}
                 onChange={handleChange}
                 style={styles.input}
+                required
               />
             </div>
 
@@ -208,6 +226,7 @@ export default function AddTaskPage() {
                 value={form.dueDateTime}
                 onChange={handleChange}
                 style={styles.input}
+                required
               />
             </div>
           </div>

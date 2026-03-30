@@ -81,12 +81,22 @@ export default function StudyGoalsPage() {
     const achieved = Number(form.achievedHours || 0);
 
     if (!form.title.trim()) {
-      alert("Please enter goal title.");
+      alert("Goal title is required.");
       return;
     }
 
-    if (target <= 0) {
+    if (isNaN(target) || target <= 0) {
       alert("Target hours must be greater than 0.");
+      return;
+    }
+
+    if (isNaN(achieved) || achieved < 0) {
+      alert("Achieved hours cannot be negative.");
+      return;
+    }
+
+    if (achieved > target) {
+      alert("Achieved hours cannot be greater than target hours.");
       return;
     }
 
@@ -97,7 +107,7 @@ export default function StudyGoalsPage() {
         goal.id === editingId
           ? {
               ...goal,
-              title: form.title,
+              title: form.title.trim(),
               goalType: form.goalType,
               targetHours: target,
               achievedHours: achieved,
@@ -110,7 +120,7 @@ export default function StudyGoalsPage() {
     } else {
       const newGoal: StudyGoal = {
         id: Date.now().toString(),
-        title: form.title,
+        title: form.title.trim(),
         goalType: form.goalType,
         targetHours: target,
         achievedHours: achieved,
@@ -145,7 +155,7 @@ export default function StudyGoalsPage() {
       <div style={styles.container}>
         <div style={styles.topRow}>
           <h1 style={styles.title}>Study Goals</h1>
-          <button style={styles.backButton} onClick={() => navigate("/")}>
+          <button type="button" style={styles.backButton} onClick={() => navigate("/")}>
             Back
           </button>
         </div>
@@ -176,6 +186,7 @@ export default function StudyGoalsPage() {
                   value={form.title}
                   onChange={handleChange}
                   style={styles.input}
+                  required
                 />
               </div>
 
@@ -186,6 +197,7 @@ export default function StudyGoalsPage() {
                   value={form.goalType}
                   onChange={handleChange}
                   style={styles.input}
+                  required
                 >
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
@@ -202,6 +214,8 @@ export default function StudyGoalsPage() {
                   value={form.targetHours}
                   onChange={handleChange}
                   style={styles.input}
+                  min="1"
+                  required
                 />
               </div>
 
@@ -214,6 +228,7 @@ export default function StudyGoalsPage() {
                   value={form.achievedHours}
                   onChange={handleChange}
                   style={styles.input}
+                  min="0"
                 />
               </div>
             </div>
@@ -264,12 +279,8 @@ export default function StudyGoalsPage() {
                     </span>
                   </div>
 
-                  <p style={styles.goalMeta}>
-                    Target Hours: {goal.targetHours}
-                  </p>
-                  <p style={styles.goalMeta}>
-                    Achieved Hours: {goal.achievedHours}
-                  </p>
+                  <p style={styles.goalMeta}>Target Hours: {goal.targetHours}</p>
+                  <p style={styles.goalMeta}>Achieved Hours: {goal.achievedHours}</p>
 
                   <div style={styles.progressOuter}>
                     <div
@@ -284,10 +295,10 @@ export default function StudyGoalsPage() {
                   </div>
 
                   <div style={styles.actionButtons}>
-                    <button onClick={() => handleEdit(goal)} style={styles.editButton}>
+                    <button type="button" onClick={() => handleEdit(goal)} style={styles.editButton}>
                       Edit
                     </button>
-                    <button onClick={() => handleDelete(goal.id)} style={styles.deleteButton}>
+                    <button type="button" onClick={() => handleDelete(goal.id)} style={styles.deleteButton}>
                       Delete
                     </button>
                   </div>
