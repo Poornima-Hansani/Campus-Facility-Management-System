@@ -6,6 +6,7 @@ import HelpRequestPage from "./pages/HelpRequestPage";
 import TimetablePage from "./pages/TimetablePage";
 import LectureAvailabilityPage from "./pages/LectureAvailabilityPage";
 
+
 function App() {
   return (
     <BrowserRouter>
@@ -16,6 +17,7 @@ function App() {
         <Route path="/help" element={<HelpRequestPage />} />
         <Route path="/timetable" element={<TimetablePage />} />
         <Route path="/lecture-availability" element={<LectureAvailabilityPage />} />
+      
       </Routes>
     </BrowserRouter>
   );
