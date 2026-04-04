@@ -2,8 +2,8 @@ const Topbar = () => {
   return (
     <header className="topbar">
       <div>
-        <h1>Student Academic Support Module</h1>
-        <p>Campus Facility Management System</p>
+        <h1>UNIMANAGE</h1>
+        <p>Student Portal</p>
       </div>
 
       <div className="topbar-user">

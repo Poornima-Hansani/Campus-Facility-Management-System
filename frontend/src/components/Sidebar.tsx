@@ -23,8 +23,8 @@ const Sidebar = () => {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <h2>CampusFlow</h2>
-        <p>Member 02 Module</p>
+        <h2>UNIMANAGE</h2>
+        <p>Student Portal</p>
       </div>
 
       <nav className="sidebar-nav">
