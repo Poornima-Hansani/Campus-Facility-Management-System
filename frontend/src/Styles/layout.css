@@ -703,3 +703,50 @@
 .danger-form-btn:hover {
   background: #b91c1c;
 }
+
+.form-group-full {
+  grid-column: 1 / -1;
+}
+
+.badge-assignment {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.badge-exam {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.task-status {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.task-status.scheduled {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.task-status.upcoming {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.task-status.due-today {
+  background: #fde68a;
+  color: #92400e;
+}
+
+.task-status.overdue {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 110px;
+}

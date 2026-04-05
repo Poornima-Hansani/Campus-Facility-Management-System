@@ -6,7 +6,7 @@ type TimetableItem = {
   id: number;
   moduleCode: string;
   moduleName: string;
-  venueType: "Lecture Hall" | "Laboratory";
+  venueType: "Lecture Hall" | "Lab";
   venueName: string;
   lecturer: string;
   day: string;
@@ -30,7 +30,7 @@ const initialSessions: TimetableItem[] = [
     id: 2,
     moduleCode: "IT3050",
     moduleName: "Software Engineering",
-    venueType: "Laboratory",
+    venueType: "Lab",
     venueName: "Lab A",
     lecturer: "Mr. Silva",
     day: "Wednesday",
@@ -54,7 +54,7 @@ const TimetablePage = () => {
   const [formData, setFormData] = useState({
     moduleCode: "",
     moduleName: "",
-    venueType: "Lecture Hall" as "Lecture Hall" | "Laboratory",
+    venueType: "Lecture Hall" as "Lecture Hall" | "Lab",
     venueName: "",
     lecturer: "",
     day: "Monday",
@@ -71,7 +71,7 @@ const TimetablePage = () => {
   );
 
   const totalLabs = useMemo(
-    () => sessions.filter((item) => item.venueType === "Laboratory").length,
+    () => sessions.filter((item) => item.venueType === "Lab").length,
     [sessions]
   );
 
@@ -236,7 +236,7 @@ const TimetablePage = () => {
     <Layout>
       <PageHeader
         title="Timetable Management"
-        subtitle="Add, view, and manage lecture and laboratory sessions with conflict checking"
+        subtitle="Add, view, and manage lecture and lab sessions with conflict checking"
       />
 
       <div className="content-card">
@@ -244,7 +244,7 @@ const TimetablePage = () => {
           <div>
             <h3>Add Timetable Session</h3>
             <p>
-              Students can add lecture or laboratory sessions and the system
+              Students can add lecture or lab sessions and the system
               checks for duplicate entries and time conflicts.
             </p>
           </div>
@@ -282,7 +282,7 @@ const TimetablePage = () => {
                 onChange={handleChange}
               >
                 <option value="Lecture Hall">Lecture Hall</option>
-                <option value="Laboratory">Laboratory</option>
+                <option value="Lab">Labs</option>
               </select>
             </div>
 
@@ -370,7 +370,7 @@ const TimetablePage = () => {
           <p>Theory sessions added</p>
         </div>
         <div className="stat-card">
-          <h4>Laboratories</h4>
+          <h4>Labs</h4>
           <h2>{totalLabs}</h2>
           <p>Practical sessions added</p>
         </div>
