@@ -7,7 +7,7 @@ type Report = {
   location: string;
   issueType: string;
   comment: string;
-  status: 'Pending' | 'Action Required' | 'Assigned' | 'Fixed';
+  status: 'Pending' | 'Action Required' | 'Assigned' | 'In Progress' | 'Fixed';
   createdAt: string;
   rating?: number;
   image?: string | null;
@@ -15,7 +15,7 @@ type Report = {
   updatedAt?: string;
 };
 
-type FilterType = 'All' | 'Pending' | 'Assigned' | 'Fixed';
+type FilterType = 'All' | 'Pending' | 'In Progress' | 'Fixed';
 
 export default function ReportHistory() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -43,7 +43,11 @@ export default function ReportHistory() {
   };
 
   const filteredReports = reports
-    .filter(r => filter === 'All' || r.status === filter)
+    .filter(r => {
+      if (filter === 'All') return true;
+      if (filter === 'In Progress') return r.status === 'Assigned' || r.status === 'In Progress';
+      return r.status === filter;
+    })
     .filter(r => {
       if (!search.trim()) return true;
       const query = search.toLowerCase();
@@ -97,7 +101,9 @@ export default function ReportHistory() {
       case 'Action Required':
         return <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">Action Required</span>;
       case 'Assigned':
-        return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">In Progress</span>;
+        return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">Assigned</span>;
+      case 'In Progress':
+        return <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-medium">In Progress</span>;
       case 'Fixed':
         return <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">Fixed</span>;
       default:
@@ -205,8 +211,11 @@ export default function ReportHistory() {
 
         {/* Filter Tabs */}
         <div className="flex gap-2 mb-6">
-          {(['All', 'Pending', 'Assigned', 'Fixed'] as FilterType[]).map(tab => {
-            const count = tab === 'All' ? reports.length : reports.filter(r => r.status === tab).length;
+          {(['All', 'Pending', 'In Progress', 'Fixed'] as FilterType[]).map(tab => {
+            const count = tab === 'All' ? reports.length : reports.filter(r => {
+              if (tab === 'In Progress') return r.status === 'Assigned' || r.status === 'In Progress';
+              return r.status === tab;
+            }).length;
             return (
               <button
                 key={tab}
@@ -273,20 +282,20 @@ export default function ReportHistory() {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex flex-col items-center">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                          ['Pending', 'Assigned', 'Fixed'].includes(report.status)
+                          ['Pending', 'Assigned', 'In Progress', 'Fixed'].includes(report.status)
                             ? 'bg-yellow-400 text-yellow-900'
                             : 'bg-gray-200 text-gray-400'
                         }`}>1</div>
                         <span className="text-xs mt-1 text-gray-500">Pending</span>
                       </div>
-                      <div className={`flex-1 h-1 mx-2 rounded ${['Assigned', 'Fixed'].includes(report.status) ? 'bg-blue-400' : 'bg-gray-200'}`} />
+                      <div className={`flex-1 h-1 mx-2 rounded ${['Assigned', 'In Progress', 'Fixed'].includes(report.status) ? 'bg-blue-400' : 'bg-gray-200'}`} />
                       <div className="flex flex-col items-center">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                          report.status === 'Assigned' ? 'bg-blue-400 text-white'
+                          report.status === 'Assigned' || report.status === 'In Progress' ? 'bg-blue-400 text-white'
                             : report.status === 'Fixed' ? 'bg-green-400 text-white'
                             : 'bg-gray-200 text-gray-400'
                         }`}>2</div>
-                        <span className="text-xs mt-1 text-gray-500">Assigned</span>
+                        <span className="text-xs mt-1 text-gray-500">In Progress</span>
                       </div>
                       <div className={`flex-1 h-1 mx-2 rounded ${report.status === 'Fixed' ? 'bg-green-400' : 'bg-gray-200'}`} />
                       <div className="flex flex-col items-center">
@@ -310,9 +319,17 @@ export default function ReportHistory() {
 
                     {report.rating && (
                       <div className="flex items-center gap-2">
-                        <div className="flex gap-1 text-yellow-400">
+                        <div className="flex gap-1">
                           {[1,2,3,4,5].map(star => (
-                            <Star key={star} size={16} fill={star <= report.rating! ? "currentColor" : "none"} />
+                            <Star 
+                              key={star} 
+                              size={20} 
+                              style={{ 
+                                fill: star <= report.rating! ? "orange" : "transparent",
+                                stroke: star <= report.rating! ? "orange" : "black",
+                                strokeWidth: 2
+                              }} 
+                            />
                           ))}
                         </div>
                         <span className="text-sm text-green-600 font-medium">Thank you!</span>
@@ -326,12 +343,17 @@ export default function ReportHistory() {
                           {[1,2,3,4,5].map(star => (
                             <button 
                               key={star} 
-                              className={`hover:scale-110 transition-transform ${
-                                star <= ratingScore ? 'text-amber-400' : 'text-gray-300'
-                              }`}
+                              className="hover:scale-110 transition-transform p-1"
                               onClick={() => setRatingScore(star)}
                             >
-                              <Star size={28} fill={star <= ratingScore ? "currentColor" : "none"} />
+                              <Star 
+                                size={32} 
+                                style={{ 
+                                  fill: star <= ratingScore ? "orange" : "transparent",
+                                  stroke: star <= ratingScore ? "orange" : "black",
+                                  strokeWidth: 2
+                                }}
+                              />
                             </button>
                           ))}
                         </div>

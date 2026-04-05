@@ -9,7 +9,6 @@ import ManagementLogin from './pages/ManagementLogin';
 import StudentLogin from './pages/StudentLogin';
 import LandingPage from './pages/LandingPage';
 import AllIssues from './pages/AllIssues';
-import BookingPage from './pages/BookingPage';
 import StaffLogin from './pages/StaffLogin';
 import StaffRegister from './pages/StaffRegister';
 import StaffDashboard from './pages/StaffDashboard';
@@ -132,9 +131,7 @@ function App() {
           <Route path="/management/issues" element={
             <AllIssues />
           } />
-          <Route path="/booking" element={
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><BookingPage /></main>
-          } />
+          
           <Route path="/staff" element={<StaffLogin />} />
           <Route path="/staff/register" element={<StaffRegister />} />
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
