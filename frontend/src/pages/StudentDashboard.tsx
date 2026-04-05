@@ -1,66 +1,106 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ClipboardList, Info } from 'lucide-react';
+import { Plus } from 'lucide-react';
+
+type WeeklySummary = {
+  totalReports: number;
+  fixedReports: number;
+  avgResponseTime: number;
+  categoryBreakdown: Record<string, number>;
+  resolutionRate: number;
+};
+
+type EscalatedGroup = {
+  ids: string[];
+  issueType: string;
+  location: string;
+  status: string;
+};
+
+type Report = {
+  id: string;
+  issueType: string;
+  location: string;
+  status: string;
+  createdAt: string;
+};
+
+type DashboardData = {
+  escalated?: EscalatedGroup[];
+  pending?: Report[];
+  assigned?: Report[];
+};
+
+type WeeklySummaryResponse = {
+  summary: WeeklySummary;
+};
 
 export default function StudentDashboard() {
+  const [weeklySummary, setWeeklySummary] = useState<WeeklySummary | null>(null);
+  const [recentReports, setRecentReports] = useState<Report[]>([]);
+
+  const studentId = localStorage.getItem('studentId') || 'Student';
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [summaryRes, reportsRes] = await Promise.all([
+          fetch('http://localhost:3000/api/management/weekly-summary'),
+          fetch('http://localhost:3000/api/management/dashboard')
+        ]);
+        const summaryData: WeeklySummaryResponse = await summaryRes.json();
+        const reportsData: DashboardData = await reportsRes.json();
+        
+        setWeeklySummary(summaryData.summary);
+        
+        const allReports: Report[] = [
+          ...(reportsData.escalated?.flatMap((g: EscalatedGroup) => 
+            g.ids.map((id: string) => ({
+              id,
+              issueType: g.issueType,
+              location: g.location,
+              status: g.status,
+              createdAt: new Date().toISOString()
+            }))
+          ) || []),
+          ...(reportsData.pending || []).map((r: Report) => ({ ...r, status: 'Pending' })),
+          ...(reportsData.assigned || []).map((r: Report) => ({ ...r, status: 'Assigned' }))
+        ];
+        setRecentReports(allReports);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-extrabold text-emerald-900 tracking-tight sm:text-5xl">
-          Student Portal
-        </h1>
-        <p className="mt-4 text-lg text-gray-500 max-w-2xl mx-auto">
-          Welcome to UniManage. Access services to keep our campus clean, safe, and functional.
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-8">
-        {/* Issue Reporting Card */}
-        <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all border border-gray-100 overflow-hidden group">
-          <div className="p-8">
-            <div className="w-14 h-14 bg-emerald-100 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-emerald-600 transition-all duration-300">
-              <AlertTriangle className="text-emerald-600 group-hover:text-white transition-colors" size={28} />
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">Facility Issue Reporting</h3>
-            <p className="text-gray-600 mb-6">
-              Notice a broken A/C, water leak, or cleanliness issue? Report it here and track its resolution progress.
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-green-700 via-teal-800 to-blue-900">
+      <div className="absolute inset-0 bg-black/20"></div>
+      
+      <div className="absolute top-0 left-0 w-96 h-96 bg-green-400 opacity-20 blur-3xl rounded-full animate-pulse"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-400 opacity-20 blur-3xl rounded-full animate-pulse delay-2000"></div>
+      
+      <div className="relative z-10 max-w-6xl mx-auto space-y-6 animate-fadeIn p-6">
+        
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-sm p-6 flex justify-between items-center transition-all duration-300 hover:shadow-md">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Welcome, {studentId}</h1>
+            <p className="text-gray-500 text-sm">
+              Report issues and track their resolution status
             </p>
-            <Link 
-              to="/reporting" 
-              className="inline-flex items-center justify-center w-full px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-sm active:scale-[0.98]"
-            >
-              Open Reporting Dashboard
-            </Link>
           </div>
+          <Link 
+            to="/reporting"
+            className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 transition transform hover:scale-105 active:scale-95"
+          >
+            <Plus size={18} />
+            Report Issue
+          </Link>
         </div>
 
-        {/* Placeholder for future features */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden opacity-75">
-          <div className="p-8">
-            <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center mb-6">
-              <ClipboardList className="text-gray-500" size={28} />
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">Other Services</h3>
-            <p className="text-gray-500 mb-6">
-              More campus services will be added here soon, including room bookings and event registrations.
-            </p>
-            <button 
-              disabled
-              className="inline-flex items-center justify-center w-full px-6 py-3 border border-gray-200 text-base font-medium rounded-xl text-gray-400 bg-gray-50 cursor-not-allowed"
-            >
-              Coming Soon
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-12 bg-emerald-50 rounded-2xl p-6 border border-emerald-100 flex gap-4 items-start">
-        <Info className="text-emerald-500 shrink-0 mt-1" size={24} />
-        <div>
-          <h4 className="text-lg font-bold text-emerald-900">Need Immediate Help?</h4>
-          <p className="text-emerald-800 mt-1">
-            For emergencies (e.g., major flooding, fire hazards), please contact the Campus Security hotline at <span className="font-bold">011-234-5678</span> immediately.
-          </p>
-        </div>
       </div>
     </div>
   );

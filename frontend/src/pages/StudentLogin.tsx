@@ -1,117 +1,332 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, Lock, User, LogIn } from 'lucide-react';
+import { GraduationCap, LogIn, Eye, EyeOff, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
 
 export default function StudentLogin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [errors, setErrors] = useState<{ username?: string; password?: string; confirm?: string; general?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const getRegisteredStudents = () => {
+    try {
+      return JSON.parse(localStorage.getItem('registeredStudents') || '[]') as { studentId: string; password: string }[];
+    } catch {
+      return [];
+    }
+  };
+
+  const setRegisteredStudents = (students: { studentId: string; password: string }[]) => {
+    localStorage.setItem('registeredStudents', JSON.stringify(students));
+  };
+
+  const fillDemoData = () => {
+    setUsername('demo123');
+    setPassword('demo123');
+    setErrors({});
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: typeof errors = {};
+    
+    if (!username.trim()) {
+      newErrors.username = 'Student ID is required';
+    }
+    
+    if (!password) {
+      newErrors.password = 'Password is required';
+    }
+    
+    if (mode === 'register' && password !== confirmPassword) {
+      newErrors.confirm = 'Passwords do not match';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setErrors({});
     setIsLoading(true);
 
-    // Dummy authentication logic
     setTimeout(() => {
-      if (username === 'student' && password === 'student') {
+      if (!validateForm()) {
+        setIsLoading(false);
+        return;
+      }
+
+      const studentId = username.trim();
+      const userPassword = password;
+      const students = getRegisteredStudents();
+
+      if (mode === 'login') {
+        const found = students.find((s) => s.studentId === studentId && s.password === userPassword);
+        if (!found) {
+          setErrors({ general: 'Invalid student ID or password. Please try again.' });
+          setIsLoading(false);
+          return;
+        }
+
         localStorage.setItem('studentLoggedIn', 'true');
+        localStorage.setItem('studentId', studentId);
         navigate('/student');
       } else {
-        setError('Invalid username or password. Try student/student.');
-        setIsLoading(false);
+        if (userPassword !== confirmPassword) {
+          setErrors({ confirm: 'Passwords do not match.' });
+          setIsLoading(false);
+          return;
+        }
+
+        const exists = students.find((s) => s.studentId === studentId);
+        if (exists) {
+          setErrors({ username: 'Student ID already registered. Please sign in.' });
+          setIsLoading(false);
+          return;
+        }
+
+        const newStudents = [...students, { studentId, password: userPassword }];
+        setRegisteredStudents(newStudents);
+        localStorage.setItem('studentLoggedIn', 'true');
+        localStorage.setItem('studentId', studentId);
+        navigate('/student');
       }
-    }, 600); // simulate network delay
+    }, 800);
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-3xl shadow-xl border border-gray-100">
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-            <GraduationCap size={32} />
-          </div>
-          <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-            Student Login
-          </h2>
-          <p className="mt-2 text-sm text-gray-500">
-            For enrolled students only
-          </p>
-        </div>
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-green-700 via-teal-800 to-blue-900">
+      {/* Subtle overlay */}
+      <div className="absolute inset-0 bg-black/20"></div>
+      
+      {/* Glow Effects */}
+      <div className="absolute top-0 left-0 w-96 h-96 bg-green-400 opacity-20 blur-3xl rounded-full animate-pulse"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-400 opacity-20 blur-3xl rounded-full animate-pulse delay-2000"></div>
+      
+      {/* Centered flex container */}
+      <div className="relative z-10 min-h-screen flex items-center justify-center">
+
+      {/* Split Layout Container */}
+      <div className="flex w-full max-w-4xl bg-white rounded-2xl shadow-lg overflow-hidden animate-fadeIn">
         
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          {error && (
-            <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm text-center border border-red-200 font-medium">
-              {error}
+        {/* Left Side - Student Image */}
+        <div className="hidden lg:block w-1/2 relative">
+          <img
+            src="/student.jpeg"
+            alt="University students"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+          <div className="absolute bottom-8 left-8 right-8 text-white">
+            <h3 className="text-2xl font-bold mb-2">Welcome Students!</h3>
+            <p className="text-white/80 text-sm">Report issues and track campus improvements in real-time.</p>
+          </div>
+        </div>
+
+        {/* Right Side - Login Form */}
+        <div className="w-full lg:w-1/2 p-8">
+          {/* Back Button */}
+          <a 
+            href="/"
+            className="inline-flex items-center gap-2 text-gray-400 hover:text-gray-600 mb-4 transition-colors text-sm"
+          >
+            <ArrowLeft size={16} />
+            Back to Home
+          </a>
+
+          {/* Icon */}
+          <div className="flex justify-center mb-4">
+            <div className="bg-green-100 p-4 rounded-full">
+              <GraduationCap className="text-green-600" size={32} />
+            </div>
+          </div>
+
+          {/* Title */}
+          <h2 className="text-2xl font-bold text-center text-gray-800">
+            {mode === 'login' ? 'Student Login' : 'Student Registration'}
+          </h2>
+          <p className="text-gray-500 text-center mb-6">
+            {mode === 'login' ? 'Sign in to access your dashboard' : 'Create a new student account'}
+          </p>
+
+          {/* Demo Box */}
+          {mode === 'login' && (
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4 text-sm">
+              <p className="font-medium text-blue-600 mb-1">Demo Credentials</p>
+              <div className="flex justify-between items-center">
+                <div className="text-gray-600">
+                  <p>ID: demo123</p>
+                  <p>Password: demo123</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={fillDemoData}
+                  className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Fill
+                </button>
+              </div>
             </div>
           )}
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="username">
-                Student ID
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User size={18} className="text-gray-400" />
-                </div>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  className="appearance-none rounded-xl relative block w-full pl-10 px-3 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:z-10 sm:text-sm transition-all"
-                  placeholder="Enter your student ID"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-              </div>
+          {/* General Error */}
+          {errors.general && (
+            <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-lg mb-4 text-sm flex items-center gap-2">
+              <AlertCircle size={16} />
+              {errors.general}
             </div>
-            
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="password">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock size={18} className="text-gray-400" />
-                </div>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  className="appearance-none rounded-xl relative block w-full pl-10 px-3 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:z-10 sm:text-sm transition-all"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
+          )}
 
-          <div>
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Student ID */}
+            <div>
+              <input
+                type="text"
+                placeholder="Student ID"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  if (errors.username) setErrors(prev => ({ ...prev, username: undefined }));
+                }}
+                className={`w-full px-4 py-3 border rounded-lg outline-none transition focus:ring-2 focus:ring-green-500 ${
+                  errors.username ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'
+                }`}
+              />
+              {errors.username && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} /> {errors.username}
+                </p>
+              )}
+            </div>
+
+            {/* Password */}
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errors.password) setErrors(prev => ({ ...prev, password: undefined }));
+                }}
+                className={`w-full px-4 py-3 pr-12 border rounded-lg outline-none transition focus:ring-2 focus:ring-green-500 ${
+                  errors.password ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+              {errors.password && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} /> {errors.password}
+                </p>
+              )}
+            </div>
+
+            {/* Confirm Password */}
+            {mode === 'register' && (
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Confirm Password"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    if (errors.confirm) setErrors(prev => ({ ...prev, confirm: undefined }));
+                  }}
+                  className={`w-full px-4 py-3 pr-12 border rounded-lg outline-none transition focus:ring-2 focus:ring-green-500 ${
+                    errors.confirm ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+                {errors.confirm && (
+                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                    <AlertCircle size={12} /> {errors.confirm}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Forgot Password */}
+            {mode === 'login' && (
+              <div className="text-right">
+                <button type="button" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-md transition-all active:scale-[0.98] disabled:bg-emerald-400"
+              className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg transition transform hover:scale-105 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
             >
               {isLoading ? (
-                'Signing in...'
+                <>
+                  <Loader2 size={20} className="animate-spin" />
+                  {mode === 'login' ? 'Signing in...' : 'Creating account...'}
+                </>
               ) : (
                 <>
-                  <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                    <LogIn className="h-5 w-5 text-emerald-500 group-hover:text-emerald-400 transition-colors" aria-hidden="true" />
-                  </span>
-                  Sign In
+                  <LogIn size={20} />
+                  {mode === 'login' ? 'Sign In' : 'Create Account'}
                 </>
               )}
             </button>
-          </div>
-        </form>
+          </form>
+
+          {/* Toggle Mode */}
+          <p className="text-center text-gray-400 text-sm mt-4">
+            {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
+            <button
+              type="button"
+              onClick={() => {
+                setMode(mode === 'login' ? 'register' : 'login');
+                setErrors({});
+                setShowPassword(false);
+                setShowConfirmPassword(false);
+              }}
+              className="text-green-600 hover:text-green-700 font-medium transition-colors"
+            >
+              {mode === 'login' ? 'Create one' : 'Sign in'}
+            </button>
+          </p>
+        </div>
       </div>
+      </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

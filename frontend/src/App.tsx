@@ -8,6 +8,8 @@ import ReportingDashboard from './pages/ReportingDashboard';
 import ManagementLogin from './pages/ManagementLogin';
 import StudentLogin from './pages/StudentLogin';
 import LandingPage from './pages/LandingPage';
+import AllIssues from './pages/AllIssues';
+import BookingPage from './pages/BookingPage';
 
 function Navigation() {
   const location = useLocation();
@@ -28,8 +30,8 @@ function Navigation() {
   const linkClass = (path: string) => 
     `flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
       isActive(path) 
-        ? 'bg-emerald-600 text-white shadow-md' 
-        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+        ? 'bg-[#004905] text-white shadow-md' 
+        : 'text-gray-600 hover:bg-[#004905]/10 hover:text-[#004905]'
     }`;
 
   const handleStudentClick = () => {
@@ -42,6 +44,7 @@ function Navigation() {
 
   const handleLogout = () => {
     localStorage.removeItem('studentLoggedIn');
+    localStorage.removeItem('studentId');
     navigate('/');
   };
 
@@ -105,6 +108,12 @@ function App() {
           } />
           <Route path="/management/dashboard" element={
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><ManagementDashboard /></main>
+          } />
+          <Route path="/management/issues" element={
+            <AllIssues />
+          } />
+          <Route path="/booking" element={
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><BookingPage /></main>
           } />
         </Routes>
       </div>
