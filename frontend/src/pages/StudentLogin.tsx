@@ -13,16 +13,25 @@ export default function StudentLogin() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
-  const getRegisteredStudents = () => {
+  const STUDENTS_KEY = 'uni_registeredStudents';
+
+  const getRegisteredStudents = (): { studentId: string; password: string }[] => {
     try {
-      return JSON.parse(localStorage.getItem('registeredStudents') || '[]') as { studentId: string; password: string }[];
-    } catch {
+      const data = localStorage.getItem(STUDENTS_KEY);
+      if (!data) return [];
+      return JSON.parse(data);
+    } catch (e) {
+      console.error('Error reading students:', e);
       return [];
     }
   };
 
   const setRegisteredStudents = (students: { studentId: string; password: string }[]) => {
-    localStorage.setItem('registeredStudents', JSON.stringify(students));
+    try {
+      localStorage.setItem(STUDENTS_KEY, JSON.stringify(students));
+    } catch (e) {
+      console.error('Error saving students:', e);
+    }
   };
 
   const fillDemoData = () => {
@@ -92,6 +101,7 @@ export default function StudentLogin() {
 
         const newStudents = [...students, { studentId, password: userPassword }];
         setRegisteredStudents(newStudents);
+        
         localStorage.setItem('studentLoggedIn', 'true');
         localStorage.setItem('studentId', studentId);
         navigate('/student');

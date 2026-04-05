@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
+import { Star, ChevronDown, ChevronUp, ArrowLeft, Bell, BellRing, CheckCircle } from 'lucide-react';
 
 type Report = {
   id: string;
@@ -26,6 +26,8 @@ export default function ReportHistory() {
   const [filter, setFilter] = useState<FilterType>('All');
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const timeAgo = (dateStr: string) => {
     const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -52,9 +54,14 @@ export default function ReportHistory() {
   const fetchReports = async () => {
     try {
       const studentId = localStorage.getItem('studentId') || 'STU12345';
-      const res = await fetch(`http://localhost:3000/api/reports?studentId=${encodeURIComponent(studentId)}`);
-      const data = await res.json();
-      setReports(data.reports);
+      const [reportsRes, notifRes] = await Promise.all([
+        fetch(`http://localhost:3000/api/reports?studentId=${encodeURIComponent(studentId)}`),
+        fetch(`http://localhost:3000/api/notifications/student?studentId=${encodeURIComponent(studentId)}`)
+      ]);
+      const reportsData = await reportsRes.json();
+      const notifData = await notifRes.json();
+      setReports(reportsData.reports);
+      setNotifications(notifData.notifications || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -123,12 +130,66 @@ export default function ReportHistory() {
               <p className="text-gray-500 text-sm">Track your submitted issues</p>
             </div>
           </div>
-          <Link 
-            to="/reporting/add"
-            className="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
-          >
-            + Report Issue
-          </Link>
+          <div className="flex items-center gap-4">
+            {/* Notifications */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors relative"
+              >
+                {notifications.filter(n => !n.read).length > 0 ? (
+                  <BellRing size={20} className="text-green-600" />
+                ) : (
+                  <Bell size={20} className="text-gray-600" />
+                )}
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    {notifications.filter(n => !n.read).length}
+                  </span>
+                )}
+              </button>
+              
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50">
+                  <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-3 flex items-center gap-2">
+                    <CheckCircle size={18} className="text-white" />
+                    <h4 className="font-bold text-white">Fix Notifications</h4>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500">
+                        <Bell className="mx-auto mb-2 text-gray-300" size={32} />
+                        <p className="text-sm">No notifications</p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div key={notif.id} className="px-4 py-3 border-b border-gray-100 bg-green-50/50 hover:bg-green-100 transition-colors">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-100">
+                              <CheckCircle size={14} className="text-green-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">{notif.message}</p>
+                              {notif.staffName && (
+                                <p className="text-xs text-gray-500 mt-1">Fixed by: {notif.staffName}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <Link 
+              to="/reporting/add"
+              className="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+            >
+              + Report Issue
+            </Link>
+          </div>
         </div>
 
         {/* Search */}

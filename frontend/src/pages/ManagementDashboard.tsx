@@ -50,8 +50,10 @@ export default function ManagementDashboard() {
   const [assignModal, setAssignModal] = useState<{ ids: string[]; issueInfo: string } | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<{ id: string; message: string; type: string; time: string }[]>([]);
+  const [backendNotifications, setBackendNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [newEscalationCount, setNewEscalationCount] = useState(0);
+  const [fixCompleteNotifications, setFixCompleteNotifications] = useState<any[]>([]);
   const [weeklySummary, setWeeklySummary] = useState<{
     totalReports: number;
     fixedReports: number;
@@ -74,16 +76,18 @@ export default function ManagementDashboard() {
 
   const fetchData = async () => {
     try {
-      const [dashboardRes, chartsRes, staffRes, summaryRes] = await Promise.all([
+      const [dashboardRes, chartsRes, staffRes, summaryRes, notifRes] = await Promise.all([
         fetch('http://localhost:3000/api/management/dashboard'),
         fetch('http://localhost:3000/api/management/charts'),
         fetch('http://localhost:3000/api/management/staff'),
-        fetch('http://localhost:3000/api/management/weekly-summary')
+        fetch('http://localhost:3000/api/management/weekly-summary'),
+        fetch('http://localhost:3000/api/notifications/management')
       ]);
       const dashboardData = await dashboardRes.json();
       const chartsData = await chartsRes.json();
       const staffData = await staffRes.json();
       const summaryData = await summaryRes.json();
+      const notifData = await notifRes.json();
       
       const currentActionCount = (dashboardData.escalated?.filter((e: EscalateGroup) => e.status === 'Action Required').length || 0) + (dashboardData.pending?.length || 0);
       
@@ -108,6 +112,14 @@ export default function ManagementDashboard() {
       setChartData(chartsData);
       setStaff(staffData.staff || []);
       setWeeklySummary(summaryData.summary);
+      
+      // Update backend notifications
+      setBackendNotifications(notifData.notifications || []);
+      
+      // Extract fix complete notifications
+      const fixNotifs = (notifData.notifications || []).filter((n: any) => n.type === 'management_fix_complete' && !n.read);
+      setFixCompleteNotifications(fixNotifs);
+      setNewEscalationCount(prev => prev + fixNotifs.length);
     } catch (err) {
       console.error(err);
     } finally {
@@ -163,6 +175,23 @@ export default function ManagementDashboard() {
     } catch (err) {
       console.error(err);
       showToast('Failed to mark as fixed', 'error');
+    }
+  };
+
+  const handleApproveFix = async (reportId: string) => {
+    try {
+      const response = await fetch('http://localhost:3000/api/management/approve-fix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId })
+      });
+      if (response.ok) {
+        fetchData();
+        showToast('Fix approved! Student has been notified.', 'success');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to approve fix', 'error');
     }
   };
 
@@ -329,15 +358,47 @@ export default function ManagementDashboard() {
             </button>
             
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50">
+              <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50">
                 <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 flex items-center justify-between">
                   <h4 className="font-bold text-white">Notifications</h4>
                   <span className="bg-white/20 text-white text-xs px-2 py-1 rounded-full">
-                    {totalActionRequired} pending
+                    {totalActionRequired + fixCompleteNotifications.length} pending
                   </span>
                 </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {notifications.length === 0 ? (
+                <div className="max-h-96 overflow-y-auto">
+                  {/* Fix Complete Notifications */}
+                  {fixCompleteNotifications.length > 0 && (
+                    <div className="border-b border-gray-200">
+                      <div className="px-4 py-2 bg-green-50 text-green-800 text-xs font-semibold">
+                        Staff Fixed Issues - Awaiting Approval
+                      </div>
+                      {fixCompleteNotifications.map((notif) => (
+                        <div key={notif.id} className="px-4 py-3 border-b border-gray-100 bg-green-50/50 hover:bg-green-100 transition-colors">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-100">
+                              <CheckCircle size={14} className="text-green-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">{notif.message}</p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Staff: {notif.staffName}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleApproveFix(notif.reportId)}
+                            className="w-full mt-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+                          >
+                            <CheckCircle size={14} />
+                            Approve & Notify Student
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Other Notifications */}
+                  {notifications.length === 0 && fixCompleteNotifications.length === 0 ? (
                     <div className="p-4 text-center text-gray-500">
                       <Bell className="mx-auto mb-2 text-gray-300" size={32} />
                       <p className="text-sm">No new notifications</p>

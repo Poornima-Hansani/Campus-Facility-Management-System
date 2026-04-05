@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Shield, LogIn } from 'lucide-react';
+import { Home, Shield, LogIn, Wrench } from 'lucide-react';
 import ReportIssue from './pages/ReportIssue';
 import ReportHistory from './pages/ReportHistory';
 import ManagementDashboard from './pages/ManagementDashboard';
@@ -10,6 +10,9 @@ import StudentLogin from './pages/StudentLogin';
 import LandingPage from './pages/LandingPage';
 import AllIssues from './pages/AllIssues';
 import BookingPage from './pages/BookingPage';
+import StaffLogin from './pages/StaffLogin';
+import StaffRegister from './pages/StaffRegister';
+import StaffDashboard from './pages/StaffDashboard';
 
 function Navigation() {
   const location = useLocation();
@@ -21,12 +24,13 @@ function Navigation() {
   }
   
   const isStudentLoggedIn = localStorage.getItem('studentLoggedIn') === 'true';
+  const isStaffLoggedIn = localStorage.getItem('staffLoggedIn') === 'true';
   
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
   };
-  
+
   const linkClass = (path: string) => 
     `flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
       isActive(path) 
@@ -42,9 +46,21 @@ function Navigation() {
     }
   };
 
+  const handleStaffClick = () => {
+    if (isStaffLoggedIn) {
+      navigate('/staff/dashboard');
+    } else {
+      navigate('/staff');
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('studentLoggedIn');
     localStorage.removeItem('studentId');
+    localStorage.removeItem('staffLoggedIn');
+    localStorage.removeItem('staffId');
+    localStorage.removeItem('staffName');
+    localStorage.removeItem('staffRole');
     navigate('/');
   };
 
@@ -61,16 +77,20 @@ function Navigation() {
               <Home size={18} />
               <span className="hidden sm:inline">Student Portal</span>
             </button>
-            {isStudentLoggedIn && (
+            <button onClick={handleStaffClick} className={linkClass('/staff')}>
+              <Wrench size={18} />
+              <span className="hidden sm:inline">Staff Portal</span>
+            </button>
+            <Link to="/management" className={linkClass('/management')}>
+              <Shield size={18} />
+              <span className="hidden sm:inline">Management</span>
+            </Link>
+            {(isStudentLoggedIn || isStaffLoggedIn) && (
               <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-red-600 hover:bg-red-50 hover:text-red-700">
                 <LogIn size={18} />
                 <span className="hidden sm:inline">Logout</span>
               </button>
             )}
-            <Link to="/management" className={linkClass('/management')}>
-              <Shield size={18} />
-              <span className="hidden sm:inline">Management</span>
-            </Link>
           </div>
         </div>
       </div>
@@ -115,6 +135,9 @@ function App() {
           <Route path="/booking" element={
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><BookingPage /></main>
           } />
+          <Route path="/staff" element={<StaffLogin />} />
+          <Route path="/staff/register" element={<StaffRegister />} />
+          <Route path="/staff/dashboard" element={<StaffDashboard />} />
         </Routes>
       </div>
     </Router>
