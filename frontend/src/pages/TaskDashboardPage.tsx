@@ -66,19 +66,19 @@ const TaskDashboardPage = () => {
 
   return (
     <Layout>
-     <PageHeader
-  title="Academic Help Dashboard"
-  subtitle="Overview of lectures, reminders, study goals, academic tasks, and support activities"
-/>
+      <PageHeader
+        title="Academic Help Dashboard"
+        subtitle="Overview of lectures, reminders, study goals, academic tasks, and support activities"
+      />
 
       <div className="dashboard-hero">
         <div className="dashboard-hero-text">
           <span className="hero-badge">UNIMANAGE Student Portal</span>
-<h2>Academic Help and Planning for Campus Students</h2>
-<p>
-  This portal helps campus students manage lecture availability, timetable sessions,
-  assignments, exams, study goals, and academic help requests in one place.
-</p>
+          <h2>Academic Help and Planning for Campus Students</h2>
+          <p>
+            This portal helps campus students manage lecture availability, timetable sessions,
+            assignments, exams, study goals, and academic help requests in one place.
+          </p>
 
           <div className="hero-buttons">
             <Link to="/lecture-availability" className="primary-action-btn">
