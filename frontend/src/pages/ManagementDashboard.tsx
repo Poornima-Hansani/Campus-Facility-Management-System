@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
-import PageHeader from "../components/PageHeader";
 import { apiDelete, apiGet, apiPost } from "../lib/api";
 
 type EmailItem = {
@@ -15,13 +15,108 @@ type EmailItem = {
   status: "Sent";
 };
 
+type TimetableRow = {
+  id: number;
+  moduleCode: string;
+  moduleName: string;
+  sessionType: string;
+  venueName: string;
+  lecturer: string;
+  day: string;
+  startTime: string;
+  endTime: string;
+};
+
+type LectureRow = {
+  id: number;
+  moduleCode: string;
+  moduleName: string;
+  venueType: string;
+  venueName: string;
+  lecturer: string;
+  day: string;
+  startTime: string;
+  endTime: string;
+};
+
+type SessionFilter = "" | "lecture" | "practical" | "lab" | "tutorial";
+
+const DAY_OPTIONS = [
+  "",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+function matchesModuleCode(rowCode: string, filter: string) {
+  const f = filter.trim().toUpperCase();
+  if (!f) return true;
+  return rowCode.toUpperCase().includes(f);
+}
+
+function matchesModuleName(rowName: string, filter: string) {
+  const f = filter.trim().toLowerCase();
+  if (!f) return true;
+  return rowName.toLowerCase().includes(f);
+}
+
+function matchesDay(rowDay: string, filter: string) {
+  if (!filter) return true;
+  return rowDay === filter;
+}
+
+function matchesSessionTimetable(sessionType: string, v: SessionFilter) {
+  if (!v) return true;
+  return sessionType.toLowerCase() === v;
+}
+
+function matchesSessionCatalog(rowType: string, v: SessionFilter) {
+  if (!v) return true;
+  if (v === "lecture") return rowType === "Lecture Hall";
+  if (v === "lab") return rowType === "Laboratory";
+  return false;
+}
+
+function catalogSlotsForRow(
+  row: TimetableRow,
+  allLectures: LectureRow[],
+  sessionFilter: SessionFilter
+): LectureRow[] {
+  return allLectures.filter((l) => {
+    if (l.moduleCode !== row.moduleCode || l.day !== row.day) return false;
+    return matchesSessionCatalog(l.venueType, sessionFilter);
+  });
+}
+
 const ManagementDashboard = () => {
   const [emails, setEmails] = useState<EmailItem[]>([]);
   const [loadError, setLoadError] = useState("");
 
+  const [timetable, setTimetable] = useState<TimetableRow[]>([]);
+  const [lectures, setLectures] = useState<LectureRow[]>([]);
+  const [overviewError, setOverviewError] = useState("");
+
+  const [filterModuleCode, setFilterModuleCode] = useState("");
+  const [filterModuleName, setFilterModuleName] = useState("");
+  const [filterDay, setFilterDay] = useState("");
+  const [filterSession, setFilterSession] = useState<SessionFilter>("");
+
   const refreshEmails = useCallback(async () => {
     const list = await apiGet<EmailItem[]>("/api/management/emails");
     setEmails(list);
+  }, []);
+
+  const loadOverview = useCallback(async () => {
+    const [tt, lec] = await Promise.all([
+      apiGet<TimetableRow[]>("/api/timetable"),
+      apiGet<LectureRow[]>("/api/lectures"),
+    ]);
+    setTimetable(tt);
+    setLectures(lec);
+    setOverviewError("");
   }, []);
 
   useEffect(() => {
@@ -29,6 +124,41 @@ const ManagementDashboard = () => {
       setLoadError(e instanceof Error ? e.message : "Could not load records.")
     );
   }, [refreshEmails]);
+
+  useEffect(() => {
+    loadOverview().catch((e) =>
+      setOverviewError(
+        e instanceof Error ? e.message : "Could not load timetable data."
+      )
+    );
+  }, [loadOverview]);
+
+  const filteredTimetable = useMemo(() => {
+    return timetable.filter(
+      (row) =>
+        matchesModuleCode(row.moduleCode, filterModuleCode) &&
+        matchesModuleName(row.moduleName, filterModuleName) &&
+        matchesDay(row.day, filterDay) &&
+        matchesSessionTimetable(row.sessionType, filterSession)
+    );
+  }, [timetable, filterModuleCode, filterModuleName, filterDay, filterSession]);
+
+  const filteredLectures = useMemo(() => {
+    return lectures.filter(
+      (row) =>
+        matchesModuleCode(row.moduleCode, filterModuleCode) &&
+        matchesModuleName(row.moduleName, filterModuleName) &&
+        matchesDay(row.day, filterDay) &&
+        matchesSessionCatalog(row.venueType, filterSession)
+    );
+  }, [lectures, filterModuleCode, filterModuleName, filterDay, filterSession]);
+
+  const clearOverviewFilters = () => {
+    setFilterModuleCode("");
+    setFilterModuleName("");
+    setFilterDay("");
+    setFilterSession("");
+  };
 
   const [formData, setFormData] = useState({
     studentId: "",
@@ -199,11 +329,6 @@ const ManagementDashboard = () => {
 
   return (
     <Layout>
-      <PageHeader
-        title="Management Dashboard"
-        subtitle="Monitor repeat-student support and manage encouragement email records"
-      />
-
       {loadError && <p className="form-error">{loadError}</p>}
 
       <div className="stats-grid availability-stats">
@@ -227,6 +352,215 @@ const ManagementDashboard = () => {
           <h2>{todayEmails}</h2>
           <p>Emails recorded today</p>
         </div>
+      </div>
+
+      <div className="content-card">
+        <div className="section-head">
+          <div>
+            <h3>Module timetable & lecture availability</h3>
+            <p>
+              Review all saved timetable modules, filter them, and compare with
+              the official lecture / lab catalog (same filters apply to both
+              tables).
+            </p>
+          </div>
+        </div>
+
+        {overviewError && <p className="form-error">{overviewError}</p>}
+
+        <p className="mgmt-hint">
+          Add or remove timetable rows from the{" "}
+          <Link to="/admin-dashboard" className="mgmt-inline-link">
+            Admin Dashboard
+          </Link>
+          .
+          Filters narrow both the <strong>module timetable</strong> and the{" "}
+          <strong>lecture availability catalog</strong>. For each timetable row,
+          &quot;Catalog (same day)&quot; counts catalog slots with the same
+          module code and day—use the catalog table below to see full venue and
+          time details.
+        </p>
+
+        <div className="form-grid">
+          <div className="form-group">
+            <label>Module code</label>
+            <input
+              type="text"
+              placeholder="e.g. IT3040"
+              value={filterModuleCode}
+              onChange={(e) =>
+                setFilterModuleCode(e.target.value.toUpperCase())
+              }
+            />
+          </div>
+          <div className="form-group">
+            <label>Module name</label>
+            <input
+              type="text"
+              placeholder="Contains…"
+              value={filterModuleName}
+              onChange={(e) => setFilterModuleName(e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label>Day</label>
+            <select
+              value={filterDay}
+              onChange={(e) => setFilterDay(e.target.value)}
+            >
+              {DAY_OPTIONS.map((d) => (
+                <option key={d || "all"} value={d}>
+                  {d || "All days"}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Session type</label>
+            <select
+              value={filterSession}
+              onChange={(e) =>
+                setFilterSession(e.target.value as SessionFilter)
+              }
+            >
+              <option value="">All</option>
+              <option value="lecture">Lecture</option>
+              <option value="practical">Practical</option>
+              <option value="lab">Lab</option>
+              <option value="tutorial">Tutorial</option>
+            </select>
+          </div>
+        </div>
+        <div className="form-actions" style={{ marginTop: 8 }}>
+          <button
+            type="button"
+            className="secondary-form-btn"
+            onClick={clearOverviewFilters}
+          >
+            Clear filters
+          </button>
+        </div>
+
+        <h4 className="mgmt-section-title">
+          Module timetable ({filteredTimetable.length} / {timetable.length})
+        </h4>
+        {filteredTimetable.length === 0 ? (
+          <div className="empty-state">
+            <h3>No timetable rows match</h3>
+            <p>Use the Admin Dashboard to add sessions, or relax the filters.</p>
+          </div>
+        ) : (
+          <div className="mgmt-table-wrap">
+            <table className="mgmt-table">
+              <thead>
+                <tr>
+                  <th>Module</th>
+                  <th>Day</th>
+                  <th>Time</th>
+                  <th>Venue</th>
+                  <th>Lecturer</th>
+                  <th>Catalog (same day)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTimetable.map((row) => {
+                  const matches = catalogSlotsForRow(
+                    row,
+                    lectures,
+                    filterSession
+                  );
+                  return (
+                    <tr key={row.id}>
+                      <td>
+                        <strong>{row.moduleCode}</strong>
+                        <br />
+                        <span style={{ color: "#6b7280" }}>{row.moduleName}</span>
+                      </td>
+                      <td>{row.day}</td>
+                      <td>
+                        {row.startTime} – {row.endTime}
+                      </td>
+                      <td>
+                        <span className="availability-badge">
+                          {row.sessionType}
+                        </span>
+                        <br />
+                        {row.venueName}
+                      </td>
+                      <td>{row.lecturer}</td>
+                      <td>
+                        {matches.length > 0 ? (
+                          <span className="mgmt-match-badge mgmt-match-yes">
+                            {matches.length} slot
+                            {matches.length !== 1 ? "s" : ""} in catalog
+                          </span>
+                        ) : (
+                          <span className="mgmt-match-badge mgmt-match-none">
+                            No catalog slot
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <h4
+          className="mgmt-section-title"
+          id="mgmt-lecture-catalog"
+          style={{ scrollMarginTop: 24 }}
+        >
+          Lecture availability catalog ({filteredLectures.length} /{" "}
+          {lectures.length})
+        </h4>
+        <p className="mgmt-hint">
+          Official lecture and lab sessions published for availability search.
+          Use the same filters as above to find matching rows.
+        </p>
+        {filteredLectures.length === 0 ? (
+          <div className="empty-state">
+            <h3>No catalog rows match</h3>
+            <p>Adjust filters or check the Lecture Availability page data.</p>
+          </div>
+        ) : (
+          <div className="mgmt-table-wrap">
+            <table className="mgmt-table">
+              <thead>
+                <tr>
+                  <th>Module</th>
+                  <th>Day</th>
+                  <th>Time</th>
+                  <th>Venue</th>
+                  <th>Lecturer</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLectures.map((row) => (
+                  <tr key={row.id}>
+                    <td>
+                      <strong>{row.moduleCode}</strong>
+                      <br />
+                      <span style={{ color: "#6b7280" }}>{row.moduleName}</span>
+                    </td>
+                    <td>{row.day}</td>
+                    <td>
+                      {row.startTime} – {row.endTime}
+                    </td>
+                    <td>
+                      <span className="availability-badge">{row.venueType}</span>
+                      <br />
+                      {row.venueName}
+                    </td>
+                    <td>{row.lecturer}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="content-card">

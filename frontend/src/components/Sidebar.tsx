@@ -2,29 +2,62 @@ import { NavLink } from "react-router-dom";
 import {
   FaTachometerAlt,
   FaChalkboardTeacher,
-  FaCalendarAlt,
+  FaUserCog,
   FaFileAlt,
   FaBullseye,
   FaHandsHelping,
   FaChartBar,
+  FaUserShield,
+  FaGraduationCap,
 } from "react-icons/fa";
+import { useAuth } from "../context/AuthContext";
 
 const Sidebar = () => {
-  const menuItems = [
-    { path: "/dashboard", label: "Dashboard", icon: <FaTachometerAlt /> },
-    { path: "/lecture-availability", label: "Lecture Availability", icon: <FaChalkboardTeacher /> },
-    { path: "/timetable", label: "Timetable", icon: <FaCalendarAlt /> },
-    { path: "/assignments-exams", label: "Assignments & Exams", icon: <FaFileAlt /> },
-    { path: "/study-goals", label: "Study Goals", icon: <FaBullseye /> },
-    { path: "/help-requests", label: "Help Requests", icon: <FaHandsHelping /> },
-    { path: "/management-dashboard", label: "Management Dashboard", icon: <FaChartBar /> },
-  ];
+  const { isAdmin } = useAuth();
+
+  const menuItems = isAdmin
+    ? [
+        {
+          path: "/admin-dashboard",
+          label: "Admin Dashboard",
+          icon: <FaUserCog />,
+        },
+        {
+          path: "/management-dashboard",
+          label: "Management Dashboard",
+          icon: <FaChartBar />,
+        },
+      ]
+    : [
+        { path: "/dashboard", label: "Dashboard", icon: <FaTachometerAlt /> },
+        {
+          path: "/lecture-availability",
+          label: "Lecture Availability",
+          icon: <FaChalkboardTeacher />,
+        },
+        {
+          path: "/assignments-exams",
+          label: "Assignments & Exams",
+          icon: <FaFileAlt />,
+        },
+        { path: "/study-goals", label: "Study Goals", icon: <FaBullseye /> },
+        {
+          path: "/gpa-tracker",
+          label: "GPA Tracker",
+          icon: <FaGraduationCap />,
+        },
+        {
+          path: "/help-requests",
+          label: "Help Requests",
+          icon: <FaHandsHelping />,
+        },
+      ];
 
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
         <h2>UNIMANAGE</h2>
-        <p>Student Portal</p>
+        <p>{isAdmin ? "Administrator" : "Student Portal"}</p>
       </div>
 
       <nav className="sidebar-nav">
@@ -41,6 +74,20 @@ const Sidebar = () => {
           </NavLink>
         ))}
       </nav>
+
+      <div className="sidebar-footer">
+        <NavLink
+          to="/login"
+          className={({ isActive }) =>
+            isActive ? "sidebar-link sidebar-link-muted active" : "sidebar-link sidebar-link-muted"
+          }
+        >
+          <span className="sidebar-icon">
+            <FaUserShield />
+          </span>
+          <span>{isAdmin ? "Switch account" : "Staff login"}</span>
+        </NavLink>
+      </div>
     </aside>
   );
 };

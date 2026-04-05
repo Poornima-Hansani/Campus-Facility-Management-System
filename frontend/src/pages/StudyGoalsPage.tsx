@@ -462,12 +462,9 @@ const StudyGoalsPage = () => {
         <header className="sg-hero">
           <div className="sg-hero-inner">
             <div>
-              <h1>
-                Study <span>Goals</span>
-              </h1>
-              <p>
-                Create unlimited goals with optional target dates, switch to the
-                calendar to see what is due when, and log hours as you go.
+              <p className="sg-hero-lead">
+                Create unlimited goals with optional target dates, use the
+                calendar for due dates, and log hours as you go.
               </p>
             </div>
             <div className="sg-hero-actions">

@@ -1,9 +1,12 @@
+import { useMemo } from "react";
 import Layout from "../components/Layout";
-import PageHeader from "../components/PageHeader";
 import StatCard from "../components/StatCard";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const TaskDashboardPage = () => {
+  const { isAdmin } = useAuth();
+
   const alerts = [
     {
       id: 1,
@@ -17,7 +20,7 @@ const TaskDashboardPage = () => {
       title: "Database Systems lecture reminder",
       type: "Lecture Reminder",
       time: "Today, 2:00 PM",
-      viewPath: "/timetable" as const,
+      viewPath: "/lecture-availability" as const,
     },
     {
       id: 3,
@@ -28,52 +31,69 @@ const TaskDashboardPage = () => {
     },
   ];
 
-  const quickActions = [
-    {
-      title: "Find Lecture Availability",
-      description: "Search lecture halls and labs by module code or module name.",
-      path: "/lecture-availability",
-      button: "Open Availability",
-    },
-    {
-      title: "Manage Timetable",
-      description: "Add and view timetable sessions with time conflict checking.",
-      path: "/timetable",
-      button: "Open Timetable",
-    },
-    {
-      title: "Track Assignments & Exams",
-      description: "Add deadlines, upcoming exams, and academic alerts.",
-      path: "/assignments-exams",
-      button: "Open Tasks",
-    },
-    {
-      title: "Set Study Goals",
-      description: "Create daily, weekly, and monthly study targets.",
-      path: "/study-goals",
-      button: "Open Goals",
-    },
-    {
-      title: "Request Academic Help",
-      description: "Ask lecturers, instructors, or seniors for support.",
-      path: "/help-requests",
-      button: "Open Help Requests",
-    },
-    {
-      title: "Management Overview",
-      description: "View repeat-student support and management monitoring data.",
-      path: "/management-dashboard",
-      button: "Open Dashboard",
-    },
-  ];
+  const quickActions = useMemo(() => {
+    const base: {
+      title: string;
+      description: string;
+      path: string;
+      button: string;
+    }[] = [
+      {
+        title: "Find Lecture Availability",
+        description:
+          "Search lecture halls, labs, and the module timetable by module or day.",
+        path: "/lecture-availability",
+        button: "Open Availability",
+      },
+      {
+        title: "Track Assignments & Exams",
+        description: "Add deadlines, upcoming exams, and academic alerts.",
+        path: "/assignments-exams",
+        button: "Open Tasks",
+      },
+      {
+        title: "Set Study Goals",
+        description: "Create daily, weekly, and monthly study targets.",
+        path: "/study-goals",
+        button: "Open Goals",
+      },
+      {
+        title: "GPA Tracker",
+        description:
+          "Log credits and letter grades to calculate your GPA for the term.",
+        path: "/gpa-tracker",
+        button: "Open GPA Tracker",
+      },
+      {
+        title: "Request Academic Help",
+        description: "Ask lecturers, instructors, or seniors for support.",
+        path: "/help-requests",
+        button: "Open Help Requests",
+      },
+    ];
+
+    if (isAdmin) {
+      base.splice(1, 0, {
+        title: "Admin Dashboard",
+        description:
+          "Add and manage the official module timetable (student-facing).",
+        path: "/admin-dashboard",
+        button: "Open Admin Dashboard",
+      });
+      base.push({
+        title: "Management Dashboard",
+        description:
+          "Encouragement emails and timetable vs catalog comparison.",
+        path: "/management-dashboard",
+        button: "Open Management",
+      });
+    }
+
+    return base;
+  }, [isAdmin]);
 
   return (
     <Layout>
-      <PageHeader
-        title="Academic Help Dashboard"
-        subtitle="Overview of lectures, reminders, study goals, academic tasks, and support activities"
-      />
-
       <div className="dashboard-hero">
         <div className="dashboard-hero-text">
           <span className="hero-badge">UNIMANAGE Student Portal</span>
@@ -123,8 +143,8 @@ const TaskDashboardPage = () => {
           </div>
 
           <div className="quick-actions-grid">
-            {quickActions.map((item, index) => (
-              <div key={index} className="quick-action-card">
+            {quickActions.map((item) => (
+              <div key={item.path} className="quick-action-card">
                 <h4>{item.title}</h4>
                 <p>{item.description}</p>
                 <Link to={item.path} className="mini-action-btn">

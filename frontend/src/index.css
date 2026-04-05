@@ -5,6 +5,10 @@
   --color-text: #0f172a;
   --color-text-muted: #64748b;
   --color-border: #e2e8f0;
+  --color-heading: #111827;
+  --color-subheading: #374151;
+  --color-subtle-bg: #f9fafb;
+  --color-input-bg: #ffffff;
   --color-primary: #0d4f34;
   --color-primary-hover: #166534;
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
@@ -13,6 +17,26 @@
   --radius-sm: 10px;
   --radius-md: 14px;
   --radius-lg: 18px;
+  /* Top bar background (all pages). Use any URL or e.g. url("/your-photo.jpg") from public/. */
+  --topbar-bg-image: url("https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1800&q=85");
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #0b1120;
+  --color-surface: #151c2e;
+  --color-text: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-border: #2d3d55;
+  --color-heading: #f1f5f9;
+  --color-subheading: #cbd5e1;
+  --color-subtle-bg: #1a2438;
+  --color-input-bg: #1e293b;
+  --color-primary: #22c55e;
+  --color-primary-hover: #4ade80;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -59,4 +83,18 @@ button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: var(--color-input-bg);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.9;
 }

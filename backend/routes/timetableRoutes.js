@@ -12,12 +12,28 @@ const dayOrder = [
   "Saturday",
 ];
 
+const SESSION_TYPES = new Set([
+  "Lecture",
+  "Practical",
+  "Lab",
+  "Tutorial",
+]);
+
+function resolveSessionType(doc) {
+  const st = doc.sessionType;
+  if (st && SESSION_TYPES.has(st)) return st;
+  const legacy = doc.venueType;
+  if (legacy === "Lecture Hall") return "Lecture";
+  if (legacy === "Lab") return "Lab";
+  return "Lecture";
+}
+
 function serialize(doc) {
   return {
     id: doc.numericId,
     moduleCode: doc.moduleCode,
     moduleName: doc.moduleName,
-    venueType: doc.venueType,
+    sessionType: resolveSessionType(doc),
     venueName: doc.venueName,
     lecturer: doc.lecturer,
     day: doc.day,
@@ -29,6 +45,21 @@ function serialize(doc) {
 function toMinutes(t) {
   const [h, m] = t.split(":").map(Number);
   return h * 60 + m;
+}
+
+const LECTURER_TITLES = new Set(["Mr.", "Miss.", "Mrs."]);
+
+function normalizeSpaces(s) {
+  return String(s || "")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function buildLecturer(lecturerTitle, lecturerName) {
+  const title = normalizeSpaces(lecturerTitle);
+  const name = normalizeSpaces(lecturerName);
+  if (!LECTURER_TITLES.has(title) || name.length < 2) return null;
+  return `${title} ${name}`;
 }
 
 router.get("/", async (req, res) => {
@@ -50,9 +81,10 @@ router.post("/", async (req, res) => {
     const {
       moduleCode,
       moduleName,
-      venueType,
+      sessionType,
       venueName,
-      lecturer,
+      lecturerTitle,
+      lecturerName,
       day,
       startTime,
       endTime,
@@ -61,7 +93,8 @@ router.post("/", async (req, res) => {
     const cleanModuleCode = String(moduleCode || "").trim().toUpperCase();
     const cleanModuleName = String(moduleName || "").trim();
     const cleanVenueName = String(venueName || "").trim();
-    const cleanLecturer = String(lecturer || "").trim();
+    const cleanLecturer = buildLecturer(lecturerTitle, lecturerName);
+    const cleanSessionType = String(sessionType || "").trim();
 
     if (
       !cleanModuleCode ||
@@ -71,9 +104,12 @@ router.post("/", async (req, res) => {
       !day ||
       !startTime ||
       !endTime ||
-      !venueType
+      !cleanSessionType
     ) {
-      return res.status(400).json({ message: "All fields are required." });
+      return res.status(400).json({
+        message:
+          "All fields are required. Lecturer needs a title (Mr., Miss., or Mrs.) and a name (at least 2 characters).",
+      });
     }
 
     if (!/^[A-Z]{2,4}\d{3,4}$/.test(cleanModuleCode)) {
@@ -94,10 +130,11 @@ router.post("/", async (req, res) => {
         .json({ message: "Venue name must contain at least 2 characters." });
     }
 
-    if (cleanLecturer.length < 3) {
-      return res
-        .status(400)
-        .json({ message: "Lecturer name must contain at least 3 characters." });
+    if (!SESSION_TYPES.has(cleanSessionType)) {
+      return res.status(400).json({
+        message:
+          "Session type must be Lecture, Practical, Lab, or Tutorial.",
+      });
     }
 
     if (startTime >= endTime) {
@@ -109,11 +146,13 @@ router.post("/", async (req, res) => {
     const existing = await TimetableSession.find().lean();
     const dup = existing.some(
       (item) =>
+        resolveSessionType(item) === cleanSessionType &&
         item.moduleCode === cleanModuleCode &&
         item.day === day &&
         item.startTime === startTime &&
         item.endTime === endTime &&
-        item.venueName.toLowerCase() === cleanVenueName.toLowerCase()
+        item.venueName.toLowerCase() === cleanVenueName.toLowerCase() &&
+        normalizeSpaces(item.lecturer) === normalizeSpaces(cleanLecturer)
     );
     if (dup) {
       return res
@@ -125,13 +164,20 @@ router.post("/", async (req, res) => {
     const em = toMinutes(endTime);
     const conflict = existing.some((item) => {
       if (item.day !== day) return false;
+      if (item.moduleCode !== cleanModuleCode) return false;
+      if (resolveSessionType(item) !== cleanSessionType) return false;
+      if (item.venueName.toLowerCase() !== cleanVenueName.toLowerCase())
+        return false;
+      if (normalizeSpaces(item.lecturer) !== normalizeSpaces(cleanLecturer))
+        return false;
       const is = toMinutes(item.startTime);
       const ie = toMinutes(item.endTime);
       return sm < ie && em > is;
     });
     if (conflict) {
       return res.status(400).json({
-        message: "Time conflict detected with another session on the same day.",
+        message:
+          "This slot clashes with another session for the same module, venue, and lecturer.",
       });
     }
 
@@ -140,7 +186,7 @@ router.post("/", async (req, res) => {
       numericId,
       moduleCode: cleanModuleCode,
       moduleName: cleanModuleName,
-      venueType,
+      sessionType: cleanSessionType,
       venueName: cleanVenueName,
       lecturer: cleanLecturer,
       day,

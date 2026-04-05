@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
-import PageHeader from "../components/PageHeader";
 import { apiDelete, apiGet, apiPost } from "../lib/api";
 
 type TaskItem = {
@@ -205,11 +204,6 @@ const AssignmentExamPage = () => {
 
   return (
     <Layout>
-      <PageHeader
-        title="Assignments and Exams"
-        subtitle="Add, track, and manage assignment deadlines and exam schedules"
-      />
-
       {loadError && <p className="form-error">{loadError}</p>}
 
       <div className="content-card">

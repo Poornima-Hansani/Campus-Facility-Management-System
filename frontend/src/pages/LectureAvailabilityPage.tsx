@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
-import PageHeader from "../components/PageHeader";
+import type { SessionTypeKind, TimetableItem } from "../components/TimetableManager";
 import { apiGet, apiPost } from "../lib/api";
 
 type LectureItem = {
@@ -15,6 +15,10 @@ type LectureItem = {
   endTime: string;
 };
 
+type UnifiedRow =
+  | { kind: "catalog"; item: LectureItem }
+  | { kind: "timetable"; item: TimetableItem };
+
 const dayOptions = [
   "",
   "Monday",
@@ -25,8 +29,41 @@ const dayOptions = [
   "Saturday",
 ];
 
+const dayOrder = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+function dayIndex(d: string) {
+  const i = dayOrder.indexOf(d);
+  return i === -1 ? 99 : i;
+}
+
+function sortRows(rows: UnifiedRow[]) {
+  return [...rows].sort((x, y) => {
+    const ax = x.kind === "catalog" ? x.item : x.item;
+    const bx = y.kind === "catalog" ? y.item : y.item;
+    const d = dayIndex(ax.day) - dayIndex(bx.day);
+    if (d !== 0) return d;
+    return ax.startTime.localeCompare(bx.startTime);
+  });
+}
+
+function unifiedSessionKind(row: UnifiedRow): SessionTypeKind | null {
+  if (row.kind === "timetable") return row.item.sessionType;
+  const v = row.item.venueType;
+  if (v === "Lecture Hall") return "Lecture";
+  if (v === "Laboratory") return "Lab";
+  return null;
+}
+
 const LectureAvailabilityPage = () => {
   const [lectureData, setLectureData] = useState<LectureItem[]>([]);
+  const [timetableData, setTimetableData] = useState<TimetableItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [moduleCode, setModuleCode] = useState("");
@@ -40,12 +77,14 @@ const LectureAvailabilityPage = () => {
     let cancelled = false;
     (async () => {
       try {
-        const [lectures, rem] = await Promise.all([
+        const [lectures, tt, rem] = await Promise.all([
           apiGet<LectureItem[]>("/api/lectures"),
+          apiGet<TimetableItem[]>("/api/timetable"),
           apiGet<{ sessionIds: number[] }>("/api/lecture-reminders"),
         ]);
         if (!cancelled) {
           setLectureData(lectures);
+          setTimetableData(tt);
           setReminders(rem.sessionIds);
           setLoadError("");
         }
@@ -64,7 +103,7 @@ const LectureAvailabilityPage = () => {
     };
   }, []);
 
-  const filteredResults = useMemo(() => {
+  const filteredCatalog = useMemo(() => {
     const codeValue = moduleCode.trim().toUpperCase();
     const nameValue = moduleName.trim().toLowerCase();
 
@@ -82,6 +121,63 @@ const LectureAvailabilityPage = () => {
       return codeMatch && nameMatch && dayMatch;
     });
   }, [lectureData, moduleCode, moduleName, day]);
+
+  const filteredTimetable = useMemo(() => {
+    const codeValue = moduleCode.trim().toUpperCase();
+    const nameValue = moduleName.trim().toLowerCase();
+
+    return timetableData.filter((item) => {
+      const codeMatch = codeValue
+        ? item.moduleCode.toUpperCase().includes(codeValue)
+        : true;
+
+      const nameMatch = nameValue
+        ? item.moduleName.toLowerCase().includes(nameValue)
+        : true;
+
+      const dayMatch = day ? item.day === day : true;
+
+      return codeMatch && nameMatch && dayMatch;
+    });
+  }, [timetableData, moduleCode, moduleName, day]);
+
+  const filteredResults = useMemo(() => {
+    const merged: UnifiedRow[] = [
+      ...filteredCatalog.map((item) => ({ kind: "catalog" as const, item })),
+      ...filteredTimetable.map((item) => ({
+        kind: "timetable" as const,
+        item,
+      })),
+    ];
+    return sortRows(merged);
+  }, [filteredCatalog, filteredTimetable]);
+
+  const totalCombined = searched
+    ? filteredResults.length
+    : lectureData.length + timetableData.length;
+
+  const baseUnifiedRows = useMemo((): UnifiedRow[] => {
+    return sortRows([
+      ...lectureData.map((item) => ({ kind: "catalog" as const, item })),
+      ...timetableData.map((item) => ({ kind: "timetable" as const, item })),
+    ]);
+  }, [lectureData, timetableData]);
+
+  const statsRows = searched ? filteredResults : baseUnifiedRows;
+
+  const sessionKindCounts = useMemo(() => {
+    const init: Record<SessionTypeKind, number> = {
+      Lecture: 0,
+      Practical: 0,
+      Lab: 0,
+      Tutorial: 0,
+    };
+    for (const row of statsRows) {
+      const k = unifiedSessionKind(row);
+      if (k) init[k] += 1;
+    }
+    return init;
+  }, [statsRows]);
 
   const validateSearch = () => {
     const cleanCode = moduleCode.trim().toUpperCase();
@@ -141,25 +237,20 @@ const LectureAvailabilityPage = () => {
 
   return (
     <Layout>
-      <PageHeader
-        title="Lecture Availability"
-        subtitle="Search lecture halls and laboratories by module code, module name, or day"
-      />
-
       {loadError && <p className="form-error">{loadError}</p>}
       {loading && !loadError && (
         <p className="page-header" style={{ marginBottom: 16 }}>
-          Loading lecture catalog…
+          Loading sessions…
         </p>
       )}
 
       <div className="content-card">
         <div className="section-head">
           <div>
-            <h3>Search Lecture and Lab Availability</h3>
+            <h3>Search Lecture Availability &amp; Module Timetable</h3>
             <p>
-              Students can filter available academic sessions and set reminders
-              for important lectures or labs.
+              Find published catalog sessions and official module timetable
+              slots in one search. Reminders apply to catalog sessions only.
             </p>
           </div>
         </div>
@@ -202,7 +293,7 @@ const LectureAvailabilityPage = () => {
 
           <div className="form-actions">
             <button type="submit" className="primary-form-btn">
-              Search Availability
+              Search
             </button>
             <button
               type="button"
@@ -217,52 +308,58 @@ const LectureAvailabilityPage = () => {
 
       <div className="stats-grid availability-stats">
         <div className="stat-card">
-          <h4>Total Sessions</h4>
-          <h2>{searched ? filteredResults.length : lectureData.length}</h2>
-          <p>Available lecture and lab records</p>
+          <h4>Total matches</h4>
+          <h2>{totalCombined}</h2>
+          <p>
+            {searched
+              ? "Catalog + module timetable rows"
+              : "All catalog and timetable rows loaded"}
+          </p>
         </div>
         <div className="stat-card">
-          <h4>Lecture Halls</h4>
-          <h2>
-            {(searched ? filteredResults : lectureData).filter(
-              (item) => item.venueType === "Lecture Hall"
-            ).length}
-          </h2>
-          <p>Lecture-based academic sessions</p>
+          <h4>Lecture</h4>
+          <h2>{sessionKindCounts.Lecture}</h2>
+          <p>In the current view</p>
         </div>
         <div className="stat-card">
-          <h4>Laboratories</h4>
-          <h2>
-            {(searched ? filteredResults : lectureData).filter(
-              (item) => item.venueType === "Laboratory"
-            ).length}
-          </h2>
-          <p>Practical and lab sessions</p>
+          <h4>Practical</h4>
+          <h2>{sessionKindCounts.Practical}</h2>
+          <p>Module timetable only</p>
         </div>
         <div className="stat-card">
-          <h4>Reminders Set</h4>
+          <h4>Lab</h4>
+          <h2>{sessionKindCounts.Lab}</h2>
+          <p>In the current view</p>
+        </div>
+        <div className="stat-card">
+          <h4>Tutorial</h4>
+          <h2>{sessionKindCounts.Tutorial}</h2>
+          <p>Module timetable only</p>
+        </div>
+        <div className="stat-card">
+          <h4>Reminders set</h4>
           <h2>{reminders.length}</h2>
-          <p>Saved lecture and lab reminders</p>
+          <p>Catalog sessions only</p>
         </div>
       </div>
 
       <div className="content-card">
         <div className="section-head">
           <div>
-            <h3>Availability Results</h3>
+            <h3>Results</h3>
             <p>
-              Matching lecture halls and lab sessions based on the selected
-              filters.
+              Each card shows whether the row comes from the published catalog
+              or the module timetable administrators maintain.
             </p>
           </div>
         </div>
 
         {!searched ? (
           <div className="empty-state">
-            <h3>Search to view availability</h3>
+            <h3>Search to view sessions</h3>
             <p>
-              Use module code, module name, or day filters to find academic
-              sessions.
+              Use module code, module name, or day to find catalog and timetable
+              entries together.
             </p>
           </div>
         ) : filteredResults.length === 0 ? (
@@ -272,16 +369,76 @@ const LectureAvailabilityPage = () => {
           </div>
         ) : (
           <div className="availability-results">
-            {filteredResults.map((item) => {
-              const hasReminder = reminders.includes(item.id);
+            {filteredResults.map((row) => {
+              if (row.kind === "catalog") {
+                const item = row.item;
+                const hasReminder = reminders.includes(item.id);
 
+                return (
+                  <div
+                    key={`catalog-${item.id}`}
+                    className="availability-card"
+                  >
+                    <div className="availability-top">
+                      <div>
+                        <div className="availability-badge-row">
+                          <span className="availability-badge source-catalog">
+                            Published catalog
+                          </span>
+                          <span className="availability-badge">{item.venueType}</span>
+                        </div>
+                        <h4>
+                          {item.moduleCode} - {item.moduleName}
+                        </h4>
+                      </div>
+                    </div>
+
+                    <div className="availability-details">
+                      <p>
+                        <strong>Venue:</strong> {item.venueName}
+                      </p>
+                      <p>
+                        <strong>Lecturer:</strong> {item.lecturer}
+                      </p>
+                      <p>
+                        <strong>Day:</strong> {item.day}
+                      </p>
+                      <p>
+                        <strong>Time:</strong> {item.startTime} - {item.endTime}
+                      </p>
+                    </div>
+
+                    <div className="availability-actions">
+                      <button
+                        type="button"
+                        className={
+                          hasReminder
+                            ? "secondary-form-btn reminder-active"
+                            : "primary-form-btn"
+                        }
+                        onClick={() => toggleReminder(item.id)}
+                      >
+                        {hasReminder ? "Remove Reminder" : "Set Reminder"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              const item = row.item;
               return (
-                <div key={item.id} className="availability-card">
+                <div
+                  key={`timetable-${item.id}`}
+                  className="availability-card availability-card-timetable"
+                >
                   <div className="availability-top">
                     <div>
-                      <span className="availability-badge">
-                        {item.venueType}
-                      </span>
+                      <div className="availability-badge-row">
+                        <span className="availability-badge source-timetable">
+                          Module timetable
+                        </span>
+                        <span className="availability-badge">{item.sessionType}</span>
+                      </div>
                       <h4>
                         {item.moduleCode} - {item.moduleName}
                       </h4>
@@ -301,20 +458,6 @@ const LectureAvailabilityPage = () => {
                     <p>
                       <strong>Time:</strong> {item.startTime} - {item.endTime}
                     </p>
-                  </div>
-
-                  <div className="availability-actions">
-                    <button
-                      type="button"
-                      className={
-                        hasReminder
-                          ? "secondary-form-btn reminder-active"
-                          : "primary-form-btn"
-                      }
-                      onClick={() => toggleReminder(item.id)}
-                    >
-                      {hasReminder ? "Remove Reminder" : "Set Reminder"}
-                    </button>
                   </div>
                 </div>
               );

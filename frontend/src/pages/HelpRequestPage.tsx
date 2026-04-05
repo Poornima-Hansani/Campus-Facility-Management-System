@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
-import PageHeader from "../components/PageHeader";
 import { apiDelete, apiGet, apiPost } from "../lib/api";
 
 type RequestSource = "Lecturer" | "Instructor" | "Senior Student";
@@ -199,11 +198,6 @@ const HelpRequestPage = () => {
 
   return (
     <Layout>
-      <PageHeader
-        title="Help Requests"
-        subtitle="Request academic support from lecturers, instructors, or senior students"
-      />
-
       {loadError && <p className="form-error">{loadError}</p>}
 
       <div className="content-card">

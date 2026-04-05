@@ -11,6 +11,18 @@
       rel="stylesheet"
     />
     <title>UniManage — Student Portal</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("unimanage-theme");
+          if (t === "dark" || t === "light") {
+            document.documentElement.setAttribute("data-theme", t);
+          } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+            document.documentElement.setAttribute("data-theme", "dark");
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
