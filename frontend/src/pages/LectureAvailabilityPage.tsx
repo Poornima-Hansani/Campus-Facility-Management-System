@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
 import PageHeader from "../components/PageHeader";
+import { apiGet, apiPost } from "../lib/api";
 
 type LectureItem = {
   id: number;
@@ -14,75 +15,6 @@ type LectureItem = {
   endTime: string;
 };
 
-const lectureData: LectureItem[] = [
-  {
-    id: 1,
-    moduleCode: "IT3040",
-    moduleName: "Project Management",
-    venueType: "Lecture Hall",
-    venueName: "LH-201",
-    lecturer: "Dr. Perera",
-    day: "Monday",
-    startTime: "08:00",
-    endTime: "10:00",
-  },
-  {
-    id: 2,
-    moduleCode: "IT3050",
-    moduleName: "Software Engineering",
-    venueType: "Laboratory",
-    venueName: "Lab A",
-    lecturer: "Mr. Silva",
-    day: "Wednesday",
-    startTime: "13:00",
-    endTime: "15:00",
-  },
-  {
-    id: 3,
-    moduleCode: "IT3060",
-    moduleName: "Database Systems",
-    venueType: "Lecture Hall",
-    venueName: "LH-105",
-    lecturer: "Ms. Fernando",
-    day: "Tuesday",
-    startTime: "10:00",
-    endTime: "12:00",
-  },
-  {
-    id: 4,
-    moduleCode: "IT3070",
-    moduleName: "Information Security",
-    venueType: "Laboratory",
-    venueName: "Lab C",
-    lecturer: "Dr. Nirmala",
-    day: "Thursday",
-    startTime: "09:00",
-    endTime: "11:00",
-  },
-  {
-    id: 5,
-    moduleCode: "IT3080",
-    moduleName: "Human Computer Interaction",
-    venueType: "Lecture Hall",
-    venueName: "LH-302",
-    lecturer: "Mr. Jayasinghe",
-    day: "Friday",
-    startTime: "11:00",
-    endTime: "13:00",
-  },
-  {
-    id: 6,
-    moduleCode: "IT3090",
-    moduleName: "Data Analytics",
-    venueType: "Laboratory",
-    venueName: "Lab B",
-    lecturer: "Ms. Wickrama",
-    day: "Saturday",
-    startTime: "08:30",
-    endTime: "10:30",
-  },
-];
-
 const dayOptions = [
   "",
   "Monday",
@@ -94,12 +26,43 @@ const dayOptions = [
 ];
 
 const LectureAvailabilityPage = () => {
+  const [lectureData, setLectureData] = useState<LectureItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [moduleCode, setModuleCode] = useState("");
   const [moduleName, setModuleName] = useState("");
   const [day, setDay] = useState("");
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
   const [reminders, setReminders] = useState<number[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [lectures, rem] = await Promise.all([
+          apiGet<LectureItem[]>("/api/lectures"),
+          apiGet<{ sessionIds: number[] }>("/api/lecture-reminders"),
+        ]);
+        if (!cancelled) {
+          setLectureData(lectures);
+          setReminders(rem.sessionIds);
+          setLoadError("");
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(
+            e instanceof Error ? e.message : "Could not load lecture data."
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredResults = useMemo(() => {
     const codeValue = moduleCode.trim().toUpperCase();
@@ -118,7 +81,7 @@ const LectureAvailabilityPage = () => {
 
       return codeMatch && nameMatch && dayMatch;
     });
-  }, [moduleCode, moduleName, day]);
+  }, [lectureData, moduleCode, moduleName, day]);
 
   const validateSearch = () => {
     const cleanCode = moduleCode.trim().toUpperCase();
@@ -161,10 +124,19 @@ const LectureAvailabilityPage = () => {
     setSearched(false);
   };
 
-  const toggleReminder = (id: number) => {
-    setReminders((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+  const toggleReminder = async (id: number) => {
+    try {
+      const data = await apiPost<{ sessionIds: number[] }>(
+        "/api/lecture-reminders/toggle",
+        { sessionId: id }
+      );
+      setReminders(data.sessionIds);
+      setError("");
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Could not update reminder."
+      );
+    }
   };
 
   return (
@@ -173,6 +145,13 @@ const LectureAvailabilityPage = () => {
         title="Lecture Availability"
         subtitle="Search lecture halls and laboratories by module code, module name, or day"
       />
+
+      {loadError && <p className="form-error">{loadError}</p>}
+      {loading && !loadError && (
+        <p className="page-header" style={{ marginBottom: 16 }}>
+          Loading lecture catalog…
+        </p>
+      )}
 
       <div className="content-card">
         <div className="section-head">
@@ -326,6 +305,7 @@ const LectureAvailabilityPage = () => {
 
                   <div className="availability-actions">
                     <button
+                      type="button"
                       className={
                         hasReminder
                           ? "secondary-form-btn reminder-active"

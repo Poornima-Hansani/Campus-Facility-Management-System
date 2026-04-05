@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
 import PageHeader from "../components/PageHeader";
+import { apiDelete, apiGet, apiPost } from "../lib/api";
 
 type TaskItem = {
   id: number;
@@ -12,29 +13,20 @@ type TaskItem = {
   description: string;
 };
 
-const initialTasks: TaskItem[] = [
-  {
-    id: 1,
-    title: "Project Proposal Submission",
-    moduleCode: "IT3040",
-    moduleName: "Project Management",
-    type: "Assignment",
-    dueDate: "2026-04-20",
-    description: "Submit the project proposal document.",
-  },
-  {
-    id: 2,
-    title: "Mid Theory Exam",
-    moduleCode: "IT3050",
-    moduleName: "Software Engineering",
-    type: "Exam",
-    dueDate: "2026-04-18",
-    description: "Covers UML, SDLC, and requirement engineering.",
-  },
-];
-
 const AssignmentExamPage = () => {
-  const [tasks, setTasks] = useState<TaskItem[]>(initialTasks);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [loadError, setLoadError] = useState("");
+
+  const refreshTasks = useCallback(async () => {
+    const list = await apiGet<TaskItem[]>("/api/assignments-exams");
+    setTasks(list);
+  }, []);
+
+  useEffect(() => {
+    refreshTasks().catch((e) =>
+      setLoadError(e instanceof Error ? e.message : "Could not load tasks.")
+    );
+  }, [refreshTasks]);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -147,7 +139,7 @@ const AssignmentExamPage = () => {
     return "";
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const validationMessage = validateForm();
@@ -158,31 +150,32 @@ const AssignmentExamPage = () => {
       return;
     }
 
-    const newTask: TaskItem = {
-      id: Date.now(),
-      title: formData.title.trim(),
-      moduleCode: formData.moduleCode.trim().toUpperCase(),
-      moduleName: formData.moduleName.trim(),
-      type: formData.type,
-      dueDate: formData.dueDate,
-      description: formData.description.trim(),
-    };
+    try {
+      await apiPost("/api/assignments-exams", {
+        title: formData.title.trim(),
+        moduleCode: formData.moduleCode.trim().toUpperCase(),
+        moduleName: formData.moduleName.trim(),
+        type: formData.type,
+        dueDate: formData.dueDate,
+        description: formData.description.trim(),
+      });
+      await refreshTasks();
 
-    setTasks((prev) =>
-      [...prev, newTask].sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-    );
+      setFormData({
+        title: "",
+        moduleCode: "",
+        moduleName: "",
+        type: "Assignment",
+        dueDate: "",
+        description: "",
+      });
 
-    setFormData({
-      title: "",
-      moduleCode: "",
-      moduleName: "",
-      type: "Assignment",
-      dueDate: "",
-      description: "",
-    });
-
-    setError("");
-    setSuccess("Task added successfully.");
+      setError("");
+      setSuccess("Task added successfully.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save task.");
+      setSuccess("");
+    }
   };
 
   const handleClear = () => {
@@ -198,10 +191,16 @@ const AssignmentExamPage = () => {
     setSuccess("");
   };
 
-  const handleDelete = (id: number) => {
-    setTasks((prev) => prev.filter((item) => item.id !== id));
-    setError("");
-    setSuccess("Task removed successfully.");
+  const handleDelete = async (id: number) => {
+    try {
+      await apiDelete(`/api/assignments-exams/${id}`);
+      await refreshTasks();
+      setError("");
+      setSuccess("Task removed successfully.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete task.");
+      setSuccess("");
+    }
   };
 
   return (
@@ -210,6 +209,8 @@ const AssignmentExamPage = () => {
         title="Assignments and Exams"
         subtitle="Add, track, and manage assignment deadlines and exam schedules"
       />
+
+      {loadError && <p className="form-error">{loadError}</p>}
 
       <div className="content-card">
         <div className="section-head">
@@ -381,6 +382,7 @@ const AssignmentExamPage = () => {
 
                   <div className="availability-actions timetable-actions">
                     <button
+                      type="button"
                       className="danger-form-btn"
                       onClick={() => handleDelete(item.id)}
                     >

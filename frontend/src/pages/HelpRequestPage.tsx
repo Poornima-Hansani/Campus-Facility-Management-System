@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
 import PageHeader from "../components/PageHeader";
+import { apiDelete, apiGet, apiPost } from "../lib/api";
 
 type RequestSource = "Lecturer" | "Instructor" | "Senior Student";
 type SessionType = "Individual" | "Group";
@@ -18,33 +19,20 @@ type HelpRequestItem = {
   status: RequestStatus;
 };
 
-const initialRequests: HelpRequestItem[] = [
-  {
-    id: 1,
-    studentName: "Nimal Perera",
-    moduleCode: "IT3050",
-    moduleName: "Software Engineering",
-    requestTo: "Lecturer",
-    sessionType: "Group",
-    topic: "Requirement Engineering",
-    description: "Need help understanding functional and non-functional requirements.",
-    status: "Pending",
-  },
-  {
-    id: 2,
-    studentName: "Kavindi Silva",
-    moduleCode: "IT3060",
-    moduleName: "Database Systems",
-    requestTo: "Senior Student",
-    sessionType: "Individual",
-    topic: "Normalization",
-    description: "Need one-to-one support for 1NF, 2NF, and 3NF questions.",
-    status: "Scheduled",
-  },
-];
-
 const HelpRequestPage = () => {
-  const [requests, setRequests] = useState<HelpRequestItem[]>(initialRequests);
+  const [requests, setRequests] = useState<HelpRequestItem[]>([]);
+  const [loadError, setLoadError] = useState("");
+
+  const refreshRequests = useCallback(async () => {
+    const list = await apiGet<HelpRequestItem[]>("/api/help-requests");
+    setRequests(list);
+  }, []);
+
+  useEffect(() => {
+    refreshRequests().catch((e) =>
+      setLoadError(e instanceof Error ? e.message : "Could not load requests.")
+    );
+  }, [refreshRequests]);
 
   const [formData, setFormData] = useState({
     studentName: "",
@@ -142,7 +130,7 @@ const HelpRequestPage = () => {
     return "";
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const validationMessage = validateForm();
@@ -153,32 +141,34 @@ const HelpRequestPage = () => {
       return;
     }
 
-    const newRequest: HelpRequestItem = {
-      id: Date.now(),
-      studentName: formData.studentName.trim(),
-      moduleCode: formData.moduleCode.trim().toUpperCase(),
-      moduleName: formData.moduleName.trim(),
-      requestTo: formData.requestTo,
-      sessionType: formData.sessionType,
-      topic: formData.topic.trim(),
-      description: formData.description.trim(),
-      status: "Pending",
-    };
+    try {
+      await apiPost("/api/help-requests", {
+        studentName: formData.studentName.trim(),
+        moduleCode: formData.moduleCode.trim().toUpperCase(),
+        moduleName: formData.moduleName.trim(),
+        requestTo: formData.requestTo,
+        sessionType: formData.sessionType,
+        topic: formData.topic.trim(),
+        description: formData.description.trim(),
+      });
+      await refreshRequests();
 
-    setRequests((prev) => [newRequest, ...prev]);
+      setFormData({
+        studentName: "",
+        moduleCode: "",
+        moduleName: "",
+        requestTo: "Lecturer",
+        sessionType: "Individual",
+        topic: "",
+        description: "",
+      });
 
-    setFormData({
-      studentName: "",
-      moduleCode: "",
-      moduleName: "",
-      requestTo: "Lecturer",
-      sessionType: "Individual",
-      topic: "",
-      description: "",
-    });
-
-    setError("");
-    setSuccess("Help request submitted successfully.");
+      setError("");
+      setSuccess("Help request submitted successfully.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not submit request.");
+      setSuccess("");
+    }
   };
 
   const handleClear = () => {
@@ -195,10 +185,16 @@ const HelpRequestPage = () => {
     setSuccess("");
   };
 
-  const handleDelete = (id: number) => {
-    setRequests((prev) => prev.filter((item) => item.id !== id));
-    setError("");
-    setSuccess("Help request removed successfully.");
+  const handleDelete = async (id: number) => {
+    try {
+      await apiDelete(`/api/help-requests/${id}`);
+      await refreshRequests();
+      setError("");
+      setSuccess("Help request removed successfully.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete request.");
+      setSuccess("");
+    }
   };
 
   return (
@@ -207,6 +203,8 @@ const HelpRequestPage = () => {
         title="Help Requests"
         subtitle="Request academic support from lecturers, instructors, or senior students"
       />
+
+      {loadError && <p className="form-error">{loadError}</p>}
 
       <div className="content-card">
         <div className="section-head">
@@ -404,6 +402,7 @@ const HelpRequestPage = () => {
 
                 <div className="availability-actions timetable-actions">
                   <button
+                    type="button"
                     className="danger-form-btn"
                     onClick={() => handleDelete(item.id)}
                   >

@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
 import PageHeader from "../components/PageHeader";
+import { apiDelete, apiGet, apiPost } from "../lib/api";
 
 type TimetableItem = {
   id: number;
@@ -14,31 +15,6 @@ type TimetableItem = {
   endTime: string;
 };
 
-const initialSessions: TimetableItem[] = [
-  {
-    id: 1,
-    moduleCode: "IT3040",
-    moduleName: "Project Management",
-    venueType: "Lecture Hall",
-    venueName: "LH-201",
-    lecturer: "Dr. Perera",
-    day: "Monday",
-    startTime: "08:00",
-    endTime: "10:00",
-  },
-  {
-    id: 2,
-    moduleCode: "IT3050",
-    moduleName: "Software Engineering",
-    venueType: "Lab",
-    venueName: "Lab A",
-    lecturer: "Mr. Silva",
-    day: "Wednesday",
-    startTime: "13:00",
-    endTime: "15:00",
-  },
-];
-
 const dayOptions = [
   "Monday",
   "Tuesday",
@@ -49,7 +25,19 @@ const dayOptions = [
 ];
 
 const TimetablePage = () => {
-  const [sessions, setSessions] = useState<TimetableItem[]>(initialSessions);
+  const [sessions, setSessions] = useState<TimetableItem[]>([]);
+  const [loadError, setLoadError] = useState("");
+
+  const refreshSessions = useCallback(async () => {
+    const list = await apiGet<TimetableItem[]>("/api/timetable");
+    setSessions(list);
+  }, []);
+
+  useEffect(() => {
+    refreshSessions().catch((e) =>
+      setLoadError(e instanceof Error ? e.message : "Could not load timetable.")
+    );
+  }, [refreshSessions]);
 
   const [formData, setFormData] = useState({
     moduleCode: "",
@@ -164,7 +152,7 @@ const TimetablePage = () => {
     return "";
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const validationMessage = validateForm();
@@ -175,40 +163,36 @@ const TimetablePage = () => {
       return;
     }
 
-    const newSession: TimetableItem = {
-      id: Date.now(),
-      moduleCode: formData.moduleCode.trim().toUpperCase(),
-      moduleName: formData.moduleName.trim(),
-      venueType: formData.venueType,
-      venueName: formData.venueName.trim(),
-      lecturer: formData.lecturer.trim(),
-      day: formData.day,
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-    };
+    try {
+      await apiPost("/api/timetable", {
+        moduleCode: formData.moduleCode.trim().toUpperCase(),
+        moduleName: formData.moduleName.trim(),
+        venueType: formData.venueType,
+        venueName: formData.venueName.trim(),
+        lecturer: formData.lecturer.trim(),
+        day: formData.day,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+      });
+      await refreshSessions();
 
-    setSessions((prev) =>
-      [...prev, newSession].sort((a, b) => {
-        const dayCompare =
-          dayOptions.indexOf(a.day) - dayOptions.indexOf(b.day);
-        if (dayCompare !== 0) return dayCompare;
-        return a.startTime.localeCompare(b.startTime);
-      })
-    );
+      setFormData({
+        moduleCode: "",
+        moduleName: "",
+        venueType: "Lecture Hall",
+        venueName: "",
+        lecturer: "",
+        day: "Monday",
+        startTime: "",
+        endTime: "",
+      });
 
-    setFormData({
-      moduleCode: "",
-      moduleName: "",
-      venueType: "Lecture Hall",
-      venueName: "",
-      lecturer: "",
-      day: "Monday",
-      startTime: "",
-      endTime: "",
-    });
-
-    setError("");
-    setSuccess("Timetable session added successfully.");
+      setError("");
+      setSuccess("Timetable session added successfully.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save session.");
+      setSuccess("");
+    }
   };
 
   const handleClear = () => {
@@ -226,10 +210,16 @@ const TimetablePage = () => {
     setSuccess("");
   };
 
-  const handleDelete = (id: number) => {
-    setSessions((prev) => prev.filter((item) => item.id !== id));
-    setSuccess("Session removed successfully.");
-    setError("");
+  const handleDelete = async (id: number) => {
+    try {
+      await apiDelete(`/api/timetable/${id}`);
+      await refreshSessions();
+      setSuccess("Session removed successfully.");
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete session.");
+      setSuccess("");
+    }
   };
 
   return (
@@ -238,6 +228,8 @@ const TimetablePage = () => {
         title="Timetable Management"
         subtitle="Add, view, and manage lecture and lab sessions with conflict checking"
       />
+
+      {loadError && <p className="form-error">{loadError}</p>}
 
       <div className="content-card">
         <div className="section-head">
@@ -429,6 +421,7 @@ const TimetablePage = () => {
 
                 <div className="availability-actions timetable-actions">
                   <button
+                    type="button"
                     className="danger-form-btn"
                     onClick={() => handleDelete(item.id)}
                   >

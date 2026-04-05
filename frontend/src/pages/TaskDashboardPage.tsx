@@ -10,18 +10,21 @@ const TaskDashboardPage = () => {
       title: "Software Engineering assignment due tomorrow",
       type: "Assignment Alert",
       time: "Tomorrow, 11:59 PM",
+      viewPath: "/assignments-exams" as const,
     },
     {
       id: 2,
       title: "Database Systems lecture reminder",
       type: "Lecture Reminder",
       time: "Today, 2:00 PM",
+      viewPath: "/timetable" as const,
     },
     {
       id: 3,
       title: "Help request session arranged by lecturer",
       type: "Help Session",
       time: "Friday, 10:00 AM",
+      viewPath: "/help-requests" as const,
     },
   ];
 
@@ -194,7 +197,9 @@ const TaskDashboardPage = () => {
                   <p>{alert.time}</p>
                 </div>
               </div>
-              <button className="alert-view-btn">View</button>
+              <Link to={alert.viewPath} className="alert-view-btn">
+                View
+              </Link>
             </div>
           ))}
         </div>
