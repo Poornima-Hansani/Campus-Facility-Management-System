@@ -20,6 +20,6 @@ export const getUserRole = () => {
   return user?.role || null;
 };
 
-export const hasRole = (role) => {
+export const hasRole = (role: string) => {
   return getUserRole() === role;
 };
