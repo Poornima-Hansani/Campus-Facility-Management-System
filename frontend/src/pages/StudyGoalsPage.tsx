@@ -127,10 +127,23 @@ const StudyGoalsPage = () => {
   }, []);
 
   useEffect(() => {
-    refreshGoals().catch((e) =>
-      setLoadError(e instanceof Error ? e.message : "Could not load goals.")
-    );
-  }, [refreshGoals]);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await apiGet<GoalItem[]>("/api/study-goals");
+        if (!cancelled) setGoals(list);
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(
+            e instanceof Error ? e.message : "Could not load goals."
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [formData, setFormData] = useState({
     title: "",
     goalType: "Daily" as GoalType,

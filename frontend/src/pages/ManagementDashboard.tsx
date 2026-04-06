@@ -109,29 +109,50 @@ const ManagementDashboard = () => {
     setEmails(list);
   }, []);
 
-  const loadOverview = useCallback(async () => {
-    const [tt, lec] = await Promise.all([
-      apiGet<TimetableRow[]>("/api/timetable"),
-      apiGet<LectureRow[]>("/api/lectures"),
-    ]);
-    setTimetable(tt);
-    setLectures(lec);
-    setOverviewError("");
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await apiGet<EmailItem[]>("/api/management/emails");
+        if (!cancelled) setEmails(list);
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(
+            e instanceof Error ? e.message : "Could not load records."
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    refreshEmails().catch((e) =>
-      setLoadError(e instanceof Error ? e.message : "Could not load records.")
-    );
-  }, [refreshEmails]);
-
-  useEffect(() => {
-    loadOverview().catch((e) =>
-      setOverviewError(
-        e instanceof Error ? e.message : "Could not load timetable data."
-      )
-    );
-  }, [loadOverview]);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [tt, lec] = await Promise.all([
+          apiGet<TimetableRow[]>("/api/timetable"),
+          apiGet<LectureRow[]>("/api/lectures"),
+        ]);
+        if (!cancelled) {
+          setTimetable(tt);
+          setLectures(lec);
+          setOverviewError("");
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setOverviewError(
+            e instanceof Error ? e.message : "Could not load timetable data."
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredTimetable = useMemo(() => {
     return timetable.filter(
