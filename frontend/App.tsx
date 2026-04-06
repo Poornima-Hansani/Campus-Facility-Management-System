@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import AssignmentExamPage from "./src/pages/AssignmentExamPage";
 
 function App() {
+<<<<<<< HEAD
   const [message, setMessage] = useState<string>("");
 
   useEffect(() => {
@@ -18,6 +19,9 @@ function App() {
       <p>{message}</p>
     </div>
   );
+=======
+  return <AssignmentExamPage />;
+>>>>>>> main
 }
 
 export default App;

@@ -3,15 +3,23 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+<<<<<<< HEAD
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
+=======
+    "dev": "nodemon index.js",
+    "start": "node index.js",
+    "mongo:up": "docker compose up -d",
+    "mongo:down": "docker compose down"
+>>>>>>> main
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+<<<<<<< HEAD
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
@@ -20,5 +28,15 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
+=======
+    "cors": "^2.8.5",
+    "dotenv": "^17.0.0",
+    "express": "^5.1.0",
+    "mongodb": "^7.1.1",
+    "mongoose": "^8.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+>>>>>>> main
   }
 }
