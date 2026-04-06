@@ -1,0 +1,89 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+
+export type UserRole = "student" | "admin";
+
+const STORAGE_KEY = "unimanage_role";
+
+type AuthContextValue = {
+  role: UserRole;
+  isAdmin: boolean;
+  loginAsStudent: () => void;
+  loginAsAdmin: (password: string) => boolean;
+  logoutToStudent: () => void;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+function readStoredRole(): UserRole {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY);
+    if (v === "admin" || v === "student") return v;
+  } catch {
+    /* ignore */
+  }
+  return "student";
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [role, setRole] = useState<UserRole>(() => readStoredRole());
+
+  const persist = useCallback((r: UserRole) => {
+    setRole(r);
+    try {
+      localStorage.setItem(STORAGE_KEY, r);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const loginAsStudent = useCallback(() => {
+    persist("student");
+  }, [persist]);
+
+  const loginAsAdmin = useCallback(
+    (password: string) => {
+      const expected =
+        import.meta.env.VITE_ADMIN_PASSWORD ?? "poorni123";
+      if (password === expected) {
+        persist("admin");
+        return true;
+      }
+      return false;
+    },
+    [persist]
+  );
+
+  const logoutToStudent = useCallback(() => {
+    persist("student");
+  }, [persist]);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      role,
+      isAdmin: role === "admin",
+      loginAsStudent,
+      loginAsAdmin,
+      logoutToStudent,
+    }),
+    [role, loginAsStudent, loginAsAdmin, logoutToStudent]
+  );
+
+  return (
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  );
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return ctx;
+}

@@ -6,6 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
+    "dev": "nodemon index.js",
+    "start": "node index.js",
+    "mongo:up": "docker compose up -d",
+    "mongo:down": "docker compose down"
   },
   "keywords": [],
   "author": "Your Name",
@@ -22,5 +26,13 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
+    "cors": "^2.8.5",
+    "dotenv": "^17.0.0",
+    "express": "^5.1.0",
+    "mongodb": "^7.1.1",
+    "mongoose": "^8.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
   }
 }
