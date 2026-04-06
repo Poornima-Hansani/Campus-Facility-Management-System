@@ -1,0 +1,6 @@
+﻿node_modules/
+.env
+dist/
+build/
+coverage/
+.vscode/
