@@ -28,10 +28,23 @@ const HelpRequestPage = () => {
   }, []);
 
   useEffect(() => {
-    refreshRequests().catch((e) =>
-      setLoadError(e instanceof Error ? e.message : "Could not load requests.")
-    );
-  }, [refreshRequests]);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await apiGet<HelpRequestItem[]>("/api/help-requests");
+        if (!cancelled) setRequests(list);
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(
+            e instanceof Error ? e.message : "Could not load requests."
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [formData, setFormData] = useState({
     studentName: "",

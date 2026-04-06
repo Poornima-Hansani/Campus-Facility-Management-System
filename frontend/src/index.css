@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -46,6 +47,22 @@
 
 .animate-fade-in {
   animation: fade-in 0.5s ease-out forwards;
+=======
+<<<<<<< HEAD
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', sans-serif;
+  }
+}
+=======
+>>>>>>> origin/staging
 :root {
   --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, Segoe UI, sans-serif;
   --color-bg: #f0f4f8;
@@ -146,3 +163,4 @@ button:disabled {
   color: var(--color-text-muted);
   opacity: 0.9;
 }
+>>>>>>> main
