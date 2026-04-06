@@ -22,10 +22,23 @@ const AssignmentExamPage = () => {
   }, []);
 
   useEffect(() => {
-    refreshTasks().catch((e) =>
-      setLoadError(e instanceof Error ? e.message : "Could not load tasks.")
-    );
-  }, [refreshTasks]);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await apiGet<TaskItem[]>("/api/assignments-exams");
+        if (!cancelled) setTasks(list);
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(
+            e instanceof Error ? e.message : "Could not load tasks."
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -65,10 +78,9 @@ const AssignmentExamPage = () => {
     [tasks]
   );
 
-  const overdueCount = useMemo(
-    () => tasks.filter((item) => getStatus(item.dueDate) === "Overdue").length,
-    [tasks]
-  );
+  const overdueCount = tasks.filter(
+    (item) => getStatus(item.dueDate) === "Overdue"
+  ).length;
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>

@@ -63,6 +63,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Consumer hook for `ThemeProvider`. */
+// eslint-disable-next-line react-refresh/only-export-components -- hook must live next to context
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) {
