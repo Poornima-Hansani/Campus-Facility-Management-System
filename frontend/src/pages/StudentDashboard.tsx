@@ -1,97 +1,51 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { BookOpen, LogOut, MapPin, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import api from '../services/api';
 
-type FreeTimeSlot = {
-  day: string;
-  from: string;
-  to: string;
-  startTime?: string;
-  endTime?: string;
-  reason?: string;
-  priority?: string;
-  isBookable?: boolean;
-};
-
-type StudyArea = {
-  _id: string;
-  name: string;
-  location: string;
-  type: string;
-  capacity: number;
-  operatingHours: string;
-  features?: string[];
-};
-
-type Booking = {
-  _id: string;
-  studyArea?: {
-    _id: string;
-    name: string;
-  };
-  date: string;
-  timeSlot: string;
-  status: string;
-};
-
-type LabSlot = {
-  labBookingId: string;
-  labNumber: string;
-  startTime: string;
-  endTime: string;
-  purpose?: string;
-};
-
-type LabBooking = {
-  _id: string;
-  labNumber: string;
-  startTime: string;
-  endTime: string;
-  day: string;
-  status: string;
-  purpose?: string;
-};
-
-type GroupedSlots<T> = Record<string, T[]>;
-
-export default function StudentDashboard() {
-  const [_freeTimes, setFreeTimes] = useState<FreeTimeSlot[]>([]);
-  const [_groupedFreeTimes, setGroupedFreeTimes] = useState<GroupedSlots<FreeTimeSlot>>({});
+const StudentDashboard = () => {
+  const [freeTimes, setFreeTimes] = useState([]);
+  const [groupedFreeTimes, setGroupedFreeTimes] = useState({});
   const [studentIdentifier, setStudentIdentifier] = useState('');
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [allBookings, setAllBookings] = useState<Booking[]>([]);
-  const [studyAreas, setStudyAreas] = useState<StudyArea[]>([]);
+  const [bookings, setBookings] = useState([]);
+  const [allBookings, setAllBookings] = useState([]);
+  const [studyAreas, setStudyAreas] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [areasLoading, setAreasLoading] = useState(true);
-  const [labSlotsLoading, setLabSlotsLoading] = useState(true);
-  const [labBookingsLoading, setLabBookingsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
-  const [modalType, setModalType] = useState('');
+  const [modalType, setModalType] = useState(''); // success, error, or confirm
+  
+  // Lab booking states
+  const [labSlots, setLabSlots] = useState({});
+  const [groupedLabSlots, setGroupedLabSlots] = useState({});
+  const [labBookings, setLabBookings] = useState({});
+  const [labSlotsLoading, setLabSlotsLoading] = useState(true);
+  const [labBookingsLoading, setLabBookingsLoading] = useState(true);
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [selectedLabSlot, setSelectedLabSlot] = useState<LabSlot | null>(null);
+  const [selectedLabSlot, setSelectedLabSlot] = useState(null);
   const [bookingDate, setBookingDate] = useState('');
   const [bookingPurpose, setBookingPurpose] = useState('');
-
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const userName = user?.name || 'Student';
+  
+  const user = JSON.parse(localStorage.getItem('user'));
 
   useEffect(() => {
     const fetchFreeTime = async () => {
+      setLoading(true);
       try {
-        const res = await fetch(`http://localhost:3000/api/students/free-times/${user._id}`);
-        const data = await res.json();
+        const res = await api.get(`/api/students/free-times/${user._id}`);
+        const data = res.data;
         
         setStudentIdentifier(data.studentIdentifier || '');
         setGroupedFreeTimes(data.freeTimeSlots || {});
         
-        const flatFreeTimes: FreeTimeSlot[] = [];
+        // Convert grouped slots back to flat array for compatibility with existing UI
+        const flatFreeTimes = [];
         Object.entries(data.freeTimeSlots || {}).forEach(([day, slots]) => {
-          (slots as FreeTimeSlot[]).forEach(slot => {
+          slots.forEach(slot => {
             flatFreeTimes.push({
               day: day,
-              from: slot.startTime || slot.from,
-              to: slot.endTime || slot.to,
+              from: slot.startTime,
+              to: slot.endTime,
               reason: slot.reason,
               priority: slot.priority,
               isBookable: slot.isBookable
@@ -104,15 +58,16 @@ export default function StudentDashboard() {
         console.error('Error fetching free time:', err);
         setFreeTimes([]);
         setGroupedFreeTimes({});
+      } finally {
+        setLoading(false);
       }
     };
 
     const fetchBookings = async () => {
       setBookingsLoading(true);
       try {
-        const res = await fetch(`http://localhost:3000/api/bookings/student/${user._id}`);
-        const data = await res.json();
-        setBookings(data || []);
+        const res = await api.get(`/api/bookings/student/${user._id}`);
+        setBookings(res.data || []);
       } catch (err) {
         console.error('Error fetching bookings:', err);
         setBookings([]);
@@ -123,9 +78,10 @@ export default function StudentDashboard() {
 
     const fetchAllBookings = async () => {
       try {
-        const res = await fetch('http://localhost:3000/api/bookings');
-        const data = await res.json();
-        setAllBookings(data || []);
+        console.log('Fetching all bookings...');
+        const res = await api.get('/api/bookings');
+        console.log('All bookings response:', res.data);
+        setAllBookings(res.data || []);
       } catch (err) {
         console.error('Error fetching all bookings:', err);
         setAllBookings([]);
@@ -135,9 +91,8 @@ export default function StudentDashboard() {
     const fetchStudyAreas = async () => {
       setAreasLoading(true);
       try {
-        const res = await fetch('http://localhost:3000/api/study-areas');
-        const data = await res.json();
-        setStudyAreas(data || []);
+        const res = await api.get('/api/study-areas');
+        setStudyAreas(res.data || []);
       } catch (err) {
         console.error('Error fetching study areas:', err);
         setStudyAreas([]);
@@ -146,11 +101,12 @@ export default function StudentDashboard() {
       }
     };
 
+    // Lab booking functions
     const fetchLabSlots = async () => {
       setLabSlotsLoading(true);
       try {
-        const res = await fetch(`http://localhost:3000/api/students/lab-slots/${user._id}`);
-        const data = await res.json();
+        const res = await api.get(`/api/students/lab-slots/${user._id}`);
+        const data = res.data;
         
         setGroupedLabSlots(data.labSlots || {});
         setLabSlots(data.labSlots || {});
@@ -166,8 +122,8 @@ export default function StudentDashboard() {
     const fetchLabBookings = async () => {
       setLabBookingsLoading(true);
       try {
-        const res = await fetch(`http://localhost:3000/api/students/lab-bookings/${user._id}`);
-        const data = await res.json();
+        const res = await api.get(`/api/students/lab-bookings/${user._id}`);
+        const data = res.data;
         
         setLabBookings(data.labBookings || {});
       } catch (err) {
@@ -178,6 +134,7 @@ export default function StudentDashboard() {
       }
     };
 
+    // Initial fetch
     if (user && user._id) {
       fetchFreeTime();
       fetchBookings();
@@ -187,8 +144,10 @@ export default function StudentDashboard() {
       fetchLabBookings();
     }
 
+    // Refresh data when window gains focus (returning from booking page)
     const handleVisibilityChange = () => {
       if (!document.hidden && user && user._id) {
+        console.log('Window gained focus, refreshing data...');
         fetchBookings();
         fetchAllBookings();
         fetchStudyAreas();
@@ -199,6 +158,7 @@ export default function StudentDashboard() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Cleanup event listener on component unmount
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -213,8 +173,8 @@ export default function StudentDashboard() {
     window.location.href = '/student-dashboard/booking';
   };
 
-  const getDayIcon = (day: string) => {
-    const dayIcons: Record<string, string> = {
+  const getDayIcon = (day) => {
+    const dayIcons = {
       'Monday': '📅',
       'Tuesday': '📆',
       'Wednesday': '📋',
@@ -226,18 +186,71 @@ export default function StudentDashboard() {
     return dayIcons[day] || '📅';
   };
 
-  const getBookingCountForArea = (areaId: string) => {
-    return allBookings.filter(booking => 
-      booking.studyArea && booking.studyArea._id === areaId
-    ).length;
+  const formatTime = (time) => {
+    return time;
   };
 
-  const getRemainingCapacity = (areaId: string, totalCapacity: number) => {
+  const handleDeleteBooking = async (bookingId) => {
+    setModalMessage('Are you sure you want to cancel this booking? This action cannot be undone.');
+    setModalType('confirm');
+    setShowModal(true);
+    
+    // Store booking ID for confirmation
+    window.currentBookingId = bookingId;
+  };
+
+  const confirmDeleteBooking = async () => {
+    setShowModal(false);
+    try {
+      const bookingId = window.currentBookingId;
+      await api.delete(`/api/bookings/${bookingId}`);
+      setBookings(bookings.filter(b => b._id !== bookingId));
+      
+      // Refresh all bookings and study areas to update counts
+      try {
+        const [allBookingsRes, studyAreasRes] = await Promise.all([
+          api.get('/api/bookings'),
+          api.get('/api/study-areas')
+        ]);
+        setAllBookings(allBookingsRes.data || []);
+        setStudyAreas(studyAreasRes.data || []);
+      } catch (refreshErr) {
+        console.error('Error refreshing data after deletion:', refreshErr);
+      }
+      
+      setModalMessage('Booking cancelled successfully! The study area slot is now available.');
+      setModalType('success');
+      setShowModal(true);
+      
+      setTimeout(() => setShowModal(false), 3000);
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      setModalMessage('Failed to cancel booking. Please try again.');
+      setModalType('error');
+      setShowModal(true);
+      
+      setTimeout(() => setShowModal(false), 3000);
+    }
+  };
+
+  const getBookingCountForArea = (areaId) => {
+    console.log('All bookings:', allBookings);
+    console.log('Looking for areaId:', areaId);
+    const count = allBookings.filter(booking => {
+      console.log('Checking booking:', booking);
+      return booking.studyArea && booking.studyArea._id === areaId;
+    }).length;
+    console.log('Count for area:', count);
+    return count;
+  };
+
+  const getRemainingCapacity = (areaId, totalCapacity) => {
     const bookingCount = getBookingCountForArea(areaId);
     return Math.max(0, totalCapacity - bookingCount);
   };
 
-  const handleBookLabSlot = (labSlot: LabSlot) => {
+  // Lab booking handler functions
+  const handleBookLabSlot = (labSlot) => {
     setSelectedLabSlot(labSlot);
     setBookingDate('');
     setBookingPurpose('');
@@ -253,14 +266,10 @@ export default function StudentDashboard() {
     }
 
     try {
-      await fetch(`http://localhost:3000/api/students/book-lab/${user._id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          labBookingId: selectedLabSlot.labBookingId,
-          bookingDate: bookingDate,
-          purpose: bookingPurpose
-        })
+      const response = await api.post(`/api/students/book-lab/${user._id}`, {
+        labBookingId: selectedLabSlot.labBookingId,
+        bookingDate: bookingDate,
+        purpose: bookingPurpose
       });
 
       setModalMessage('Lab slot booked successfully!');
@@ -268,56 +277,50 @@ export default function StudentDashboard() {
       setShowModal(true);
       setShowBookingModal(false);
       
+      // Refresh lab slots and bookings
       const [labSlotsRes, labBookingsRes] = await Promise.all([
-        fetch(`http://localhost:3000/api/students/lab-slots/${user._id}`),
-        fetch(`http://localhost:3000/api/students/lab-bookings/${user._id}`)
+        api.get(`/api/students/lab-slots/${user._id}`),
+        api.get(`/api/students/lab-bookings/${user._id}`)
       ]);
       
-      const slotsData = await labSlotsRes.json();
-      const bookingsData = await labBookingsRes.json();
-      
-      setGroupedLabSlots(slotsData.labSlots || {});
-      setLabBookings(bookingsData.labBookings || {});
+      setGroupedLabSlots(labSlotsRes.data.labSlots || {});
+      setLabBookings(labBookingsRes.data.labBookings || {});
       
       setTimeout(() => setShowModal(false), 3000);
     } catch (error) {
       console.error('Error booking lab slot:', error);
-      setModalMessage('Failed to book lab slot. Please try again.');
+      setModalMessage(error.response?.data?.message || 'Failed to book lab slot. Please try again.');
       setModalType('error');
       setShowModal(true);
       setTimeout(() => setShowModal(false), 3000);
     }
   };
 
-  const handleCancelLabBooking = async (bookingId: string) => {
+  const handleCancelLabBooking = async (bookingId) => {
     setModalMessage('Are you sure you want to cancel this lab booking?');
     setModalType('confirm');
     setShowModal(true);
-    (window as any).currentLabBookingId = bookingId;
+    window.currentLabBookingId = bookingId;
   };
 
   const confirmCancelLabBooking = async () => {
     setShowModal(false);
     try {
-      const bookingId = (window as any).currentLabBookingId;
-      await fetch(`http://localhost:3000/api/students/lab-bookings/${user._id}/${bookingId}`, {
-        method: 'DELETE'
-      });
+      const bookingId = window.currentLabBookingId;
+      await api.delete(`/api/students/lab-bookings/${user._id}/${bookingId}`);
       
       setModalMessage('Lab booking cancelled successfully!');
       setModalType('success');
       setShowModal(true);
       
+      // Refresh lab bookings and slots
       const [labSlotsRes, labBookingsRes] = await Promise.all([
-        fetch(`http://localhost:3000/api/students/lab-slots/${user._id}`),
-        fetch(`http://localhost:3000/api/students/lab-bookings/${user._id}`)
+        api.get(`/api/students/lab-slots/${user._id}`),
+        api.get(`/api/students/lab-bookings/${user._id}`)
       ]);
       
-      const slotsData = await labSlotsRes.json();
-      const bookingsData = await labBookingsRes.json();
-      
-      setGroupedLabSlots(slotsData.labSlots || {});
-      setLabBookings(bookingsData.labBookings || {});
+      setGroupedLabSlots(labSlotsRes.data.labSlots || {});
+      setLabBookings(labBookingsRes.data.labBookings || {});
       
       setTimeout(() => setShowModal(false), 3000);
     } catch (error) {
@@ -329,407 +332,1549 @@ export default function StudentDashboard() {
     }
   };
 
+  // Update modal confirmation handler to handle lab bookings
   const handleModalConfirm = () => {
-    if (modalType === 'confirm' && (window as any).currentLabBookingId) {
+    if (modalType === 'confirm' && window.currentLabBookingId) {
       confirmCancelLabBooking();
+    } else if (modalType === 'confirm' && window.currentBookingId) {
+      confirmDeleteBooking();
     } else {
       setShowModal(false);
     }
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-teal-700 via-teal-800 to-teal-900">
-      <div className="absolute inset-0 bg-black/20"></div>
-      
-      <div className="absolute top-0 left-0 w-96 h-96 bg-teal-400 opacity-20 blur-3xl rounded-full animate-pulse"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-teal-400 opacity-20 blur-3xl rounded-full animate-pulse delay-2000"></div>
-      
-      <div className="relative z-10 max-w-6xl mx-auto space-y-6 p-6">
+    <div style={{ 
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      padding: '20px',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* Animated Background Elements */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        zIndex: 0
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: '10%',
+          left: '10%',
+          width: '300px',
+          height: '300px',
+          background: 'radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%)',
+          borderRadius: '50%',
+          animation: 'float 6s ease-in-out infinite'
+        }}></div>
+        <div style={{
+          position: 'absolute',
+          top: '60%',
+          right: '15%',
+          width: '200px',
+          height: '200px',
+          background: 'radial-gradient(circle, rgba(240, 147, 251, 0.1) 0%, transparent 70%)',
+          borderRadius: '50%',
+          animation: 'float 8s ease-in-out infinite reverse'
+        }}></div>
+        <div style={{
+          position: 'absolute',
+          bottom: '20%',
+          left: '20%',
+          width: '150px',
+          height: '150px',
+          background: 'radial-gradient(circle, rgba(167, 139, 250, 0.1) 0%, transparent 70%)',
+          borderRadius: '50%',
+          animation: 'float 7s ease-in-out infinite'
+        }}></div>
+      </div>
+
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '40px',
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(20px)',
+        padding: '30px',
+        borderRadius: '24px',
+        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.2)',
+        position: 'relative',
+        zIndex: 10,
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        animation: 'slideDown 0.6s ease-out'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '20px'
+        }}>
+          <div style={{
+            width: '60px',
+            height: '60px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            boxShadow: '0 8px 16px rgba(102, 126, 234, 0.3)'
+          }}>
+            👤
+          </div>
+          <div>
+            <h1 style={{ 
+              margin: 0,
+              fontSize: '32px',
+              fontWeight: '800',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              letterSpacing: '-0.5px'
+            }}>
+              Student Dashboard
+            </h1>
+            <p style={{ 
+              margin: '4px 0 0 0',
+              color: '#64748b',
+              fontSize: '15px',
+              fontWeight: '500'
+            }}>
+              Welcome back, {user?.name || 'Student'}! ✨
+            </p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            onClick={goToBooking}
+            style={{
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              color: 'white',
+              border: 'none',
+              padding: '14px 28px',
+              borderRadius: '16px',
+              fontSize: '15px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.transform = 'translateY(-3px) scale(1.05)';
+              e.target.style.boxShadow = '0 15px 35px rgba(16, 185, 129, 0.4)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.transform = 'translateY(0) scale(1)';
+              e.target.style.boxShadow = '0 10px 25px rgba(16, 185, 129, 0.3)';
+            }}
+          >
+            <span style={{
+              position: 'relative',
+              zIndex: 1
+            }}>
+              📚 Book Study Area
+            </span>
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: '-100%',
+              width: '100%',
+              height: '100%',
+              background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)',
+              transition: 'left 0.6s'
+            }}></div>
+          </button>
+          <button
+            onClick={handleLogout}
+            style={{
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              color: 'white',
+              border: 'none',
+              padding: '14px 28px',
+              borderRadius: '16px',
+              fontSize: '15px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 10px 25px rgba(239, 68, 68, 0.3)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.transform = 'translateY(-3px) scale(1.05)';
+              e.target.style.boxShadow = '0 15px 35px rgba(239, 68, 68, 0.4)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.transform = 'translateY(0) scale(1)';
+              e.target.style.boxShadow = '0 10px 25px rgba(239, 68, 68, 0.3)';
+            }}
+          >
+            <span style={{
+              position: 'relative',
+              zIndex: 1
+            }}>
+              🚪 Logout
+            </span>
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: '-100%',
+              width: '100%',
+              height: '100%',
+              background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)',
+              transition: 'left 0.6s'
+            }}></div>
+          </button>
+        </div>
+      </div>
+
+      {/* Lab Slots Section */}
+      <div style={{
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(20px)',
+        borderRadius: '25px',
+        padding: '35px',
+        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        position: 'relative',
+        overflow: 'hidden',
+        marginBottom: '40px'
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: '-50px',
+          right: '-50px',
+          width: '150px',
+          height: '150px',
+          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+          borderRadius: '50%',
+          opacity: '0.1'
+        }}></div>
         
-        {/* Header */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-6 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center text-2xl shadow-lg">
-              👤
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-teal-700 bg-clip-text text-transparent">
-                Student Dashboard
-              </h1>
-              <p className="text-gray-500 text-sm">
-                Welcome back, {userName}! ✨
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <Link
-              to="/reporting-dashboard"
-              className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all duration-300 hover:scale-105 shadow-lg"
-            >
-              <AlertCircle size={18} />
-              Report Issue
-            </Link>
-            <button
-              onClick={goToBooking}
-              className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all duration-300 hover:scale-105 shadow-lg"
-            >
-              <BookOpen size={18} />
-              Book Study Area
-            </button>
-            <button
-              onClick={handleLogout}
-              className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all duration-300 hover:scale-105 shadow-lg"
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
-          </div>
-        </div>
+        <h2 style={{
+          margin: '0 0 25px 0',
+          fontSize: '28px',
+          fontWeight: '800',
+          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          🔬 Available Lab Slots
+          {studentIdentifier && (
+            <span style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+              color: 'white',
+              padding: '6px 12px',
+              borderRadius: '20px',
+              WebkitTextFillColor: 'white',
+              WebkitBackgroundClip: 'unset',
+              backgroundClip: 'unset'
+            }}>
+              {studentIdentifier}
+            </span>
+          )}
+        </h2>
 
-        {/* Lab Slots Section */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-6">
-          <h2 className="text-xl font-bold text-teal-600 mb-4 flex items-center gap-2">
-            🔬 Available Lab Slots
-            {studentIdentifier && (
-              <span className="text-sm font-normal bg-teal-100 text-teal-700 px-3 py-1 rounded-full">
-                {studentIdentifier}
-              </span>
-            )}
-          </h2>
-
-          {_labSlotsLoading ? (
-            <div className="flex justify-center items-center h-40 text-gray-500">
-              Loading lab slots...
+        {labSlotsLoading ? (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '200px',
+            color: '#64748b',
+            fontSize: '16px'
+          }}>
+            Loading lab slots...
+          </div>
+        ) : Object.keys(groupedLabSlots).length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '60px 20px',
+            color: '#64748b'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              marginBottom: '16px'
+            }}>
+              🔬
             </div>
-          ) : Object.keys(groupedLabSlots).length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <div className="text-4xl mb-3">🔬</div>
-              <h3 className="font-semibold text-gray-700">No Lab Slots Available</h3>
-              <p className="text-sm">There are currently no available lab slots for your schedule.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {Object.entries(groupedLabSlots).map(([day, slots]) => (
-                <div key={day} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-2xl">{getDayIcon(day)}</span>
-                    <div>
-                      <h3 className="font-semibold text-gray-800">{day}</h3>
-                      <p className="text-xs text-gray-500">{slots.length} lab slot{slots.length !== 1 ? 's' : ''} available</p>
-                    </div>
+            <h3 style={{
+              margin: '0 0 8px 0',
+              fontSize: '20px',
+              fontWeight: '600',
+              color: '#475569'
+            }}>
+              No Lab Slots Available
+            </h3>
+            <p style={{
+              margin: 0,
+              fontSize: '15px',
+              color: '#64748b'
+            }}>
+              There are currently no available lab slots for your schedule.
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gap: '25px'
+          }}>
+            {Object.entries(groupedLabSlots).map(([day, slots]) => (
+              <div key={day} style={{
+                background: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: '20px',
+                padding: '25px',
+                border: '1px solid rgba(59, 130, 246, 0.1)',
+                transition: 'all 0.3s ease'
+              }}>
+                {/* Day Header */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '15px',
+                  marginBottom: '20px'
+                }}>
+                  <div style={{
+                    fontSize: '28px',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}>
+                    {getDayIcon(day)}
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {slots.map((slot, slotIndex) => (
-                      <div key={`${day}-${slotIndex}`} className="bg-white rounded-lg p-4 border border-teal-100 hover:shadow-md transition-all">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="bg-teal-500 text-white px-2 py-1 rounded-lg text-xs font-semibold">
-                            {slot.labNumber}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center mb-2 text-sm">
-                          <div className="text-center">
-                            <p className="text-xs text-gray-500 uppercase">From</p>
-                            <p className="font-semibold text-teal-600">🕐 {slot.startTime}</p>
+                  <div>
+                    <h3 style={{
+                      margin: 0,
+                      fontSize: '20px',
+                      fontWeight: '700',
+                      color: '#1f2937'
+                    }}>
+                      {day}
+                    </h3>
+                    <p style={{
+                      margin: '2px 0 0 0',
+                      fontSize: '14px',
+                      color: '#6b7280'
+                    }}>
+                      {slots.length} lab slot{slots.length !== 1 ? 's' : ''} available
+                    </p>
+                  </div>
+                </div>
+
+                {/* Lab Slots for this Day */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                  gap: '15px'
+                }}>
+                  {slots.map((slot, slotIndex) => (
+                    <div
+                      key={`${day}-${slotIndex}`}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.9)',
+                        backdropFilter: 'blur(10px)',
+                        borderRadius: '15px',
+                        padding: '20px',
+                        border: '1px solid rgba(59, 130, 246, 0.15)',
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-3px)';
+                        e.currentTarget.style.boxShadow = '0 10px 25px rgba(59, 130, 246, 0.15)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 5px 15px rgba(59, 130, 246, 0.1)';
+                      }}
+                    >
+                      {/* Lab Number Badge */}
+                      <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                        color: 'white',
+                        padding: '4px 10px',
+                        borderRadius: '12px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        textTransform: 'uppercase',
+                        boxShadow: '0 3px 10px rgba(59, 130, 246, 0.3)'
+                      }}>
+                        {slot.labNumber}
+                      </div>
+
+                      {/* Time Display */}
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '12px'
+                      }}>
+                        <div style={{ textAlign: 'center', flex: 1 }}>
+                          <div style={{
+                            fontSize: '11px',
+                            color: '#6b7280',
+                            textTransform: 'uppercase',
+                            fontWeight: '600',
+                            marginBottom: '3px'
+                          }}>
+                            From
                           </div>
-                          <div className="w-8 h-0.5 bg-gradient-to-r from-teal-400 to-teal-600"></div>
-                          <div className="text-center">
-                            <p className="text-xs text-gray-500 uppercase">To</p>
-                            <p className="font-semibold text-teal-700">🕑 {slot.endTime}</p>
+                          <div style={{
+                            fontSize: '16px',
+                            fontWeight: '700',
+                            color: '#3b82f6'
+                          }}>
+                            🕐 {formatTime(slot.startTime)}
                           </div>
                         </div>
-                        <p className="text-xs text-gray-600 text-center mb-2">💡 {slot.purpose || 'Lab Session'}</p>
+                        
+                        <div style={{
+                          width: '30px',
+                          height: '2px',
+                          background: 'linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)',
+                          margin: '0 10px',
+                          borderRadius: '2px'
+                        }}></div>
+                        
+                        <div style={{ textAlign: 'center', flex: 1 }}>
+                          <div style={{
+                            fontSize: '11px',
+                            color: '#6b7280',
+                            textTransform: 'uppercase',
+                            fontWeight: '600',
+                            marginBottom: '3px'
+                          }}>
+                            To
+                          </div>
+                          <div style={{
+                            fontSize: '16px',
+                            fontWeight: '700',
+                            color: '#1d4ed8'
+                          }}>
+                            🕑 {formatTime(slot.endTime)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Purpose */}
+                      <div style={{
+                        padding: '8px 12px',
+                        background: 'rgba(59, 130, 246, 0.05)',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        color: '#374151',
+                        textAlign: 'center',
+                        fontWeight: '500',
+                        marginBottom: '12px'
+                      }}>
+                        💡 {slot.purpose || 'Lab Session'}
+                      </div>
+
+                      {/* Book Button */}
+                      <button
+                        onClick={() => handleBookLabSlot(slot)}
+                        style={{
+                          width: '100%',
+                          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                          color: 'white',
+                          border: 'none',
+                          padding: '10px 16px',
+                          borderRadius: '10px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease',
+                          boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                        }}
+                        onMouseOver={(e) => {
+                          e.target.style.transform = 'translateY(-2px)';
+                          e.target.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
+                        }}
+                        onMouseOut={(e) => {
+                          e.target.style.transform = 'translateY(0)';
+                          e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+                        }}
+                      >
+                        📅 Book This Slot
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Lab Bookings Section */}
+      <div style={{
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(20px)',
+        borderRadius: '25px',
+        padding: '35px',
+        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        position: 'relative',
+        overflow: 'hidden',
+        marginBottom: '40px'
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: '-50px',
+          right: '-50px',
+          width: '150px',
+          height: '150px',
+          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+          borderRadius: '50%',
+          opacity: '0.1'
+        }}></div>
+        
+        <h2 style={{
+          margin: '0 0 25px 0',
+          fontSize: '28px',
+          fontWeight: '800',
+          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          📅 Your Lab Bookings
+        </h2>
+
+        {labBookingsLoading ? (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '200px',
+            color: '#64748b',
+            fontSize: '16px'
+          }}>
+            Loading your lab bookings...
+          </div>
+        ) : Object.keys(labBookings).length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '60px 20px',
+            color: '#64748b'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              marginBottom: '16px'
+            }}>
+              📅
+            </div>
+            <h3 style={{
+              margin: '0 0 8px 0',
+              fontSize: '20px',
+              fontWeight: '600',
+              color: '#475569'
+            }}>
+              No Lab Bookings
+            </h3>
+            <p style={{
+              margin: 0,
+              fontSize: '15px',
+              color: '#64748b'
+            }}>
+              You haven't booked any lab slots yet.
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gap: '20px'
+          }}>
+            {Object.entries(labBookings).map(([date, bookings]) => (
+              <div key={date} style={{
+                background: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: '20px',
+                padding: '20px',
+                border: '1px solid rgba(16, 185, 129, 0.1)'
+              }}>
+                <h4 style={{
+                  margin: '0 0 15px 0',
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  color: '#059669'
+                }}>
+                  📅 {new Date(date).toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </h4>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                  gap: '15px'
+                }}>
+                  {bookings.map((booking) => (
+                    <div key={booking._id} style={{
+                      background: 'rgba(255, 255, 255, 0.9)',
+                      borderRadius: '12px',
+                      padding: '15px',
+                      border: '1px solid rgba(16, 185, 129, 0.15)',
+                      position: 'relative'
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        background: booking.status === 'confirmed' 
+                          ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                          : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                        color: 'white',
+                        padding: '3px 8px',
+                        borderRadius: '8px',
+                        fontSize: '10px',
+                        fontWeight: '600',
+                        textTransform: 'uppercase'
+                      }}>
+                        {booking.status}
+                      </div>
+                      
+                      <div style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#1f2937',
+                        marginBottom: '8px'
+                      }}>
+                        🔬 {booking.labNumber}
+                      </div>
+                      
+                      <div style={{
+                        fontSize: '13px',
+                        color: '#6b7280',
+                        marginBottom: '4px'
+                      }}>
+                        🕐 {booking.startTime} - {booking.endTime}
+                      </div>
+                      
+                      <div style={{
+                        fontSize: '13px',
+                        color: '#6b7280',
+                        marginBottom: '8px'
+                      }}>
+                        📋 {booking.day}
+                      </div>
+                      
+                      {booking.purpose && (
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#374151',
+                          fontStyle: 'italic',
+                          marginBottom: '10px'
+                        }}>
+                          💡 {booking.purpose}
+                        </div>
+                      )}
+                      
+                      {booking.status === 'confirmed' && (
                         <button
-                          onClick={() => handleBookLabSlot(slot)}
-                          className="w-full bg-teal-500 hover:bg-teal-600 text-white py-2 rounded-lg text-sm font-medium transition-all"
+                          onClick={() => handleCancelLabBooking(booking._id)}
+                          style={{
+                            width: '100%',
+                            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                            color: 'white',
+                            border: 'none',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease'
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.transform = 'translateY(-1px)';
+                            e.target.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)';
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.transform = 'translateY(0)';
+                            e.target.style.boxShadow = 'none';
+                          }}
                         >
-                          📅 Book This Slot
+                          ❌ Cancel Booking
                         </button>
-                      </div>
-                    ))}
-                  </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-        {/* Lab Bookings Section */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-6">
-          <h2 className="text-xl font-bold text-teal-600 mb-4 flex items-center gap-2">
-            📅 Your Lab Bookings
-          </h2>
+      {/* Study Areas Section */}
+      <div style={{
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(20px)',
+        borderRadius: '25px',
+        padding: '35px',
+        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        position: 'relative',
+        overflow: 'hidden',
+        marginBottom: '40px'
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: '-50px',
+          right: '-50px',
+          width: '150px',
+          height: '150px',
+          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+          borderRadius: '50%',
+          opacity: '0.1'
+        }}></div>
+        
+        <h2 style={{
+          margin: '0 0 25px 0',
+          fontSize: '28px',
+          fontWeight: '800',
+          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          📚 Study Areas
+        </h2>
 
-          {labBookingsLoading ? (
-            <div className="flex justify-center items-center h-40 text-gray-500">
-              Loading your lab bookings...
+        {areasLoading ? (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '200px',
+            color: '#64748b',
+            fontSize: '16px'
+          }}>
+            Loading study areas...
+          </div>
+        ) : studyAreas.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '60px 20px',
+            color: '#64748b'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              marginBottom: '16px'
+            }}>
+              📚
             </div>
-          ) : Object.keys(labBookings).length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <div className="text-4xl mb-3">📅</div>
-              <h3 className="font-semibold text-gray-700">No Lab Bookings</h3>
-              <p className="text-sm">You haven't booked any lab slots yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {Object.entries(labBookings).map(([date, dateBookings]) => (
-                <div key={date} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <h4 className="font-semibold text-teal-700 mb-3">
-                    📅 {new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {dateBookings.map((booking) => (
-                      <div key={booking._id} className="bg-white rounded-lg p-3 border border-teal-100 relative">
-                        <div className={`absolute top-2 right-2 px-2 py-1 rounded text-xs font-semibold ${
-                          booking.status === 'confirmed' 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-amber-100 text-amber-700'
-                        }`}>
-                          {booking.status}
-                        </div>
-                        <p className="font-medium text-gray-800 text-sm">🔬 {booking.labNumber}</p>
-                        <p className="text-xs text-gray-500">🕐 {booking.startTime} - {booking.endTime}</p>
-                        <p className="text-xs text-gray-500">📋 {booking.day}</p>
-                        {booking.purpose && <p className="text-xs text-gray-600 italic">💡 {booking.purpose}</p>}
-                        {booking.status === 'confirmed' && (
-                          <button
-                            onClick={() => handleCancelLabBooking(booking._id)}
-                            className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white py-1.5 rounded text-xs font-medium transition-all"
-                          >
-                            ❌ Cancel Booking
-                          </button>
-                        )}
-                      </div>
-                    ))}
+            <h3 style={{
+              margin: '0 0 8px 0',
+              fontSize: '20px',
+              fontWeight: '600',
+              color: '#475569'
+            }}>
+              No Study Areas Available
+            </h3>
+            <p style={{
+              margin: 0,
+              fontSize: '15px',
+              color: '#64748b'
+            }}>
+              There are currently no study areas available for booking.
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '20px'
+          }}>
+            {studyAreas.map((area) => {
+              const bookingCount = getBookingCountForArea(area._id);
+              const remainingCapacity = getRemainingCapacity(area._id, area.capacity);
+              const isFullyBooked = remainingCapacity === 0;
+              
+              return (
+                <div
+                  key={area._id}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.9)',
+                    backdropFilter: 'blur(10px)',
+                    borderRadius: '20px',
+                    padding: '25px',
+                    border: '1px solid rgba(245, 158, 11, 0.15)',
+                    transition: 'all 0.3s ease',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-5px)';
+                    e.currentTarget.style.boxShadow = '0 15px 35px rgba(245, 158, 11, 0.15)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 5px 15px rgba(245, 158, 11, 0.1)';
+                  }}
+                >
+                  {/* Capacity Badge */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    background: isFullyBooked 
+                      ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                      : remainingCapacity <= area.capacity * 0.2
+                      ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                      : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    padding: '6px 12px',
+                    borderRadius: '15px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    boxShadow: '0 3px 10px rgba(0, 0, 0, 0.2)'
+                  }}>
+                    {remainingCapacity}/{area.capacity} slots
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* Study Areas Section */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-6">
-          <h2 className="text-xl font-bold text-teal-600 mb-4 flex items-center gap-2">
-            📚 Study Areas
-          </h2>
+                  {/* Study Area Name */}
+                  <h3 style={{
+                    margin: '0 0 15px 0',
+                    fontSize: '22px',
+                    fontWeight: '700',
+                    color: '#1f2937'
+                  }}>
+                    📚 {area.name}
+                  </h3>
 
-          {areasLoading ? (
-            <div className="flex justify-center items-center h-40 text-gray-500">
-              Loading study areas...
-            </div>
-          ) : studyAreas.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <div className="text-4xl mb-3">📚</div>
-              <h3 className="font-semibold text-gray-700">No Study Areas Available</h3>
-              <p className="text-sm">There are currently no study areas available for booking.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {studyAreas.map((area) => {
-                const bookingCount = getBookingCountForArea(area._id);
-                const remainingCapacity = getRemainingCapacity(area._id, area.capacity);
-                const isFullyBooked = remainingCapacity === 0;
-                
-                return (
-                  <div key={area._id} className="bg-gray-50 rounded-xl p-4 border border-gray-100 hover:shadow-md transition-all">
-                    <div className={`absolute top-2 right-2 px-2 py-1 rounded text-xs font-semibold ${
-                      isFullyBooked 
-                        ? 'bg-red-500 text-white' 
-                        : remainingCapacity <= area.capacity * 0.2
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-green-500 text-white'
-                    }`}>
-                      {remainingCapacity}/{area.capacity} slots
+                  {/* Study Area Details */}
+                  <div style={{
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#6b7280',
+                      marginBottom: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      📍 {area.location}
                     </div>
-                    <h3 className="font-bold text-gray-800 text-lg mb-2">📚 {area.name}</h3>
-                    <div className="space-y-1 mb-3 text-sm text-gray-600">
-                      <p className="flex items-center gap-1"><MapPin size={14} /> {area.location}</p>
-                      <p className="flex items-center gap-1">🏷️ {area.type}</p>
-                      <p className="flex items-center gap-1"><Clock size={14} /> {area.operatingHours}</p>
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#6b7280',
+                      marginBottom: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      🏷️ {area.type}
                     </div>
-                    <div className="mb-3">
-                      <div className="flex justify-between text-xs text-gray-500 mb-1">
-                        <span>Occupancy</span>
-                        <span>{Math.round((bookingCount / area.capacity) * 100)}%</span>
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#6b7280',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      ⏰ {area.operatingHours}
+                    </div>
+                  </div>
+
+                  {/* Capacity Progress Bar */}
+                  <div style={{
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: '12px',
+                      color: '#6b7280',
+                      marginBottom: '5px'
+                    }}>
+                      <span>Occupancy</span>
+                      <span>{Math.round((bookingCount / area.capacity) * 100)}%</span>
+                    </div>
+                    <div style={{
+                      width: '100%',
+                      height: '8px',
+                      background: '#e5e7eb',
+                      borderRadius: '4px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        width: `${(bookingCount / area.capacity) * 100}%`,
+                        height: '100%',
+                        background: isFullyBooked 
+                          ? 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)'
+                          : remainingCapacity <= area.capacity * 0.2
+                          ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)'
+                          : 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                        transition: 'width 0.3s ease'
+                      }}></div>
+                    </div>
+                  </div>
+
+                  {/* Features */}
+                  {area.features && area.features.length > 0 && (
+                    <div style={{
+                      marginBottom: '20px'
+                    }}>
+                      <div style={{
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginBottom: '8px'
+                      }}>
+                        Features:
                       </div>
-                      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full transition-all ${
-                            isFullyBooked 
-                              ? 'bg-red-500' 
-                              : remainingCapacity <= area.capacity * 0.2
-                              ? 'bg-amber-500'
-                              : 'bg-green-500'
-                          }`}
-                          style={{ width: `${(bookingCount / area.capacity) * 100}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    {area.features && area.features.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-3">
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '6px'
+                      }}>
                         {area.features.map((feature, index) => (
-                          <span key={index} className="bg-teal-100 text-teal-700 px-2 py-0.5 rounded text-xs">
+                          <span
+                            key={index}
+                            style={{
+                              background: 'rgba(245, 158, 11, 0.1)',
+                              color: '#d97706',
+                              padding: '4px 8px',
+                              borderRadius: '8px',
+                              fontSize: '11px',
+                              fontWeight: '500'
+                            }}
+                          >
                             {feature}
                           </span>
                         ))}
                       </div>
-                    )}
-                    <button
-                      onClick={() => goToBooking()}
-                      disabled={isFullyBooked}
-                      className={`w-full py-2.5 rounded-lg font-medium transition-all ${
-                        isFullyBooked
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : 'bg-teal-500 hover:bg-teal-600 text-white'
-                      }`}
-                    >
-                      {isFullyBooked ? '🔒 Fully Booked' : '📚 Book This Area'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                    </div>
+                  )}
 
-        {/* Your Bookings Section */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-6">
-          <h2 className="text-xl font-bold text-teal-600 mb-4 flex items-center gap-2">
-            📅 Your Study Area Bookings
-          </h2>
-
-          {bookingsLoading ? (
-            <div className="flex justify-center items-center h-40 text-gray-500">
-              Loading your bookings...
-            </div>
-          ) : bookings.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <div className="text-4xl mb-3">📅</div>
-              <h3 className="font-semibold text-gray-700">No Bookings Yet</h3>
-              <p className="text-sm">You haven't made any study area bookings yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {bookings.map((booking) => (
-                <div key={booking._id} className="bg-gray-50 rounded-xl p-4 border border-gray-100 flex justify-between items-center">
-                  <div>
-                    <h4 className="font-semibold text-gray-800">📚 {booking.studyArea?.name || 'Study Area'}</h4>
-                    <p className="text-sm text-gray-500">{booking.date} • {booking.timeSlot}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-                      <CheckCircle size={14} />
-                      {booking.status || 'Confirmed'}
-                    </span>
-                  </div>
+                  {/* Book Button */}
+                  <button
+                    onClick={() => goToBooking()}
+                    disabled={isFullyBooked}
+                    style={{
+                      width: '100%',
+                      background: isFullyBooked
+                        ? 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)'
+                        : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '14px 20px',
+                      borderRadius: '12px',
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      cursor: isFullyBooked ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.3s ease',
+                      boxShadow: isFullyBooked
+                        ? 'none'
+                        : '0 6px 16px rgba(245, 158, 11, 0.3)',
+                      opacity: isFullyBooked ? 0.6 : 1
+                    }}
+                    onMouseOver={(e) => {
+                      if (!isFullyBooked) {
+                        e.target.style.transform = 'translateY(-2px)';
+                        e.target.style.boxShadow = '0 8px 20px rgba(245, 158, 11, 0.4)';
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!isFullyBooked) {
+                        e.target.style.transform = 'translateY(0)';
+                        e.target.style.boxShadow = '0 6px 16px rgba(245, 158, 11, 0.3)';
+                      }
+                    }}
+                  >
+                    {isFullyBooked ? '🔒 Fully Booked' : '📚 Book This Area'}
+                  </button>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-xl">
-            {modalType === 'success' && (
-              <div className="text-center">
-                <div className="text-4xl mb-3">✅</div>
-                <p className="text-gray-700">{modalMessage}</p>
-              </div>
-            )}
-            {modalType === 'error' && (
-              <div className="text-center">
-                <div className="text-4xl mb-3">❌</div>
-                <p className="text-gray-700">{modalMessage}</p>
-              </div>
-            )}
-            {modalType === 'confirm' && (
-              <div className="text-center">
-                <div className="text-4xl mb-3">⚠️</div>
-                <p className="text-gray-700 mb-4">{modalMessage}</p>
-                <div className="flex gap-3 justify-center">
-                  <button
-                    onClick={() => setShowModal(false)}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleModalConfirm}
-                    className="px-4 py-2 bg-red-500 text-white rounded-lg"
-                  >
-                    Confirm
-                  </button>
-                </div>
-              </div>
-            )}
-            {modalType !== 'confirm' && (
-              <button
-                onClick={() => setShowModal(false)}
-                className="mt-4 w-full py-2 bg-teal-500 text-white rounded-lg"
-              >
-                Close
-              </button>
-            )}
+      {/* Your Bookings Section */}
+      <div style={{
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(20px)',
+        borderRadius: '25px',
+        padding: '35px',
+        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        position: 'relative',
+        overflow: 'hidden',
+        marginBottom: '40px'
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: '-50px',
+          right: '-50px',
+          width: '150px',
+          height: '150px',
+          background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+          borderRadius: '50%',
+          opacity: '0.1'
+        }}></div>
+        
+        <h2 style={{
+          margin: '0 0 25px 0',
+          fontSize: '28px',
+          fontWeight: '800',
+          background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          📅 Your Study Area Bookings
+        </h2>
+
+        {bookingsLoading ? (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '200px',
+            color: '#64748b',
+            fontSize: '16px'
+          }}>
+            Loading your bookings...
           </div>
-        </div>
-      )}
+        ) : bookings.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '60px 20px',
+            color: '#64748b'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              marginBottom: '16px'
+            }}>
+              📅
+            </div>
+            <h3 style={{
+              margin: '0 0 8px 0',
+              fontSize: '20px',
+              fontWeight: '600',
+              color: '#475569'
+            }}>
+              No Bookings Yet
+            </h3>
+            <p style={{
+              margin: 0,
+              fontSize: '15px',
+              color: '#64748b'
+            }}>
+              You haven't made any study area bookings yet.
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gap: '15px'
+          }}>
+            {bookings.map((booking) => (
+              <div
+                key={booking._id}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  backdropFilter: 'blur(10px)',
+                  borderRadius: '15px',
+                  padding: '20px',
+                  border: '1px solid rgba(139, 92, 246, 0.15)',
+                  position: 'relative',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-3px)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px rgba(139, 92, 246, 0.15)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 5px 15px rgba(139, 92, 246, 0.1)';
+                }}
+              >
+                {/* Status Badge */}
+                <div style={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: '10px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: 'white',
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  textTransform: 'uppercase',
+                  boxShadow: '0 3px 10px rgba(16, 185, 129, 0.3)'
+                }}>
+                  {booking.status || 'Confirmed'}
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '15px'
+                }}>
+                  <div>
+                    <h4 style={{
+                      margin: '0 0 8px 0',
+                      fontSize: '18px',
+                      fontWeight: '700',
+                      color: '#1f2937'
+                    }}>
+                      📚 {booking.studyArea?.name || 'Study Area'}
+                    </h4>
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#6b7280',
+                      marginBottom: '4px'
+                    }}>
+                      📍 {booking.studyArea?.location || 'Location'}
+                    </div>
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#6b7280'
+                    }}>
+                      🕐 {booking.startTime} - {booking.endTime}
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    textAlign: 'right'
+                  }}>
+                    <div style={{
+                      fontSize: '13px',
+                      color: '#6b7280',
+                      marginBottom: '4px'
+                    }}>
+                      📅 {new Date(booking.date).toLocaleDateString()}
+                    </div>
+                    <div style={{
+                      fontSize: '13px',
+                      color: '#6b7280'
+                    }}>
+                      👥 {booking.participants || 1} participant{booking.participants !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                </div>
+
+                {booking.purpose && (
+                  <div style={{
+                    padding: '8px 12px',
+                    background: 'rgba(139, 92, 246, 0.05)',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    fontStyle: 'italic',
+                    marginBottom: '15px'
+                  }}>
+                    💡 {booking.purpose}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => handleDeleteBooking(booking._id)}
+                  style={{
+                    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 6px 16px rgba(239, 68, 68, 0.4)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)';
+                  }}
+                >
+                  ❌ Cancel Booking
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Lab Booking Modal */}
       {showBookingModal && selectedLabSlot && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-xl">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Book Lab Slot</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Lab Number</label>
-                <p className="text-teal-600 font-semibold">{selectedLabSlot.labNumber}</p>
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.5)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            padding: '30px',
+            width: '90%',
+            maxWidth: '500px',
+            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)',
+            animation: 'slideInUp 0.3s ease-out'
+          }}>
+            <h3 style={{
+              margin: '0 0 20px 0',
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#1f2937'
+            }}>
+              📅 Book Lab Slot
+            </h3>
+            
+            <div style={{
+              background: 'rgba(59, 130, 246, 0.05)',
+              borderRadius: '12px',
+              padding: '15px',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#3b82f6',
+                marginBottom: '8px'
+              }}>
+                🔬 {selectedLabSlot.labNumber}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                <p className="text-gray-600">{selectedLabSlot.startTime} - {selectedLabSlot.endTime}</p>
+              <div style={{
+                fontSize: '14px',
+                color: '#6b7280',
+                marginBottom: '4px'
+              }}>
+                📅 {selectedLabSlot.day}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                <input
-                  type="date"
-                  value={bookingDate}
-                  onChange={(e) => setBookingDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Purpose (optional)</label>
-                <input
-                  type="text"
-                  value={bookingPurpose}
-                  onChange={(e) => setBookingPurpose(e.target.value)}
-                  placeholder="Enter purpose"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
+              <div style={{
+                fontSize: '14px',
+                color: '#6b7280'
+              }}>
+                🕐 {selectedLabSlot.startTime} - {selectedLabSlot.endTime}
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                📅 Booking Date
+              </label>
+              <input
+                type="date"
+                value={bookingDate}
+                onChange={(e) => setBookingDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.3s ease'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#3b82f6';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#e5e7eb';
+                }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '25px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                💡 Purpose (Optional)
+              </label>
+              <textarea
+                value={bookingPurpose}
+                onChange={(e) => setBookingPurpose(e.target.value)}
+                placeholder="What do you need this lab slot for?"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  resize: 'vertical',
+                  minHeight: '80px',
+                  transition: 'border-color 0.3s ease'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#3b82f6';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#e5e7eb';
+                }}
+              />
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
               <button
                 onClick={() => setShowBookingModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg"
+                style={{
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.background = '#e5e7eb';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.background = '#f3f4f6';
+                }}
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmLabBooking}
-                className="flex-1 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600"
+                style={{
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+                }}
               >
-                Confirm Booking
+                📅 Confirm Booking
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* General Modal */}
+      {showModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.5)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            padding: '30px',
+            width: '90%',
+            maxWidth: '400px',
+            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)',
+            animation: 'slideInUp 0.3s ease-out',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              marginBottom: '16px'
+            }}>
+              {modalType === 'success' ? '✅' : modalType === 'error' ? '❌' : '⚠️'}
+            </div>
+            <h3 style={{
+              margin: '0 0 16px 0',
+              fontSize: '20px',
+              fontWeight: '700',
+              color: '#1f2937'
+            }}>
+              {modalType === 'success' ? 'Success!' : modalType === 'error' ? 'Error' : 'Confirm Action'}
+            </h3>
+            <p style={{
+              margin: '0 0 24px 0',
+              fontSize: '15px',
+              color: '#6b7280',
+              lineHeight: '1.5'
+            }}>
+              {modalMessage}
+            </p>
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'center'
+            }}>
+              {modalType === 'confirm' && (
+                <button
+                  onClick={() => setShowModal(false)}
+                  style={{
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    padding: '12px 24px',
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.background = '#e5e7eb';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.background = '#f3f4f6';
+                  }}
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                onClick={modalType === 'confirm' ? handleModalConfirm : () => setShowModal(false)}
+                style={{
+                  background: modalType === 'success' 
+                    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                    : modalType === 'error'
+                    ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                    : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: modalType === 'success' 
+                    ? '0 4px 12px rgba(16, 185, 129, 0.3)'
+                    : modalType === 'error'
+                    ? '0 4px 12px rgba(239, 68, 68, 0.3)'
+                    : '0 4px 12px rgba(59, 130, 246, 0.3)'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = modalType === 'success' 
+                    ? '0 6px 16px rgba(16, 185, 129, 0.4)'
+                    : modalType === 'error'
+                    ? '0 6px 16px rgba(239, 68, 68, 0.4)'
+                    : '0 6px 16px rgba(59, 130, 246, 0.4)';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = modalType === 'success' 
+                    ? '0 4px 12px rgba(16, 185, 129, 0.3)'
+                    : modalType === 'error'
+                    ? '0 4px 12px rgba(239, 68, 68, 0.3)'
+                    : '0 4px 12px rgba(59, 130, 246, 0.3)';
+                }}
+              >
+                {modalType === 'confirm' ? 'Confirm' : 'OK'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSS Animations */}
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+        
+        @keyframes slideInUp {
+          from {
+            transform: translateY(30px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes slideDown {
+          from {
+            transform: translateY(-30px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
-}
+};
+
+export default StudentDashboard;

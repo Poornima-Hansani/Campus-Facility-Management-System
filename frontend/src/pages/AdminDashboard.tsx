@@ -1,33 +1,27 @@
-import { Link } from "react-router-dom";
-import Layout from "../components/Layout";
-import TimetableManager from "../components/TimetableManager";
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import AdminSidebar from '../components/AdminSidebar';
+import AdminNavbar from '../components/AdminNavbar';
+import '../styles/admin.css';
 
 const AdminDashboard = () => {
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = '/login';
+  };
+
   return (
-    <Layout>
-      <div className="content-card admin-dashboard-intro">
-        <div className="section-head">
-          <div>
-            <h2>Administrator dashboard</h2>
-            <p>
-              Add and maintain the official module timetable. Students discover
-              these sessions on the Lecture Availability page. Use Management
-              Dashboard for encouragement emails and catalog comparison.
-            </p>
-          </div>
-        </div>
-        <div className="admin-dashboard-actions">
-          <Link
-            to="/management-dashboard"
-            className="secondary-form-btn admin-dashboard-link"
-          >
-            Open Management Dashboard
-          </Link>
+    <div style={{ display: 'flex', height: '100vh' }}>
+      <AdminSidebar handleLogout={handleLogout} />
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <AdminNavbar handleLogout={handleLogout} />
+
+        <div className="admin-content">
+          <Outlet />
         </div>
       </div>
-
-      <TimetableManager />
-    </Layout>
+    </div>
   );
 };
 
