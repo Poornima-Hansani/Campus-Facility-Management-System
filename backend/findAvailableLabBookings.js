@@ -119,7 +119,7 @@ function findOverlappingTimeSlots(studentSlots, labSlots) {
 
       if (overlapStart < overlapEnd) {
         const duration = overlapEnd - overlapStart;
-        if (duration >= 60) { // Minimum 1 hour
+        if (duration >= 240) { // Minimum 4 hours
           overlappingSlots.push({
             startTime: minutesToTime(overlapStart),
             endTime: minutesToTime(overlapEnd),

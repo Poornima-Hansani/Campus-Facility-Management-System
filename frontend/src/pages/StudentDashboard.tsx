@@ -26,7 +26,8 @@ const StudentDashboard = () => {
   const [bookingDate, setBookingDate] = useState('');
   const [bookingPurpose, setBookingPurpose] = useState('');
   
-  const user = JSON.parse(localStorage.getItem('user'));
+  const storedUser = JSON.parse(localStorage.getItem('user'));
+  const user = storedUser ? { ...storedUser, _id: storedUser._id || storedUser.id } : null;
 
   useEffect(() => {
     const fetchFreeTime = async () => {
@@ -346,7 +347,7 @@ const StudentDashboard = () => {
   return (
     <div style={{ 
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+      background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 50%, #064e3b 100%)',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       padding: '20px',
       position: 'relative',
@@ -378,7 +379,7 @@ const StudentDashboard = () => {
           right: '15%',
           width: '200px',
           height: '200px',
-          background: 'radial-gradient(circle, rgba(240, 147, 251, 0.1) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(20, 184, 166, 0.1) 0%, transparent 70%)',
           borderRadius: '50%',
           animation: 'float 8s ease-in-out infinite reverse'
         }}></div>
@@ -388,7 +389,7 @@ const StudentDashboard = () => {
           left: '20%',
           width: '150px',
           height: '150px',
-          background: 'radial-gradient(circle, rgba(167, 139, 250, 0.1) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%)',
           borderRadius: '50%',
           animation: 'float 7s ease-in-out infinite'
         }}></div>
@@ -418,13 +419,13 @@ const StudentDashboard = () => {
           <div style={{
             width: '60px',
             height: '60px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',
             borderRadius: '16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '24px',
-            boxShadow: '0 8px 16px rgba(102, 126, 234, 0.3)'
+            boxShadow: '0 8px 16px rgba(20, 184, 166, 0.3)'
           }}>
             👤
           </div>
@@ -433,7 +434,7 @@ const StudentDashboard = () => {
               margin: 0,
               fontSize: '32px',
               fontWeight: '800',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -555,7 +556,7 @@ const StudentDashboard = () => {
           right: '-50px',
           width: '150px',
           height: '150px',
-          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+          background: 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',
           borderRadius: '50%',
           opacity: '0.1'
         }}></div>
@@ -564,7 +565,7 @@ const StudentDashboard = () => {
           margin: '0 0 25px 0',
           fontSize: '28px',
           fontWeight: '800',
-          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+          background: 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
@@ -577,7 +578,7 @@ const StudentDashboard = () => {
             <span style={{
               fontSize: '14px',
               fontWeight: '600',
-              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+              background: 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',
               color: 'white',
               padding: '6px 12px',
               borderRadius: '20px',
@@ -640,7 +641,7 @@ const StudentDashboard = () => {
                 backdropFilter: 'blur(10px)',
                 borderRadius: '20px',
                 padding: '25px',
-                border: '1px solid rgba(59, 130, 246, 0.1)',
+                border: '1px solid rgba(20, 184, 166, 0.1)',
                 transition: 'all 0.3s ease'
               }}>
                 {/* Day Header */}
@@ -652,7 +653,7 @@ const StudentDashboard = () => {
                 }}>
                   <div style={{
                     fontSize: '28px',
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                    background: 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text'
@@ -692,18 +693,18 @@ const StudentDashboard = () => {
                         backdropFilter: 'blur(10px)',
                         borderRadius: '15px',
                         padding: '20px',
-                        border: '1px solid rgba(59, 130, 246, 0.15)',
+                        border: '1px solid rgba(20, 184, 166, 0.15)',
                         transition: 'all 0.3s ease',
                         position: 'relative',
                         overflow: 'hidden'
                       }}
                       onMouseOver={(e) => {
                         e.currentTarget.style.transform = 'translateY(-3px)';
-                        e.currentTarget.style.boxShadow = '0 10px 25px rgba(59, 130, 246, 0.15)';
+                        e.currentTarget.style.boxShadow = '0 10px 25px rgba(20, 184, 166, 0.15)';
                       }}
                       onMouseOut={(e) => {
                         e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 5px 15px rgba(59, 130, 246, 0.1)';
+                        e.currentTarget.style.boxShadow = '0 5px 15px rgba(20, 184, 166, 0.1)';
                       }}
                     >
                       {/* Lab Number Badge */}
@@ -711,14 +712,14 @@ const StudentDashboard = () => {
                         position: 'absolute',
                         top: '10px',
                         right: '10px',
-                        background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                        background: 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',
                         color: 'white',
                         padding: '4px 10px',
                         borderRadius: '12px',
                         fontSize: '11px',
                         fontWeight: '600',
                         textTransform: 'uppercase',
-                        boxShadow: '0 3px 10px rgba(59, 130, 246, 0.3)'
+                        boxShadow: '0 3px 10px rgba(20, 184, 166, 0.3)'
                       }}>
                         {slot.labNumber}
                       </div>
@@ -743,7 +744,7 @@ const StudentDashboard = () => {
                           <div style={{
                             fontSize: '16px',
                             fontWeight: '700',
-                            color: '#3b82f6'
+                            color: '#14b8a6'
                           }}>
                             🕐 {formatTime(slot.startTime)}
                           </div>
@@ -752,7 +753,7 @@ const StudentDashboard = () => {
                         <div style={{
                           width: '30px',
                           height: '2px',
-                          background: 'linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)',
+                          background: 'linear-gradient(90deg, #14b8a6 0%, #0f766e 100%)',
                           margin: '0 10px',
                           borderRadius: '2px'
                         }}></div>
@@ -770,7 +771,7 @@ const StudentDashboard = () => {
                           <div style={{
                             fontSize: '16px',
                             fontWeight: '700',
-                            color: '#1d4ed8'
+                            color: '#0f766e'
                           }}>
                             🕑 {formatTime(slot.endTime)}
                           </div>
@@ -780,7 +781,7 @@ const StudentDashboard = () => {
                       {/* Purpose */}
                       <div style={{
                         padding: '8px 12px',
-                        background: 'rgba(59, 130, 246, 0.05)',
+                        background: 'rgba(20, 184, 166, 0.05)',
                         borderRadius: '8px',
                         fontSize: '13px',
                         color: '#374151',
@@ -796,7 +797,7 @@ const StudentDashboard = () => {
                         onClick={() => handleBookLabSlot(slot)}
                         style={{
                           width: '100%',
-                          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                          background: 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',
                           color: 'white',
                           border: 'none',
                           padding: '10px 16px',
@@ -805,15 +806,15 @@ const StudentDashboard = () => {
                           fontWeight: '600',
                           cursor: 'pointer',
                           transition: 'all 0.3s ease',
-                          boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                          boxShadow: '0 4px 12px rgba(20, 184, 166, 0.3)'
                         }}
                         onMouseOver={(e) => {
                           e.target.style.transform = 'translateY(-2px)';
-                          e.target.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
+                          e.target.style.boxShadow = '0 6px 16px rgba(20, 184, 166, 0.4)';
                         }}
                         onMouseOut={(e) => {
                           e.target.style.transform = 'translateY(0)';
-                          e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+                          e.target.style.boxShadow = '0 4px 12px rgba(20, 184, 166, 0.3)';
                         }}
                       >
                         📅 Book This Slot
@@ -1341,7 +1342,7 @@ const StudentDashboard = () => {
           right: '-50px',
           width: '150px',
           height: '150px',
-          background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+          background: 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',
           borderRadius: '50%',
           opacity: '0.1'
         }}></div>
@@ -1350,7 +1351,7 @@ const StudentDashboard = () => {
           margin: '0 0 25px 0',
           fontSize: '28px',
           fontWeight: '800',
-          background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+          background: 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
@@ -1413,17 +1414,17 @@ const StudentDashboard = () => {
                   backdropFilter: 'blur(10px)',
                   borderRadius: '15px',
                   padding: '20px',
-                  border: '1px solid rgba(139, 92, 246, 0.15)',
+                  border: '1px solid rgba(20, 184, 166, 0.15)',
                   position: 'relative',
                   transition: 'all 0.3s ease'
                 }}
                 onMouseOver={(e) => {
                   e.currentTarget.style.transform = 'translateY(-3px)';
-                  e.currentTarget.style.boxShadow = '0 10px 25px rgba(139, 92, 246, 0.15)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px rgba(20, 184, 166, 0.15)';
                 }}
                 onMouseOut={(e) => {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 5px 15px rgba(139, 92, 246, 0.1)';
+                  e.currentTarget.style.boxShadow = '0 5px 15px rgba(20, 184, 166, 0.1)';
                 }}
               >
                 {/* Status Badge */}
@@ -1495,7 +1496,7 @@ const StudentDashboard = () => {
                 {booking.purpose && (
                   <div style={{
                     padding: '8px 12px',
-                    background: 'rgba(139, 92, 246, 0.05)',
+                    background: 'rgba(20, 184, 166, 0.05)',
                     borderRadius: '8px',
                     fontSize: '13px',
                     color: '#374151',
@@ -1571,7 +1572,7 @@ const StudentDashboard = () => {
             </h3>
             
             <div style={{
-              background: 'rgba(59, 130, 246, 0.05)',
+              background: 'rgba(20, 184, 166, 0.05)',
               borderRadius: '12px',
               padding: '15px',
               marginBottom: '20px'
@@ -1579,7 +1580,7 @@ const StudentDashboard = () => {
               <div style={{
                 fontSize: '16px',
                 fontWeight: '600',
-                color: '#3b82f6',
+                color: '#14b8a6',
                 marginBottom: '8px'
               }}>
                 🔬 {selectedLabSlot.labNumber}
@@ -1623,7 +1624,7 @@ const StudentDashboard = () => {
                   transition: 'border-color 0.3s ease'
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = '#3b82f6';
+                  e.target.style.borderColor = '#14b8a6';
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = '#e5e7eb';
@@ -1657,7 +1658,7 @@ const StudentDashboard = () => {
                   transition: 'border-color 0.3s ease'
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = '#3b82f6';
+                  e.target.style.borderColor = '#14b8a6';
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = '#e5e7eb';
@@ -1695,7 +1696,7 @@ const StudentDashboard = () => {
               <button
                 onClick={handleConfirmLabBooking}
                 style={{
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  background: 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',
                   color: 'white',
                   border: 'none',
                   padding: '12px 24px',
@@ -1704,15 +1705,15 @@ const StudentDashboard = () => {
                   fontWeight: '600',
                   cursor: 'pointer',
                   transition: 'all 0.3s ease',
-                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                  boxShadow: '0 4px 12px rgba(20, 184, 166, 0.3)'
                 }}
                 onMouseOver={(e) => {
                   e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
+                  e.target.style.boxShadow = '0 6px 16px rgba(20, 184, 166, 0.4)';
                 }}
                 onMouseOut={(e) => {
                   e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(20, 184, 166, 0.3)';
                 }}
               >
                 📅 Confirm Booking
@@ -1805,7 +1806,7 @@ const StudentDashboard = () => {
                     ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
                     : modalType === 'error'
                     ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-                    : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                    : 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',
                   color: 'white',
                   border: 'none',
                   padding: '12px 24px',
@@ -1818,7 +1819,7 @@ const StudentDashboard = () => {
                     ? '0 4px 12px rgba(16, 185, 129, 0.3)'
                     : modalType === 'error'
                     ? '0 4px 12px rgba(239, 68, 68, 0.3)'
-                    : '0 4px 12px rgba(59, 130, 246, 0.3)'
+                    : '0 4px 12px rgba(20, 184, 166, 0.3)'
                 }}
                 onMouseOver={(e) => {
                   e.target.style.transform = 'translateY(-2px)';
@@ -1826,7 +1827,7 @@ const StudentDashboard = () => {
                     ? '0 6px 16px rgba(16, 185, 129, 0.4)'
                     : modalType === 'error'
                     ? '0 6px 16px rgba(239, 68, 68, 0.4)'
-                    : '0 6px 16px rgba(59, 130, 246, 0.4)';
+                    : '0 6px 16px rgba(20, 184, 166, 0.4)';
                 }}
                 onMouseOut={(e) => {
                   e.target.style.transform = 'translateY(0)';
@@ -1834,7 +1835,7 @@ const StudentDashboard = () => {
                     ? '0 4px 12px rgba(16, 185, 129, 0.3)'
                     : modalType === 'error'
                     ? '0 4px 12px rgba(239, 68, 68, 0.3)'
-                    : '0 4px 12px rgba(59, 130, 246, 0.3)';
+                    : '0 4px 12px rgba(20, 184, 166, 0.3)';
                 }}
               >
                 {modalType === 'confirm' ? 'Confirm' : 'OK'}

@@ -172,7 +172,7 @@ labFreeTimeSchema.methods.generateFreeSlots = function(occupiedSlots) {
       // Add free slot before occupied slot if there's a gap
       if (currentTime < occupiedStart) {
         const duration = (occupiedStart - currentTime) / (1000 * 60 * 60);
-        if (duration >= 0.5) { // Minimum 30 minutes
+        if (duration >= 4) { // Minimum 4 hours
           freeSlots.push({
             day: day,
             startTime: currentTime.toTimeString().slice(0, 5),
@@ -206,7 +206,7 @@ labFreeTimeSchema.methods.generateFreeSlots = function(occupiedSlots) {
       // Add free slot after last occupied slot if there's time remaining
       if (currentTime < dayEnd) {
         const duration = (dayEnd - currentTime) / (1000 * 60 * 60);
-        if (duration >= 0.5) { // Minimum 30 minutes
+        if (duration >= 4) { // Minimum 4 hours
           freeSlots.push({
             day: day,
             startTime: currentTime.toTimeString().slice(0, 5),

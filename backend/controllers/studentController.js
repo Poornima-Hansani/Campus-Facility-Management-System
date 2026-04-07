@@ -3,6 +3,7 @@ const Timetable = require('../models/Timetable');
 const StudentFreeTime = require('../models/StudentFreeTime');
 const LabBooking = require('../models/LabBooking');
 const StudentLabBooked = require('../models/StudentLabBooked');
+const LabTimetable = require('../models/LabTimetable');
 
 const timeToMinutes = (time) => {
   const [h, m] = time.split(':').map(Number);
@@ -224,6 +225,16 @@ exports.bookLabSlot = async (req, res) => {
       return res.status(400).json({ message: 'This lab slot is no longer available' });
     }
 
+    // ✅ FIX: Check if booking is at least 1 hour in advance
+    const bookingDateTime = new Date(bookingDate);
+    const [hours, minutes] = labBooking.startTime.split(':').map(Number);
+    bookingDateTime.setHours(hours, minutes, 0, 0);
+    
+    const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
+    if (bookingDateTime < oneHourFromNow) {
+      return res.status(400).json({ message: 'Lab bookings must be requested at least 1 hour in advance' });
+    }
+
     // Generate studentIdentifier
     const batchType = student.wewd === 'WE' ? 'weekend' : 'weekday';
     const studentIdentifier = `${student.year}S${student.semester}_${batchType}_${student.faculty}_${student.group}`;
@@ -263,6 +274,41 @@ exports.bookLabSlot = async (req, res) => {
     // Update the original lab booking status if needed
     labBooking.status = 'confirmed';
     await labBooking.save();
+
+    // ✅ FIX: Update LabTimetable with the new reserved slot
+    let labTimetable = await LabTimetable.findOne({ 
+      labNumber: { $in: [labBooking.labNumber, `Lab${labBooking.labNumber}`] }
+    });
+
+    if (labTimetable) {
+      labTimetable.slots.push({
+        day: labBooking.day,
+        startTime: labBooking.startTime,
+        endTime: labBooking.endTime,
+        status: 'reserved',
+        title: `Booked by ${studentIdentifier}`,
+        subject: purpose || labBooking.purpose || 'Self Study',
+        sessionType: 'lab',
+        studentCount: 1,
+        studentBatches: [{
+          batchType: batchType,
+          faculty: student.faculty,
+          year: student.year,
+          semester: student.semester,
+          group: student.group,
+          title: `Booked by ${student.name}`
+        }]
+      });
+      await labTimetable.save();
+      
+      // ✅ FIX: Recalculate idle time automatically after schedule update
+      const { updateFreeTimeOnTimetableChange } = require('../utils/freeTimeGenerator');
+      try {
+        await updateFreeTimeOnTimetableChange(labBooking.labNumber);
+      } catch (err) {
+        console.error('Error recalculating idle time:', err);
+      }
+    }
 
     res.status(201).json({
       message: 'Lab slot booked successfully',
