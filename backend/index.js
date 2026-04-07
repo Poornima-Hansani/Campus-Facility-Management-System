@@ -391,6 +391,12 @@ app.post('/api/management/approve-fix', async (req, res) => {
     report.updatedAt = new Date().toISOString();
     await report.save();
     
+    // Mark management_fix_complete notifications as read for this report
+    await Notification.updateMany(
+      { reportId: reportId, type: 'management_fix_complete' },
+      { read: true }
+    );
+    
     // Notify student
     const notification = new Notification({
       type: 'student_fixed',
