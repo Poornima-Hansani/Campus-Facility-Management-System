@@ -283,7 +283,7 @@ export default function ManagementDashboard() {
             </div>
             <div className="p-6">
               <p className="text-gray-600 mb-4 font-medium">Select a staff member to assign:</p>
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
                 {staff.map((s) => (
                   <button
                     key={s.id}

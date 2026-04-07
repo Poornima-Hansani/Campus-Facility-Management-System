@@ -80,10 +80,12 @@ export default function ReportingDashboard() {
 
   const submitted = reports.length;
   const pending = reports.filter(r => r.status === 'Pending' || r.status === 'Action Required').length;
+  const inProgress = reports.filter(r => r.status === 'In Progress' || r.status === 'Assigned').length;
   const fixed = reports.filter(r => r.status === 'Fixed').length;
 
   const chartData = [
     { name: 'Pending', value: pending, color: '#F59E0B' },
+    { name: 'In Progress', value: inProgress, color: '#3B82F6' },
     { name: 'Fixed', value: fixed, color: '#10B981' },
   ].filter(d => d.value > 0);
 
@@ -122,7 +124,7 @@ export default function ReportingDashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-4 gap-4 mb-6">
           <div className="bg-white/80 backdrop-blur-sm p-5 rounded-xl shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1">
             <p className="text-gray-500 text-sm">Submitted</p>
             <h2 className="text-2xl font-bold text-blue-600">{submitted}</h2>
@@ -130,6 +132,10 @@ export default function ReportingDashboard() {
           <div className="bg-white/80 backdrop-blur-sm p-5 rounded-xl shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1">
             <p className="text-gray-500 text-sm">Pending</p>
             <h2 className="text-2xl font-bold text-yellow-500">{pending}</h2>
+          </div>
+          <div className="bg-white/80 backdrop-blur-sm p-5 rounded-xl shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1">
+            <p className="text-gray-500 text-sm">In Progress</p>
+            <h2 className="text-2xl font-bold text-blue-500">{inProgress}</h2>
           </div>
           <div className="bg-white/80 backdrop-blur-sm p-5 rounded-xl shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1">
             <p className="text-gray-500 text-sm">Fixed</p>
@@ -342,7 +348,7 @@ export default function ReportingDashboard() {
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                     report.status === 'Fixed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                   }`}>
-                    {report.status === 'Fixed' ? 'Fixed' : 'Pending'}
+                    {report.status === 'Fixed' ? 'Fixed' : report.status === 'Action Required' ? 'Action Required' : 'Pending'}
                   </span>
                 </div>
               ))}

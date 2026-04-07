@@ -296,13 +296,13 @@ export default function StaffDashboard() {
                     <h4 className="font-bold text-white">Notifications</h4>
                   </div>
                   <div className="max-h-64 overflow-y-auto">
-                    {notifications.length === 0 ? (
+                    {notifications.filter(n => !n.read).length === 0 ? (
                       <div className="p-4 text-center text-gray-500">
                         <Bell className="mx-auto mb-2 text-gray-300" size={32} />
                         <p className="text-sm">No notifications</p>
                       </div>
                     ) : (
-                      notifications.map((notif) => (
+                      notifications.filter(n => !n.read).map((notif) => (
                         <div key={notif.id} className="px-4 py-3 border-b border-gray-100 hover:bg-blue-50 transition-colors">
                           <div className="flex items-start gap-3">
                             <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-100">
