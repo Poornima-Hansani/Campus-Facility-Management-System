@@ -1,13 +1,27 @@
-const express = require('express');
-const cors = require('cors');
+const path = require("path");
+const express = require("express");
+const cors = require("cors");
 const mongoose = require("mongoose");
 const multer = require('multer');
-const path = require('path');
 const fs = require('fs');
-require("dotenv").config();
+
+require("dotenv").config({ path: path.join(__dirname, ".env") });
+
+const academicTaskRoutes = require("./routes/academicTaskRoutes");
+const lectureRoutes = require("./routes/lectureRoutes");
+const lectureReminderRoutes = require("./routes/lectureReminderRoutes");
+const timetableRoutes = require("./routes/timetableRoutes");
+const assignmentExamRoutes = require("./routes/assignmentExamRoutes");
+const studyGoalRoutes = require("./routes/studyGoalRoutes");
+const helpRequestRoutes = require("./routes/helpRequestRoutes");
+const managementEmailRoutes = require("./routes/managementEmailRoutes");
+
+const Reminder = require("./models/Reminder");
+const AcademicTask = require("./models/AcademicTask");
+const { seedDatabase } = require("./seed/seedDatabase");
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -38,14 +52,28 @@ const upload = multer({
   }
 });
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log("MongoDB connected ✅"))
-  .catch((err) => console.log("MongoDB connection error:", err));
+app.use(cors());
+app.use(express.json());
+app.use('/uploads', express.static(uploadsDir));
 
-// ============= MONGOOSE SCHEMAS =============
+const staffMembers = [
+  { id: 'STF001', name: 'Kamal Perera', role: 'Electrician', specialty: 'A/C & Electronics', phone: '+94 71 234 5678', email: 'kamal@university.edu' },
+  { id: 'STF002', name: 'Sunil Fernando', role: 'Plumber', specialty: 'Water & Drainage', phone: '+94 71 345 6789', email: 'sunil@university.edu' },
+  { id: 'STF003', name: 'Nimal Silva', role: 'Cleaner', specialty: 'Hygiene & Sanitation', phone: '+94 71 456 7890', email: 'nimal@university.edu' },
+  { id: 'STF004', name: 'Ranjith Jayawardena', role: 'Technician', specialty: 'General Repairs', phone: '+94 71 567 8901', email: 'ranjith@university.edu' },
+  { id: 'STF005', name: 'Priya Kumari', role: 'Supervisor', specialty: 'All Rounder', phone: '+94 71 678 9012', email: 'priya@university.edu' }
+];
 
-// Report Schema
+const staffCredentials = {
+  'STF001': 'kamal123',
+  'STF002': 'sunil123',
+  'STF003': 'nimal123',
+  'STF004': 'ranjith123',
+  'STF005': 'priya123'
+};
+
+const generateId = () => Math.random().toString(36).substr(2, 9);
+
 const reportSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   studentId: { type: String, required: true },
@@ -69,7 +97,6 @@ const reportSchema = new mongoose.Schema({
 
 const Report = mongoose.model('Report', reportSchema);
 
-// Registered Staff Schema
 const registeredStaffSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
@@ -83,10 +110,9 @@ const registeredStaffSchema = new mongoose.Schema({
 
 const RegisteredStaff = mongoose.model('RegisteredStaff', registeredStaffSchema);
 
-// Notification Schema
 const notificationSchema = new mongoose.Schema({
   type: { type: String, required: true },
-  recipientType: { type: String, required: true }, // 'staff', 'management', 'student'
+  recipientType: { type: String, required: true },
   recipientId: { type: String, required: true },
   message: { type: String, required: true },
   reportId: { type: String, default: null },
@@ -100,38 +126,17 @@ const notificationSchema = new mongoose.Schema({
 
 const Notification = mongoose.model('Notification', notificationSchema);
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use('/uploads', express.static(uploadsDir));
+app.use("/api/tasks", academicTaskRoutes);
+app.use("/api/lectures", lectureRoutes);
+app.use("/api/lecture-reminders", lectureReminderRoutes);
+app.use("/api/timetable", timetableRoutes);
+app.use("/api/assignments-exams", assignmentExamRoutes);
+app.use("/api/study-goals", studyGoalRoutes);
+app.use("/api/help-requests", helpRequestRoutes);
+app.use("/api/management/emails", managementEmailRoutes);
 
-// Predefined staff (for demo)
-const staffMembers = [
-  { id: 'STF001', name: 'Kamal Perera', role: 'Electrician', specialty: 'A/C & Electronics', phone: '+94 71 234 5678', email: 'kamal@university.edu' },
-  { id: 'STF002', name: 'Sunil Fernando', role: 'Plumber', specialty: 'Water & Drainage', phone: '+94 71 345 6789', email: 'sunil@university.edu' },
-  { id: 'STF003', name: 'Nimal Silva', role: 'Cleaner', specialty: 'Hygiene & Sanitation', phone: '+94 71 456 7890', email: 'nimal@university.edu' },
-  { id: 'STF004', name: 'Ranjith Jayawardena', role: 'Technician', specialty: 'General Repairs', phone: '+94 71 567 8901', email: 'ranjith@university.edu' },
-  { id: 'STF005', name: 'Priya Kumari', role: 'Supervisor', specialty: 'All Rounder', phone: '+94 71 678 9012', email: 'priya@university.edu' }
-];
-
-const staffCredentials = {
-  'STF001': 'kamal123',
-  'STF002': 'sunil123',
-  'STF003': 'nimal123',
-  'STF004': 'ranjith123',
-  'STF005': 'priya123'
-};
-
-// Helper ID logic
-const generateId = () => Math.random().toString(36).substr(2, 9);
-
-// ============= REPORT ENDPOINTS =============
-
-// POST /api/reports - Submit a new issue
 app.post('/api/reports', upload.single('image'), async (req, res) => {
   try {
-    console.log('Received POST /api/reports');
-    
     const { location, issueType, comment, studentId } = req.body;
     
     if (!location || !issueType) {
@@ -164,9 +169,7 @@ app.post('/api/reports', upload.single('image'), async (req, res) => {
     });
 
     await newReport.save();
-    console.log('Report created:', newReport.id);
 
-    // Escalate Logic: If 5 or more 'Pending' reports for same location & issueType -> change to 'Action Required'
     const matchingReports = await Report.find({ location, issueType, status: 'Pending' });
     
     if (matchingReports.length >= 5) {
@@ -183,7 +186,6 @@ app.post('/api/reports', upload.single('image'), async (req, res) => {
   }
 });
 
-// GET /api/reports - Get student's report history
 app.get('/api/reports', async (req, res) => {
   try {
     const { studentId } = req.query;
@@ -195,7 +197,6 @@ app.get('/api/reports', async (req, res) => {
   }
 });
 
-// POST /api/reports/:id/rate - Submit rating for a fixed issue
 app.post('/api/reports/:id/rate', async (req, res) => {
   try {
     const { id } = req.params;
@@ -215,9 +216,6 @@ app.post('/api/reports/:id/rate', async (req, res) => {
   }
 });
 
-// ============= MANAGEMENT ENDPOINTS =============
-
-// GET /api/management/dashboard - Get management dashboard data
 app.get('/api/management/dashboard', async (req, res) => {
   try {
     const allReports = await Report.find({});
@@ -230,7 +228,7 @@ app.get('/api/management/dashboard', async (req, res) => {
       : 0;
 
     const avgResponseTime = (() => {
-      const fixedWithTime = allReports.filter(r => r.status === 'Fixed' && r.fixedAt);
+      const fixedWithTime = allReports.filter(r => r.status === 'Fixed ' && r.fixedAt);
       if (fixedWithTime.length === 0) return 0;
       const totalMs = fixedWithTime.reduce((sum, r) => sum + (new Date(r.fixedAt) - new Date(r.createdAt)), 0);
       const avgMs = totalMs / fixedWithTime.length;
@@ -238,7 +236,6 @@ app.get('/api/management/dashboard', async (req, res) => {
       return Math.min(Math.max(avgMinutes, 15), 180);
     })();
 
-    // Group escalations
     const groupMap = {};
     allReports.forEach(r => {
       if (r.status === 'Fixed') return;
@@ -286,7 +283,6 @@ app.get('/api/management/dashboard', async (req, res) => {
   }
 });
 
-// POST /api/management/fix - Mark assigned issues as fixed
 app.post('/api/management/fix', async (req, res) => {
   try {
     const { ids } = req.body;
@@ -303,7 +299,6 @@ app.post('/api/management/fix', async (req, res) => {
   }
 });
 
-// GET /api/management/staff - Get all staff members
 app.get('/api/management/staff', async (req, res) => {
   try {
     const registeredFromDb = await RegisteredStaff.find({});
@@ -322,7 +317,6 @@ app.get('/api/management/staff', async (req, res) => {
   }
 });
 
-// POST /api/management/assign - Assign staff to issues
 app.post('/api/management/assign', async (req, res) => {
   try {
     const { ids, staffId } = req.body;
@@ -336,7 +330,6 @@ app.post('/api/management/assign', async (req, res) => {
       return res.status(400).json({ error: 'Invalid staff member' });
     }
     
-    // Update reports
     await Report.updateMany(
       { id: { $in: ids } },
       { 
@@ -350,7 +343,6 @@ app.post('/api/management/assign', async (req, res) => {
       }
     );
 
-    // Create notification for staff
     for (const id of ids) {
       const report = await Report.findOne({ id });
       if (report) {
@@ -376,7 +368,6 @@ app.post('/api/management/assign', async (req, res) => {
   }
 });
 
-// POST /api/management/approve-fix - Management approves fix and notifies student
 app.post('/api/management/approve-fix', async (req, res) => {
   try {
     const { reportId } = req.body;
@@ -391,13 +382,11 @@ app.post('/api/management/approve-fix', async (req, res) => {
     report.updatedAt = new Date().toISOString();
     await report.save();
     
-    // Mark management_fix_complete notifications as read for this report
     await Notification.updateMany(
       { reportId: reportId, type: 'management_fix_complete' },
       { read: true }
     );
     
-    // Notify student
     const notification = new Notification({
       type: 'student_fixed',
       recipientType: 'student',
@@ -417,7 +406,6 @@ app.post('/api/management/approve-fix', async (req, res) => {
   }
 });
 
-// GET /api/management/charts - Get chart data
 app.get('/api/management/charts', async (req, res) => {
   try {
     const allReports = await Report.find({});
@@ -461,7 +449,6 @@ app.get('/api/management/charts', async (req, res) => {
   }
 });
 
-// GET /api/management/weekly-summary - Get weekly performance summary
 app.get('/api/management/weekly-summary', async (req, res) => {
   try {
     const now = new Date();
@@ -497,9 +484,6 @@ app.get('/api/management/weekly-summary', async (req, res) => {
   }
 });
 
-// ============= STAFF API ENDPOINTS =============
-
-// POST /api/staff/register - Register new staff
 app.post('/api/staff/register', async (req, res) => {
   try {
     const { name, role, specialty, phone, email, password, confirmPassword } = req.body;
@@ -516,19 +500,16 @@ app.post('/api/staff/register', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
     
-    // Check phone in predefined staff
     const existingPhonePredefined = staffMembers.find(s => s.phone === phone);
     if (existingPhonePredefined) {
       return res.status(400).json({ error: 'Phone number already registered' });
     }
     
-    // Check phone in database
     const existingPhoneDb = await RegisteredStaff.findOne({ phone });
     if (existingPhoneDb) {
       return res.status(400).json({ error: 'Phone number already registered' });
     }
     
-    // Generate staff ID
     const count = await RegisteredStaff.countDocuments();
     const staffId = `STF${String(count + staffMembers.length + 1).padStart(3, '0')}`;
     
@@ -544,8 +525,6 @@ app.post('/api/staff/register', async (req, res) => {
     });
     
     await newStaff.save();
-    
-    console.log('New staff registered:', staffId, name);
     
     res.status(201).json({ 
       message: 'Registration successful',
@@ -564,7 +543,6 @@ app.post('/api/staff/register', async (req, res) => {
   }
 });
 
-// POST /api/staff/login - Staff login
 app.post('/api/staff/login', async (req, res) => {
   try {
     const { identifier, password } = req.body;
@@ -575,7 +553,6 @@ app.post('/api/staff/login', async (req, res) => {
     
     let foundStaff = null;
     
-    // Check predefined staff
     const predefinedStaff = staffMembers.find(s => s.id === identifier);
     if (predefinedStaff) {
       foundStaff = predefinedStaff;
@@ -595,7 +572,6 @@ app.post('/api/staff/login', async (req, res) => {
       });
     }
     
-    // Check registered staff by ID
     const registeredById = await RegisteredStaff.findOne({ id: identifier });
     if (registeredById) {
       if (registeredById.password !== password) {
@@ -614,7 +590,6 @@ app.post('/api/staff/login', async (req, res) => {
       });
     }
     
-    // Check registered staff by Email
     const registeredByEmail = await RegisteredStaff.findOne({ email: identifier });
     if (registeredByEmail) {
       if (registeredByEmail.password !== password) {
@@ -640,7 +615,6 @@ app.post('/api/staff/login', async (req, res) => {
   }
 });
 
-// GET /api/staff/profile - Get staff profile
 app.get('/api/staff/profile', async (req, res) => {
   try {
     const { staffId } = req.query;
@@ -687,7 +661,6 @@ app.get('/api/staff/profile', async (req, res) => {
   }
 });
 
-// GET /api/staff/tasks - Get tasks assigned to staff
 app.get('/api/staff/tasks', async (req, res) => {
   try {
     const { staffId, filter } = req.query;
@@ -720,7 +693,6 @@ app.get('/api/staff/tasks', async (req, res) => {
   }
 });
 
-// PUT /api/staff/tasks/:id/status - Update task status
 app.put('/api/staff/tasks/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
@@ -747,7 +719,6 @@ app.put('/api/staff/tasks/:id/status', async (req, res) => {
       report.fixedAt = new Date().toISOString();
       report.awaitingApproval = true;
       
-      // Notify management
       const notification = new Notification({
         type: 'management_fix_complete',
         recipientType: 'management',
@@ -772,7 +743,6 @@ app.put('/api/staff/tasks/:id/status', async (req, res) => {
   }
 });
 
-// PUT /api/staff/tasks/:id/note - Add note to task
 app.put('/api/staff/tasks/:id/note', async (req, res) => {
   try {
     const { id } = req.params;
@@ -795,7 +765,6 @@ app.put('/api/staff/tasks/:id/note', async (req, res) => {
   }
 });
 
-// GET /api/staff/feedback - Get feedback for staff
 app.get('/api/staff/feedback', async (req, res) => {
   try {
     const { staffId } = req.query;
@@ -832,9 +801,6 @@ app.get('/api/staff/feedback', async (req, res) => {
   }
 });
 
-// ============= NOTIFICATION ENDPOINTS =============
-
-// GET /api/notifications/staff
 app.get('/api/notifications/staff', async (req, res) => {
   try {
     const { staffId } = req.query;
@@ -849,7 +815,6 @@ app.get('/api/notifications/staff', async (req, res) => {
   }
 });
 
-// PUT /api/notifications/staff/:id/read
 app.put('/api/notifications/staff/:id/read', async (req, res) => {
   try {
     const { id } = req.params;
@@ -861,7 +826,6 @@ app.put('/api/notifications/staff/:id/read', async (req, res) => {
   }
 });
 
-// GET /api/notifications/management
 app.get('/api/notifications/management', async (req, res) => {
   try {
     const notifications = await Notification.find({ 
@@ -874,7 +838,6 @@ app.get('/api/notifications/management', async (req, res) => {
   }
 });
 
-// GET /api/notifications/student
 app.get('/api/notifications/student', async (req, res) => {
   try {
     const { studentId } = req.query;
@@ -889,7 +852,112 @@ app.get('/api/notifications/student', async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.get("/", (req, res) => {
+  res.json({
+    name: "UniManage API",
+    version: "1.0.0",
+    routes: [
+      "/api/lectures",
+      "/api/lecture-reminders",
+      "/api/timetable",
+      "/api/assignments-exams",
+      "/api/study-goals",
+      "/api/help-requests",
+      "/api/management/emails",
+      "/api/tasks",
+      "/api/reports",
+      "/api/management",
+      "/api/staff",
+      "/api/notifications"
+    ],
+  });
 });
+
+function startReminderJob() {
+  setInterval(async () => {
+    try {
+      const now = new Date();
+
+      const reminders = await Reminder.find({
+        remindAt: { $lte: now },
+        isSent: false,
+      });
+
+      for (const reminder of reminders) {
+        console.log("Reminder:", reminder.title);
+        reminder.isSent = true;
+        await reminder.save();
+      }
+
+      const overdueTasks = await AcademicTask.find({
+        dueDateTime: { $lt: now },
+        status: "pending",
+      });
+
+      for (const task of overdueTasks) {
+        task.status = "missed";
+        await task.save();
+      }
+    } catch (error) {
+      console.log("Reminder checker error:", error.message);
+    }
+  }, 60000);
+}
+
+let mongoWasConnected = false;
+mongoose.connection.on("connected", () => {
+  mongoWasConnected = true;
+});
+mongoose.connection.on("disconnected", () => {
+  if (mongoWasConnected) {
+    console.warn("MongoDB disconnected.");
+  }
+});
+mongoose.connection.on("error", (err) => {
+  if (mongoose.connection.readyState !== 1) {
+    return;
+  }
+  console.error("MongoDB runtime error:", err.message);
+});
+
+let MONGO_URI = (process.env.MONGO_URI || process.env.MONGODB_URI || "").trim();
+const DEFAULT_LOCAL_URI = "mongodb://127.0.0.1:27017/unimanage";
+
+if (!MONGO_URI) {
+  MONGO_URI = DEFAULT_LOCAL_URI;
+  console.warn(`MONGO_URI not set; using default local database: ${DEFAULT_LOCAL_URI}`);
+}
+
+if (
+  MONGO_URI.includes("your-cluster-host") ||
+  MONGO_URI.includes("YOUR_CLUSTER")
+) {
+  console.warn("MONGO_URI looks like a placeholder Atlas host. Using local MongoDB instead.");
+  MONGO_URI = DEFAULT_LOCAL_URI;
+}
+
+mongoose
+  .connect(MONGO_URI, {
+    serverSelectionTimeoutMS: 10_000,
+  })
+  .then(async () => {
+    console.log("MongoDB connected:", MONGO_URI.replace(/:[^:@]+@/, ":****@"));
+    await seedDatabase();
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://127.0.0.1:${PORT}`);
+    });
+
+    startReminderJob();
+  })
+  .catch((error) => {
+    console.error("Could not connect to MongoDB.");
+    console.error(error.message);
+    console.error(
+      "\nLocal: install MongoDB and run mongod, or: docker run -d -p 27017:27017 --name mongo mongo:7"
+    );
+    console.error(
+      "Atlas: set MONGO_URI in backend/.env to the full string from Atlas (Cluster → Connect → Drivers).\n"
+    );
+    process.exit(1);
+  });

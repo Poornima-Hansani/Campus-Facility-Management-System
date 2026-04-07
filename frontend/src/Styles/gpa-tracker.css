@@ -1,0 +1,120 @@
+/* GPA Tracker page */
+
+.gpa-stats.stats-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.gpa-stats {
+  margin-bottom: 1.25rem;
+}
+
+.gpa-stat-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.gpa-card {
+  margin-bottom: 1.25rem;
+}
+
+.gpa-table-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gpa-table-head .section-head {
+  margin-bottom: 0;
+}
+
+.gpa-empty {
+  margin-top: 0.5rem;
+}
+
+.gpa-table-wrap {
+  overflow-x: auto;
+  margin-top: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-subtle-bg);
+}
+
+.gpa-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.gpa-table th,
+.gpa-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+
+.gpa-table th {
+  background: var(--color-surface);
+  color: var(--color-subheading);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.gpa-table tr:last-child td {
+  border-bottom: none;
+}
+
+.gpa-module-name {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.gpa-actions {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.gpa-remove {
+  padding: 8px 12px;
+  font-size: 0.8125rem;
+}
+
+.gpa-legend {
+  margin-bottom: 2rem;
+}
+
+.gpa-legend-title {
+  font-size: 1rem;
+  color: var(--color-heading);
+  margin-bottom: 12px;
+}
+
+.gpa-legend-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px 16px;
+  padding-left: 1.1rem;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.gpa-legend-list strong {
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+  .gpa-stats.stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .gpa-stats.stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
