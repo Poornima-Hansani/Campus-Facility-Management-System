@@ -85,6 +85,8 @@ export default function UnifiedLoginPage() {
         localStorage.setItem('staffName', data.name);
       } else if (data.role === 'management') {
          localStorage.setItem('managementLoggedIn', 'true');
+      } else if (data.role === 'admin') {
+         localStorage.setItem('adminLoggedIn', 'true');
       }
 
       const routes: Record<string, string> = {
