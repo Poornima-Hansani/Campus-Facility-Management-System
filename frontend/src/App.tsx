@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import StudentRoute from "./components/StudentRoute";
-import { Home, Shield, LogIn, Wrench } from 'lucide-react';
+import { Home, LogIn } from 'lucide-react';
 import TaskDashboardPage from "./pages/TaskDashboardPage";
 import LectureAvailabilityPage from "./pages/LectureAvailabilityPage";
 import TimetablePage from "./pages/TimetablePage";
@@ -13,17 +13,14 @@ import HelpRequestPage from "./pages/HelpRequestPage";
 import GpaTrackerPage from "./pages/GpaTrackerPage";
 import ManagementDashboard from "./pages/ManagementDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
-import LoginPage from "./pages/LoginPage";
-import ReportIssue from './pages/ReportIssue';
-import ReportHistory from './pages/ReportHistory';
+import UnifiedLoginPage from './pages/UnifiedLoginPage';
+import RegisterPage from './pages/RegisterPage';
+import LandingPage from './pages/LandingPage';
 import StudentDashboard from './pages/StudentDashboard';
 import ReportingDashboard from './pages/ReportingDashboard';
-import ManagementLogin from './pages/ManagementLogin';
-import StudentLogin from './pages/StudentLogin';
-import LandingPage from './pages/LandingPage';
+import ReportIssue from './pages/ReportIssue';
+import ReportHistory from './pages/ReportHistory';
 import AllIssues from './pages/AllIssues';
-import StaffLogin from './pages/StaffLogin';
-import StaffRegister from './pages/StaffRegister';
 import StaffDashboard from './pages/StaffDashboard';
 
 function Navigation() {
@@ -34,8 +31,8 @@ function Navigation() {
     return null;
   }
   
-  const isStudentLoggedIn = localStorage.getItem('studentLoggedIn') === 'true';
-  const isStaffLoggedIn = localStorage.getItem('staffLoggedIn') === 'true';
+  const isLoggedIn = !!localStorage.getItem('unifiedUserId');
+  const role = localStorage.getItem('unifiedRole');
   
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -49,30 +46,19 @@ function Navigation() {
         : 'text-gray-600 hover:bg-[#004905]/10 hover:text-[#004905]'
     }`;
 
-  const handleStudentClick = () => {
-    if (isStudentLoggedIn) {
-      navigate('/student');
-    } else {
-      navigate('/student-login');
-    }
-  };
-
-  const handleStaffClick = () => {
-    if (isStaffLoggedIn) {
-      navigate('/staff/dashboard');
-    } else {
-      navigate('/staff');
-    }
-  };
-
   const handleLogout = () => {
-    localStorage.removeItem('studentLoggedIn');
-    localStorage.removeItem('studentId');
-    localStorage.removeItem('staffLoggedIn');
-    localStorage.removeItem('staffId');
-    localStorage.removeItem('staffName');
-    localStorage.removeItem('staffRole');
+    localStorage.clear(); // Clear all unified and legacy tokens
     navigate('/');
+  };
+
+  const getDashboardRoute = () => {
+    switch (role) {
+      case 'student': return '/student';
+      case 'management': return '/management-dashboard';
+      case 'staff': return '/staff/dashboard';
+      case 'admin': return '/admin-dashboard';
+      default: return '/dashboard';
+    }
   };
 
   return (
@@ -84,23 +70,27 @@ function Navigation() {
             <span className="ml-3 text-xl font-bold text-gray-900">UNIMANAGE</span>
           </Link>
           <div className="flex gap-4">
-            <button onClick={handleStudentClick} className={linkClass('/student')}>
-              <Home size={18} />
-              <span className="hidden sm:inline">Student Portal</span>
-            </button>
-            <button onClick={handleStaffClick} className={linkClass('/staff')}>
-              <Wrench size={18} />
-              <span className="hidden sm:inline">Staff Portal</span>
-            </button>
-            <Link to="/management" className={linkClass('/management')}>
-              <Shield size={18} />
-              <span className="hidden sm:inline">Management</span>
-            </Link>
-            {(isStudentLoggedIn || isStaffLoggedIn) && (
-              <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-red-600 hover:bg-red-50 hover:text-red-700">
-                <LogIn size={18} />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
+            {isLoggedIn ? (
+              <>
+                <Link to={getDashboardRoute()} className={linkClass(getDashboardRoute())}>
+                  <Home size={18} />
+                  <span className="hidden sm:inline">My Dashboard</span>
+                </Link>
+                <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-red-600 hover:bg-red-50 hover:text-red-700">
+                  <LogIn size={18} />
+                  <span className="hidden sm:inline">Logout</span>
+                </button>
+              </>
+            ) : (
+              <div className="flex gap-2">
+                <Link to="/login" className={linkClass('/login')}>
+                  <LogIn size={18} />
+                  <span className="hidden sm:inline">Login</span>
+                </Link>
+                <Link to="/register" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 text-white font-medium hover:bg-teal-700 shadow-sm transition-colors">
+                  <span className="hidden sm:inline">Register</span>
+                </Link>
+              </div>
             )}
           </div>
         </div>
@@ -126,13 +116,12 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<UnifiedLoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         
+        {/* We keep the inner dashboards but remove the old unneeded logins */}
         <Route path="/student" element={
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><StudentDashboard /></main>
-        } />
-        <Route path="/student-login" element={
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><StudentLogin /></main>
         } />
         <Route path="/reporting" element={
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><ReportingDashboard /></main>
@@ -144,23 +133,13 @@ function AppRoutes() {
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><ReportHistory /></main>
         } />
         
-        <Route path="/management" element={
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><ManagementLogin /></main>
-        } />
-        <Route path="/management/dashboard" element={
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><ManagementDashboard /></main>
-        } />
         <Route path="/management/issues" element={
           <AllIssues />
         } />
         <Route path="/management-dashboard" element={
-          <ProtectedRoute role="admin">
-            <ManagementDashboard />
-          </ProtectedRoute>
+          <ManagementDashboard />
         } />
         
-        <Route path="/staff" element={<StaffLogin />} />
-        <Route path="/staff/register" element={<StaffRegister />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
         
         <Route path="/dashboard" element={

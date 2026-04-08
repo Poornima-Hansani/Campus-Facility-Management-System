@@ -67,7 +67,7 @@ export default function StaffDashboard() {
 
   useEffect(() => {
     if (!localStorage.getItem('staffLoggedIn') || !staffId) {
-      navigate('/staff');
+      navigate('/login');
       return;
     }
     fetchData();
@@ -241,7 +241,7 @@ export default function StaffDashboard() {
               localStorage.removeItem('staffId');
               localStorage.removeItem('staffName');
               localStorage.removeItem('staffRole');
-              navigate('/staff');
+              navigate('/login');
             }}
             className="bg-[#004905] text-white px-6 py-2 rounded-lg hover:bg-[#003804] transition-colors"
           >
