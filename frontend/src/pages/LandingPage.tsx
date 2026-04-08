@@ -20,9 +20,9 @@ export default function LandingPage() {
       <nav className="bg-white/95 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            <div className="flex items-center cursor-pointer" onClick={() => scrollToSection('home')}>
+            <Link to="/" className="flex items-center">
               <img src="/logo.png" alt="UniManage Logo" className="h-12 w-auto" />
-            </div>
+            </Link>
             <div className="hidden md:flex items-center gap-2">
               <button onClick={() => scrollToSection('home')} className="text-gray-700 hover:text-teal-600 px-4 py-2 rounded-lg font-medium transition-all duration-200">Home</button>
               <button onClick={() => scrollToSection('features')} className="text-gray-700 hover:text-teal-600 px-4 py-2 rounded-lg font-medium transition-all duration-200">Features</button>
@@ -270,10 +270,10 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-4 gap-12">
             {/* Logo & About */}
             <div className="md:col-span-2">
-              <div className="flex items-center gap-3 mb-4">
+              <Link to="/" className="flex items-center gap-3 mb-4">
                 <img src="/logo.png" alt="UniManage Logo" className="h-10 w-auto" />
                 <span className="text-xl font-bold text-white">UniManage</span>
-              </div>
+              </Link>
               <p className="text-gray-400 leading-relaxed mb-6 max-w-md">
                 A smart campus facility management system helping students and staff work together for a better university experience.
               </p>

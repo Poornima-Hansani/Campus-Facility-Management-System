@@ -66,7 +66,7 @@ export default function StaffDashboard() {
   const staffId = localStorage.getItem('staffId');
 
   useEffect(() => {
-    if (!localStorage.getItem('staffLoggedIn') || !staffId) {
+    if (!staffId) {
       navigate('/login');
       return;
     }

@@ -16,8 +16,11 @@ const studyGoalRoutes = require("./routes/studyGoalRoutes");
 const helpRequestRoutes = require("./routes/helpRequestRoutes");
 const managementEmailRoutes = require("./routes/managementEmailRoutes");
 const authRoutes = require("./routes/authRoutes");
+const bookingRoutes = require("./routes/bookingRoutes");
+const energyRoutes = require("./routes/energyRoutes");
 const Reminder = require("./models/Reminder");
 const AcademicTask = require("./models/AcademicTask");
+const User = require("./models/User");
 const { seedDatabase } = require("./seed/seedDatabase");
 
 const app = express();
@@ -135,6 +138,8 @@ app.use("/api/study-goals", studyGoalRoutes);
 app.use("/api/help-requests", helpRequestRoutes);
 app.use("/api/management/emails", managementEmailRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/booking", bookingRoutes);
+app.use("/api/energy", energyRoutes);
 app.post('/api/reports', upload.single('image'), async (req, res) => {
   try {
     const { location, issueType, comment, studentId } = req.body;
@@ -620,8 +625,26 @@ app.get('/api/staff/profile', async (req, res) => {
     const { staffId } = req.query;
     
     let staff = staffMembers.find(s => s.id === staffId);
+    let staffSource = 'hardcoded';
+    
     if (!staff) {
       staff = await RegisteredStaff.findOne({ id: staffId });
+      staffSource = 'registered';
+    }
+    
+    if (!staff) {
+      const userStaff = await User.findOne({ userId: staffId, role: 'staff' });
+      if (userStaff) {
+        staff = {
+          id: userStaff.userId,
+          name: userStaff.name,
+          role: userStaff.role,
+          specialty: userStaff.jobType || userStaff.role,
+          phone: userStaff.phone || '',
+          email: userStaff.email
+        };
+        staffSource = 'user';
+      }
     }
     
     if (!staff) {
@@ -635,7 +658,7 @@ app.get('/api/staff/profile', async (req, res) => {
     
     const ratings = completed.filter(r => r.rating).map(r => r.rating);
     const avgRating = ratings.length > 0 
-      ? Math.round((ratings.reduce((sum, r) => sum + r, 0) / ratings.length) * 10) / 10 
+      ? Math.round((ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length) * 10) / 10 
       : null;
     
     res.json({
@@ -666,8 +689,23 @@ app.get('/api/staff/tasks', async (req, res) => {
     const { staffId, filter } = req.query;
     
     let staff = staffMembers.find(s => s.id === staffId);
+    
     if (!staff) {
       staff = await RegisteredStaff.findOne({ id: staffId });
+    }
+    
+    if (!staff) {
+      const userStaff = await User.findOne({ userId: staffId, role: 'staff' });
+      if (userStaff) {
+        staff = {
+          id: userStaff.userId,
+          name: userStaff.name,
+          role: userStaff.role,
+          specialty: userStaff.jobType || userStaff.role,
+          phone: userStaff.phone || '',
+          email: userStaff.email
+        };
+      }
     }
     
     if (!staff) {
@@ -770,8 +808,23 @@ app.get('/api/staff/feedback', async (req, res) => {
     const { staffId } = req.query;
     
     let staff = staffMembers.find(s => s.id === staffId);
+    
     if (!staff) {
       staff = await RegisteredStaff.findOne({ id: staffId });
+    }
+    
+    if (!staff) {
+      const userStaff = await User.findOne({ userId: staffId, role: 'staff' });
+      if (userStaff) {
+        staff = {
+          id: userStaff.userId,
+          name: userStaff.name,
+          role: userStaff.role,
+          specialty: userStaff.jobType || userStaff.role,
+          phone: userStaff.phone || '',
+          email: userStaff.email
+        };
+      }
     }
     
     if (!staff) {
@@ -868,7 +921,8 @@ app.get("/", (req, res) => {
       "/api/reports",
       "/api/management",
       "/api/staff",
-      "/api/notifications"
+      "/api/notifications",
+      "/api/energy"
     ],
   });
 });
@@ -902,6 +956,39 @@ function startReminderJob() {
       console.log("Reminder checker error:", error.message);
     }
   }, 60000);
+}
+
+function startEnergyCheckJob() {
+  setInterval(async () => {
+    try {
+      const LabFreeTime = require('./models/LabFreeTime');
+      const EnergyNotification = require('./models/EnergyNotification');
+      
+      const today = new Date().toISOString().split('T')[0];
+      
+      const pendingNotifications = await EnergyNotification.find({
+        status: 'pending',
+        date: { $lt: today }
+      });
+
+      for (const notification of pendingNotifications) {
+        notification.status = 'expired';
+        await notification.save();
+        
+        if (notification.freeTimeId) {
+          await LabFreeTime.findByIdAndUpdate(notification.freeTimeId, {
+            isEnergyWaste: true
+          });
+        }
+      }
+      
+      if (pendingNotifications.length > 0) {
+        console.log(`Energy check: ${pendingNotifications.length} notifications marked as expired`);
+      }
+    } catch (error) {
+      console.log('Energy check job error:', error.message);
+    }
+  }, 3600000);
 }
 
 let mongoWasConnected = false;
@@ -949,6 +1036,7 @@ mongoose
     });
 
     startReminderJob();
+    startEnergyCheckJob();
   })
   .catch((error) => {
     console.error("Could not connect to MongoDB.");

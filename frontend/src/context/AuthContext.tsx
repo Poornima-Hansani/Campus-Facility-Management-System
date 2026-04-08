@@ -7,13 +7,15 @@ import {
   type ReactNode,
 } from "react";
 
-export type UserRole = "student" | "admin";
+export type UserRole = "student" | "admin" | "staff" | "management" | "lecturer";
 
-const STORAGE_KEY = "unimanage_role";
+const STORAGE_KEY = "unifiedRole";
 
 type AuthContextValue = {
   role: UserRole;
   isAdmin: boolean;
+  isStaff: boolean;
+  isManagement: boolean;
   loginAsStudent: () => void;
   loginAsAdmin: (password: string) => boolean;
   logoutToStudent: () => void;
@@ -68,6 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       role,
       isAdmin: role === "admin",
+      isStaff: role === "staff",
+      isManagement: role === "management",
       loginAsStudent,
       loginAsAdmin,
       logoutToStudent,

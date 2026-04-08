@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import { apiDelete, apiGet, apiPost } from "../lib/api";
+import { Bell, AlertTriangle, Clock, CheckCircle, Wrench, Users, BarChart3, PieChart, UserPlus } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Legend } from "recharts";
 
 type EmailItem = {
   id: number;
@@ -40,6 +42,66 @@ type LectureRow = {
 };
 
 type SessionFilter = "" | "lecture" | "practical" | "lab" | "tutorial";
+
+type ReportItem = {
+  id: string;
+  studentId: string;
+  location: string;
+  issueType: string;
+  comment: string;
+  status: string;
+  createdAt: string;
+  assignedTo?: string;
+  assignedToId?: string;
+};
+
+type EscalatedGroup = {
+  location: string;
+  issueType: string;
+  count: number;
+  status: string;
+  ids: string[];
+  missingStaff: boolean;
+};
+
+type DashboardStats = {
+  totalReports: number;
+  fixedReports: number;
+  avgRating: number;
+  avgResponseTime: number;
+};
+
+type ChartData = {
+  categoryData: { name: string; count: number }[];
+  weeklyData: { day: string; count: number }[];
+};
+
+type WeeklySummary = {
+  totalReports: number;
+  fixedReports: number;
+  avgResponseTime: number;
+  resolutionRate: number;
+};
+
+type Notification = {
+  id: string;
+  type: string;
+  message: string;
+  reportId?: string;
+  createdAt: string;
+  read: boolean;
+};
+
+type StaffMember = {
+  id: string;
+  name: string;
+  role: string;
+  specialty: string;
+  phone: string;
+  email: string;
+};
+
+const CHART_COLORS = ['#0d4f34', '#22c55e', '#3b82f6', '#f59e0b'];
 
 const DAY_OPTIONS = [
   "",
@@ -94,6 +156,19 @@ function catalogSlotsForRow(
 const ManagementDashboard = () => {
   const [emails, setEmails] = useState<EmailItem[]>([]);
   const [loadError, setLoadError] = useState("");
+
+  const [escalated, setEscalated] = useState<EscalatedGroup[]>([]);
+  const [pending, setPending] = useState<ReportItem[]>([]);
+  const [assigned, setAssigned] = useState<ReportItem[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({ totalReports: 0, fixedReports: 0, avgRating: 0, avgResponseTime: 0 });
+  const [charts, setCharts] = useState<ChartData>({ categoryData: [], weeklyData: [] });
+  const [weeklySummary, setWeeklySummary] = useState<WeeklySummary>({ totalReports: 0, fixedReports: 0, avgResponseTime: 0, resolutionRate: 0 });
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedPending, setSelectedPending] = useState<ReportItem[]>([]);
+  const [selectedStaffId, setSelectedStaffId] = useState<string>("");
 
   const [timetable, setTimetable] = useState<TimetableRow[]>([]);
   const [lectures, setLectures] = useState<LectureRow[]>([]);
@@ -153,6 +228,114 @@ const ManagementDashboard = () => {
       cancelled = true;
     };
   }, []);
+
+  const fetchManagementData = useCallback(async () => {
+    try {
+      const data = await apiGet<{
+        stats: DashboardStats;
+        escalated: EscalatedGroup[];
+        pending: ReportItem[];
+        assigned: ReportItem[];
+      }>("/api/management/dashboard");
+      setStats(data.stats);
+      setEscalated(data.escalated);
+      setPending(data.pending);
+      setAssigned(data.assigned);
+    } catch (err) {
+      console.error("Failed to fetch management dashboard data:", err);
+    }
+  }, []);
+
+  const fetchChartsData = useCallback(async () => {
+    try {
+      const data = await apiGet<ChartData>("/api/management/charts");
+      setCharts(data);
+    } catch (err) {
+      console.error("Failed to fetch charts data:", err);
+    }
+  }, []);
+
+  const fetchWeeklySummary = useCallback(async () => {
+    try {
+      const data = await apiGet<{ summary: WeeklySummary }>("/api/management/weekly-summary");
+      setWeeklySummary(data.summary);
+    } catch (err) {
+      console.error("Failed to fetch weekly summary:", err);
+    }
+  }, []);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const role = localStorage.getItem("unifiedRole");
+      const userId = localStorage.getItem("unifiedUserId");
+      if (role === "management" && userId) {
+        const data = await apiGet<{ notifications: Notification[] }>(`/api/notifications/management?managementId=${userId}`);
+        setNotifications(data.notifications || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    }
+  }, []);
+
+  const fetchStaff = useCallback(async () => {
+    try {
+      const data = await apiGet<{ staff: StaffMember[] }>("/api/management/staff");
+      setStaff(data.staff || []);
+    } catch (err) {
+      console.error("Failed to fetch staff:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchManagementData();
+    fetchChartsData();
+    fetchWeeklySummary();
+    fetchNotifications();
+    fetchStaff();
+  }, [fetchManagementData, fetchChartsData, fetchWeeklySummary, fetchNotifications, fetchStaff]);
+
+  const handleMarkFixed = async (ids: string[]) => {
+    try {
+      await apiPost("/api/management/fix", { ids });
+      await fetchManagementData();
+      await fetchChartsData();
+      await fetchWeeklySummary();
+    } catch (err) {
+      console.error("Failed to mark as fixed:", err);
+    }
+  };
+
+  const handleAssignStaff = async () => {
+    if (!selectedStaffId || selectedPending.length === 0) return;
+    try {
+      const ids = selectedPending.map(p => p.id);
+      await apiPost("/api/management/assign", { ids, staffId: selectedStaffId });
+      await fetchManagementData();
+      await fetchStaff();
+      setShowAssignModal(false);
+      setSelectedPending([]);
+      setSelectedStaffId("");
+    } catch (err) {
+      console.error("Failed to assign staff:", err);
+    }
+  };
+
+  const openAssignModal = (reports: ReportItem[]) => {
+    setSelectedPending(reports);
+    setSelectedStaffId("");
+    setShowAssignModal(true);
+  };
+
+  const markNotificationRead = async (id: string) => {
+    try {
+      await apiPost(`/api/notifications/${id}/read`, {});
+      setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
+  };
+
+  const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
 
   const filteredTimetable = useMemo(() => {
     return timetable.filter(
@@ -351,6 +534,290 @@ const ManagementDashboard = () => {
   return (
     <Layout>
       {loadError && <p className="form-error">{loadError}</p>}
+
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Management Dashboard</h2>
+        <div className="relative">
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <Bell size={24} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+          {showNotifications && (
+            <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="font-semibold text-gray-900">Notifications</h3>
+              </div>
+              {notifications.length === 0 ? (
+                <div className="p-4 text-gray-500 text-center">No notifications</div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {notifications.map((notif) => (
+                    <div
+                      key={notif.id}
+                      onClick={() => markNotificationRead(notif.id)}
+                      className={`p-4 hover:bg-gray-50 cursor-pointer ${!notif.read ? "bg-blue-50" : ""}`}
+                    >
+                      <p className="text-sm text-gray-900">{notif.message}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {new Date(notif.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="content-card">
+        <div className="section-head">
+          <div>
+            <h3>Issue Management Overview</h3>
+            <p>Track escalated, pending, and assigned facility issues</p>
+          </div>
+        </div>
+
+        <div className="stats-grid availability-stats">
+          <div className="stat-card">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-red-100 rounded-lg">
+                <AlertTriangle className="text-red-600" size={24} />
+              </div>
+              <div>
+                <h4>Escalated</h4>
+                <h2>{escalated.length}</h2>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Requires immediate attention</p>
+          </div>
+
+          <div className="stat-card">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-yellow-100 rounded-lg">
+                <Clock className="text-yellow-600" size={24} />
+              </div>
+              <div>
+                <h4>Pending</h4>
+                <h2>{pending.length}</h2>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Awaiting assignment</p>
+          </div>
+
+          <div className="stat-card">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <Wrench className="text-blue-600" size={24} />
+              </div>
+              <div>
+                <h4>Assigned</h4>
+                <h2>{assigned.length}</h2>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">In progress</p>
+          </div>
+
+          <div className="stat-card">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <CheckCircle className="text-green-600" size={24} />
+              </div>
+              <div>
+                <h4>Resolved</h4>
+                <h2>{stats.fixedReports}</h2>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Issues fixed</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="content-card">
+        <div className="section-head">
+          <div>
+            <h3>Weekly Performance Summary</h3>
+            <p>Last 7 days performance metrics</p>
+          </div>
+        </div>
+
+        <div className="stats-grid availability-stats">
+          <div className="stat-card">
+            <h4>Reports This Week</h4>
+            <h2>{weeklySummary.totalReports}</h2>
+            <p>New issues reported</p>
+          </div>
+
+          <div className="stat-card">
+            <h4>Fixed This Week</h4>
+            <h2>{weeklySummary.fixedReports}</h2>
+            <p>Issues resolved</p>
+          </div>
+
+          <div className="stat-card">
+            <h4>Avg Response Time</h4>
+            <h2>{weeklySummary.avgResponseTime} min</h2>
+            <p>Average fix time</p>
+          </div>
+
+          <div className="stat-card">
+            <h4>Resolution Rate</h4>
+            <h2>{weeklySummary.resolutionRate}%</h2>
+            <p>Success rate</p>
+          </div>
+        </div>
+      </div>
+
+      {(escalated.length > 0 || assigned.length > 0) && (
+        <div className="content-card">
+          <div className="section-head">
+            <div>
+              <h3>Quick Actions</h3>
+              <p>Manage escalated and assigned issues</p>
+            </div>
+          </div>
+
+          {escalated.length > 0 && (
+            <div className="mb-6">
+              <h4 className="font-semibold text-red-600 mb-3 flex items-center gap-2">
+                <AlertTriangle size={18} />
+                Escalated Issues ({escalated.length})
+              </h4>
+              <div className="space-y-3">
+                {escalated.map((item, idx) => (
+                  <div key={idx} className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {item.location} - {item.issueType}
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {item.count} reports • Status: {item.status}
+                        </p>
+                        {item.missingStaff && (
+                          <span className="inline-block mt-2 text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                            Needs Staff Assignment
+                          </span>
+                        )}
+                      </div>
+                      {item.ids.length > 0 && (
+                        <button
+                          onClick={() => handleMarkFixed(item.ids)}
+                          className="primary-form-btn text-sm"
+                        >
+                          Mark Fixed
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {assigned.length > 0 && (
+            <div>
+              <h4 className="font-semibold text-blue-600 mb-3 flex items-center gap-2">
+                <Wrench size={18} />
+                Assigned Issues ({assigned.length})
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {assigned.slice(0, 6).map((item) => (
+                  <div key={item.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="font-medium text-gray-900 text-sm">{item.issueType}</p>
+                    <p className="text-xs text-gray-600">{item.location}</p>
+                    <p className="text-xs text-gray-500 mt-1">Assigned to: {item.assignedTo || "Staff"}</p>
+                    <button
+                      onClick={() => handleMarkFixed([item.id])}
+                      className="mt-2 text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
+                    >
+                      Mark Fixed
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {pending.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => openAssignModal(pending)}
+                className="primary-form-btn flex items-center gap-2"
+              >
+                <UserPlus size={18} />
+                Assign Staff to {pending.length} Pending
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="content-card">
+        <div className="section-head">
+          <div>
+            <h3>Reports Analytics</h3>
+            <p>Visual insights into facility issues by location and weekly trends</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <h4 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
+              <PieChart size={18} />
+              Issues by Location
+            </h4>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <RePieChart>
+                  <Pie
+                    data={charts.categoryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="count"
+                    nameKey="name"
+                    label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                  >
+                    {charts.categoryData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </RePieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
+              <BarChart3 size={18} />
+              Weekly Reports Trend
+            </h4>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={charts.weeklyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#0d4f34" name="Reports" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="stats-grid availability-stats">
         <div className="stat-card">
@@ -742,6 +1209,79 @@ const ManagementDashboard = () => {
           </div>
         )}
       </div>
+
+      {showAssignModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <Users size={24} />
+                Assign Staff
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Assigning {selectedPending.length} issue(s) to a staff member
+              </p>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-4">
+                <h4 className="font-semibold text-gray-700 mb-2">Selected Issues:</h4>
+                <div className="max-h-32 overflow-y-auto bg-gray-50 rounded-lg p-3 space-y-1">
+                  {selectedPending.map(p => (
+                    <p key={p.id} className="text-sm text-gray-700">
+                      {p.issueType} at {p.location}
+                    </p>
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Select Staff Member</label>
+                <select
+                  value={selectedStaffId}
+                  onChange={(e) => setSelectedStaffId(e.target.value)}
+                  className="w-full"
+                >
+                  <option value="">Choose staff...</option>
+                  {staff.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.role}) - {s.specialty}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedStaffId && (
+                <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                  <p className="text-sm text-green-700">
+                    Staff: <strong>{staff.find(s => s.id === selectedStaffId)?.name}</strong>
+                    <br />
+                    Role: {staff.find(s => s.id === selectedStaffId)?.role}
+                    <br />
+                    Specialty: {staff.find(s => s.id === selectedStaffId)?.specialty}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setShowAssignModal(false)}
+                className="secondary-form-btn"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAssignStaff}
+                disabled={!selectedStaffId}
+                className="primary-form-btn disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Assign Staff
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

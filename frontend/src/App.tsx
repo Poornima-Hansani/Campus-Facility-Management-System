@@ -1,9 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import StudentRoute from "./components/StudentRoute";
-import { Home, LogIn } from 'lucide-react';
+import StaffRoute from "./components/StaffRoute";
+import { Home, LogIn, UserPlus } from 'lucide-react';
 import TaskDashboardPage from "./pages/TaskDashboardPage";
 import LectureAvailabilityPage from "./pages/LectureAvailabilityPage";
 import TimetablePage from "./pages/TimetablePage";
@@ -22,6 +23,8 @@ import ReportIssue from './pages/ReportIssue';
 import ReportHistory from './pages/ReportHistory';
 import AllIssues from './pages/AllIssues';
 import StaffDashboard from './pages/StaffDashboard';
+import StudyAreaBooking from './pages/StudyAreaBooking';
+import LabBooking from './pages/LabBooking';
 
 function Navigation() {
   const location = useLocation();
@@ -65,7 +68,7 @@ function Navigation() {
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
-          <Link to="/" className="flex items-center py-2">
+          <Link to="/" className="flex items-center py-2 hover:opacity-80 transition-opacity">
             <img src="/logo.png" alt="UniManage Logo" className="h-20 w-auto" />
             <span className="ml-3 text-xl font-bold text-gray-900">UNIMANAGE</span>
           </Link>
@@ -88,6 +91,7 @@ function Navigation() {
                   <span className="hidden sm:inline">Login</span>
                 </Link>
                 <Link to="/register" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 text-white font-medium hover:bg-teal-700 shadow-sm transition-colors">
+                  <UserPlus size={18} className="sm:hidden" />
                   <span className="hidden sm:inline">Register</span>
                 </Link>
               </div>
@@ -96,16 +100,6 @@ function Navigation() {
         </div>
       </div>
     </nav>
-  );
-}
-
-function HomeRedirect() {
-  const { isAdmin } = useAuth();
-  return (
-    <Navigate
-      to={isAdmin ? "/admin-dashboard" : "/dashboard"}
-      replace
-    />
   );
 }
 
@@ -132,6 +126,16 @@ function AppRoutes() {
         <Route path="/reporting/view" element={
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><ReportHistory /></main>
         } />
+        <Route path="/study-booking" element={
+          <StudentRoute>
+            <StudyAreaBooking />
+          </StudentRoute>
+        } />
+        <Route path="/lab-booking" element={
+          <StudentRoute>
+            <LabBooking />
+          </StudentRoute>
+        } />
         
         <Route path="/management/issues" element={
           <AllIssues />
@@ -140,7 +144,11 @@ function AppRoutes() {
           <ManagementDashboard />
         } />
         
-        <Route path="/staff/dashboard" element={<StaffDashboard />} />
+        <Route path="/staff/dashboard" element={
+          <StaffRoute>
+            <StaffDashboard />
+          </StaffRoute>
+        } />
         
         <Route path="/dashboard" element={
           <StudentRoute>

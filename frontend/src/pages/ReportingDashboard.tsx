@@ -8,7 +8,7 @@ type Report = {
   location: string;
   issueType: string;
   comment: string;
-  status: 'Pending' | 'Action Required' | 'Fixed';
+  status: 'Pending' | 'Action Required' | 'Fixed' | 'In Progress' | 'Assigned';
   createdAt: string;
   rating?: number;
 };

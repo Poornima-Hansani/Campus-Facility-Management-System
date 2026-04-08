@@ -1,72 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
-
-type WeeklySummary = {
-  totalReports: number;
-  fixedReports: number;
-  avgResponseTime: number;
-  categoryBreakdown: Record<string, number>;
-  resolutionRate: number;
-};
-
-type EscalatedGroup = {
-  ids: string[];
-  issueType: string;
-  location: string;
-  status: string;
-};
-
-type Report = {
-  id: string;
-  issueType: string;
-  location: string;
-  status: string;
-  createdAt: string;
-};
-
-type DashboardData = {
-  escalated?: EscalatedGroup[];
-  pending?: Report[];
-  assigned?: Report[];
-};
-
-type WeeklySummaryResponse = {
-  summary: WeeklySummary;
-};
+import { Plus, BookOpen, Monitor, GraduationCap, Calendar, Clock, TrendingUp } from 'lucide-react';
 
 export default function StudentDashboard() {
-  const [weeklySummary, setWeeklySummary] = useState<WeeklySummary | null>(null);
-  const [recentReports, setRecentReports] = useState<Report[]>([]);
-
   const studentId = localStorage.getItem('studentId') || 'Student';
+  const studentName = localStorage.getItem('unifiedName') || 'Student';
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [summaryRes, reportsRes] = await Promise.all([
+        await Promise.all([
           fetch('http://localhost:3000/api/management/weekly-summary'),
           fetch('http://localhost:3000/api/management/dashboard')
         ]);
-        const summaryData: WeeklySummaryResponse = await summaryRes.json();
-        const reportsData: DashboardData = await reportsRes.json();
-        
-        setWeeklySummary(summaryData.summary);
-        
-        const allReports: Report[] = [
-          ...(reportsData.escalated?.flatMap((g: EscalatedGroup) => 
-            g.ids.map((id: string) => ({
-              id,
-              issueType: g.issueType,
-              location: g.location,
-              status: g.status,
-              createdAt: new Date().toISOString()
-            }))
-          ) || []),
-          ...(reportsData.pending || []).map((r: Report) => ({ ...r, status: 'Pending' })),
-          ...(reportsData.assigned || []).map((r: Report) => ({ ...r, status: 'Assigned' }))
-        ];
-        setRecentReports(allReports);
       } catch (err) {
         console.error(err);
       }
@@ -87,18 +33,99 @@ export default function StudentDashboard() {
         
         <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-sm p-6 flex justify-between items-center transition-all duration-300 hover:shadow-md">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Welcome, {studentId}</h1>
+            <h1 className="text-2xl font-bold text-gray-800">Welcome, {studentName}</h1>
             <p className="text-gray-500 text-sm">
-              Report issues and track their resolution status
+              {studentId !== 'Student' && <span className="mr-2">ID: {studentId}</span>}
+              Manage your academic activities
             </p>
           </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Link 
-            to="/reporting"
-            className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 transition transform hover:scale-105 active:scale-95"
+            to="/dashboard"
+            className="bg-white/90 backdrop-blur-sm rounded-xl p-6 hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] group"
           >
-            <Plus size={18} />
-            Report Issue
+            <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-indigo-200 transition-colors">
+              <GraduationCap size={24} className="text-indigo-600" />
+            </div>
+            <h3 className="font-bold text-gray-900 text-lg">Academic Help</h3>
+            <p className="text-gray-500 text-sm mt-1">Tasks, goals & study sessions</p>
           </Link>
+
+          <Link 
+            to="/study-booking"
+            className="bg-white/90 backdrop-blur-sm rounded-xl p-6 hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] group"
+          >
+            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-emerald-200 transition-colors">
+              <BookOpen size={24} className="text-emerald-600" />
+            </div>
+            <h3 className="font-bold text-gray-900 text-lg">Study Area</h3>
+            <p className="text-gray-500 text-sm mt-1">Book quiet study spaces</p>
+          </Link>
+
+          <Link 
+            to="/lab-booking"
+            className="bg-white/90 backdrop-blur-sm rounded-xl p-6 hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] group"
+          >
+            <div className="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-cyan-200 transition-colors">
+              <Monitor size={24} className="text-cyan-600" />
+            </div>
+            <h3 className="font-bold text-gray-900 text-lg">Lab Booking</h3>
+            <p className="text-gray-500 text-sm mt-1">Book lab computers</p>
+          </Link>
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp size={20} className="text-teal-600" />
+            <h2 className="font-bold text-gray-900">Quick Actions</h2>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <Link 
+              to="/reporting"
+              className="flex items-center gap-3 p-4 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+            >
+              <Plus size={20} className="text-red-600" />
+              <div>
+                <p className="font-medium text-gray-900">Report Issue</p>
+                <p className="text-sm text-gray-500">Report campus facility problems</p>
+              </div>
+            </Link>
+
+            <Link 
+              to="/reporting/view"
+              className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+            >
+              <Clock size={20} className="text-blue-600" />
+              <div>
+                <p className="font-medium text-gray-900">Track Reports</p>
+                <p className="text-sm text-gray-500">View your submitted reports</p>
+              </div>
+            </Link>
+
+            <Link 
+              to="/study-booking"
+              className="flex items-center gap-3 p-4 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
+            >
+              <Calendar size={20} className="text-emerald-600" />
+              <div>
+                <p className="font-medium text-gray-900">Book Study Area</p>
+                <p className="text-sm text-gray-500">Reserve quiet study zones</p>
+              </div>
+            </Link>
+
+            <Link 
+              to="/lab-booking"
+              className="flex items-center gap-3 p-4 bg-cyan-50 rounded-lg hover:bg-cyan-100 transition-colors"
+            >
+              <Monitor size={20} className="text-cyan-600" />
+              <div>
+                <p className="font-medium text-gray-900">Book Lab</p>
+                <p className="text-sm text-gray-500">Reserve lab computers</p>
+              </div>
+            </Link>
+          </div>
         </div>
 
       </div>
