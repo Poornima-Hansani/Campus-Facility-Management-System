@@ -15,7 +15,7 @@ const assignmentExamRoutes = require("./routes/assignmentExamRoutes");
 const studyGoalRoutes = require("./routes/studyGoalRoutes");
 const helpRequestRoutes = require("./routes/helpRequestRoutes");
 const managementEmailRoutes = require("./routes/managementEmailRoutes");
-
+const authRoutes = require("./routes/authRoutes");
 const Reminder = require("./models/Reminder");
 const AcademicTask = require("./models/AcademicTask");
 const { seedDatabase } = require("./seed/seedDatabase");
@@ -134,7 +134,7 @@ app.use("/api/assignments-exams", assignmentExamRoutes);
 app.use("/api/study-goals", studyGoalRoutes);
 app.use("/api/help-requests", helpRequestRoutes);
 app.use("/api/management/emails", managementEmailRoutes);
-
+app.use("/api/auth", authRoutes);
 app.post('/api/reports', upload.single('image'), async (req, res) => {
   try {
     const { location, issueType, comment, studentId } = req.body;
