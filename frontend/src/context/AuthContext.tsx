@@ -26,7 +26,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function readStoredRole(): UserRole {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "admin" || v === "student") return v;
+    if (v === "admin" || v === "student" || v === "staff" || v === "management" || v === "lecturer") return v as UserRole;
   } catch {
     /* ignore */
   }

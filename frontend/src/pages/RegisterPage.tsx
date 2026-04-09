@@ -160,6 +160,7 @@ export default function RegisterPage() {
                     <option value="lecturer">Lecturer</option>
                     <option value="management">Management</option>
                     <option value="staff">Staff</option>
+                    <option value="admin">Admin</option>
                   </select>
                 </div>
 
