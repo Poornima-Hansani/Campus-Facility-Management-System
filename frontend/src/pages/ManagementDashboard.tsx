@@ -72,6 +72,10 @@ type DashboardStats = {
 };
 
 type ChartData = {
+  byLocation: { location: string; count: number }[];
+  byIssueType: { issueType: string; count: number }[];
+  byStatus: Record<string, number>;
+  weeklyTrend: { date: string; count: number }[];
   categoryData: { name: string; count: number }[];
   weeklyData: { day: string; count: number }[];
 };
@@ -161,7 +165,7 @@ const ManagementDashboard = () => {
   const [pending, setPending] = useState<ReportItem[]>([]);
   const [assigned, setAssigned] = useState<ReportItem[]>([]);
   const [stats, setStats] = useState<DashboardStats>({ totalReports: 0, fixedReports: 0, avgRating: 0, avgResponseTime: 0 });
-  const [charts, setCharts] = useState<ChartData>({ categoryData: [], weeklyData: [] });
+  const [charts, setCharts] = useState<ChartData>({ byLocation: [], byIssueType: [], byStatus: {}, weeklyTrend: [], categoryData: [], weeklyData: [] });
   const [weeklySummary, setWeeklySummary] = useState<WeeklySummary>({ totalReports: 0, fixedReports: 0, avgResponseTime: 0, resolutionRate: 0 });
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -249,7 +253,11 @@ const ManagementDashboard = () => {
   const fetchChartsData = useCallback(async () => {
     try {
       const data = await apiGet<ChartData>("/api/management/charts");
-      setCharts(data);
+      setCharts({
+        ...data,
+        categoryData: data.byLocation?.map((l: any) => ({ name: l.location, count: l.count })) || [],
+        weeklyData: data.weeklyTrend?.map((w: any) => ({ day: w.date.slice(5), count: w.count })) || []
+      });
     } catch (err) {
       console.error("Failed to fetch charts data:", err);
     }

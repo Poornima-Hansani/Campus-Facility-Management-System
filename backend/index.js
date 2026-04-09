@@ -416,12 +416,97 @@ app.post('/api/management/approve-fix', async (req, res) => {
       createdAt: new Date().toISOString(),
       read: false
     });
-    await notification.save();
-    
-    res.json({ message: 'Fix approved and student notified', task: report });
+await notification.save();
+
+    res.json({ message: 'Fixed approved' });
   } catch (error) {
-    console.error('Approve fix error:', error);
+    console.error('Approve error:', error);
     res.status(500).json({ error: 'Failed to approve fix' });
+  }
+});
+
+app.get('/api/management/weekly-summary', async (req, res) => {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const allReports = await Report.find({});
+    const reportsLastWeek = allReports.filter(r => new Date(r.createdAt) >= sevenDaysAgo);
+    const fixedLastWeek = reportsLastWeek.filter(r => r.status === 'Fixed');
+    
+    let totalResponseTime = 0;
+    let count = 0;
+    fixedLastWeek.forEach(r => {
+      if (r.fixedAt) {
+        totalResponseTime += (new Date(r.fixedAt) - new Date(r.createdAt)) / (1000 * 60);
+        count++;
+      }
+    });
+    const avgResponseTime = count > 0 ? Math.round(totalResponseTime / count) : 0;
+    const resolutionRate = reportsLastWeek.length > 0 
+      ? Math.round((fixedLastWeek.length / reportsLastWeek.length) * 100) 
+      : 0;
+    
+    res.json({
+      summary: {
+        totalReports: reportsLastWeek.length,
+        fixedReports: fixedLastWeek.length,
+        avgResponseTime,
+        resolutionRate
+      }
+    });
+  } catch (error) {
+    console.error('Weekly summary error:', error);
+    res.status(500).json({ error: 'Failed to fetch weekly summary' });
+  }
+});
+
+app.get('/api/management/charts', async (req, res) => {
+  try {
+    const allReports = await Report.find({});
+    
+    const locationCounts = {};
+    allReports.forEach(r => {
+      if (!locationCounts[r.location]) {
+        locationCounts[r.location] = 0;
+      }
+      locationCounts[r.location]++;
+    });
+    
+    const issueTypeCounts = {};
+    allReports.forEach(r => {
+      if (!issueTypeCounts[r.issueType]) {
+        issueTypeCounts[r.issueType] = 0;
+      }
+      issueTypeCounts[r.issueType]++;
+    });
+    
+    const statusCounts = {
+      Pending: allReports.filter(r => r.status === 'Pending').length,
+      Assigned: allReports.filter(r => r.status === 'Assigned').length,
+      'In Progress': allReports.filter(r => r.status === 'In Progress').length,
+      Fixed: allReports.filter(r => r.status === 'Fixed').length,
+      'Action Required': allReports.filter(r => r.status === 'Action Required').length
+    };
+    
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const count = allReports.filter(r => r.createdAt.startsWith(dateStr)).length;
+      last7Days.push({ date: dateStr, count });
+    }
+    
+    res.json({
+      byLocation: Object.entries(locationCounts).map(([location, count]) => ({ location, count })),
+      byIssueType: Object.entries(issueTypeCounts).map(([issueType, count]) => ({ issueType, count })),
+      byStatus: statusCounts,
+      weeklyTrend: last7Days
+    });
+  } catch (error) {
+    console.error('Charts error:', error);
+    res.status(500).json({ error: 'Failed to fetch charts data' });
   }
 });
 
