@@ -176,6 +176,7 @@ const ManagementDashboard = () => {
   const [selectedPending, setSelectedPending] = useState<ReportItem[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
   const [staffSearch, setStaffSearch] = useState("");
+  const [assignError, setAssignError] = useState("");
 
   const [timetable, setTimetable] = useState<TimetableRow[]>([]);
   const [lectures, setLectures] = useState<LectureRow[]>([]);
@@ -318,6 +319,7 @@ const ManagementDashboard = () => {
 
   const handleAssignStaff = async () => {
     if (!selectedStaffId || selectedPending.length === 0) return;
+    setAssignError("");
     try {
       const ids = selectedPending.map(p => p.id);
       await apiPost("/api/management/assign", { ids, staffId: selectedStaffId });
@@ -326,8 +328,10 @@ const ManagementDashboard = () => {
       setShowAssignModal(false);
       setSelectedPending([]);
       setSelectedStaffId("");
+      setStaffSearch("");
     } catch (err) {
       console.error("Failed to assign staff:", err);
+      setAssignError(err instanceof Error ? err.message : "Failed to assign staff");
     }
   };
 
@@ -1316,6 +1320,7 @@ const ManagementDashboard = () => {
             </div>
 
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              {assignError && <p className="text-red-500 text-sm mr-auto">{assignError}</p>}
               <button
                 onClick={() => setShowAssignModal(false)}
                 className="secondary-form-btn"

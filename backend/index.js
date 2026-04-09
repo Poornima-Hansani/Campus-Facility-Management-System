@@ -387,6 +387,16 @@ app.post('/api/management/assign', async (req, res) => {
     if (!staff) {
       staff = await RegisteredStaff.findOne({ id: staffId });
     }
+    if (!staff) {
+      const userStaff = await User.findOne({ userId: staffId, role: 'staff' });
+      if (userStaff) {
+        staff = {
+          id: userStaff.userId,
+          name: userStaff.name,
+          role: userStaff.jobType || userStaff.role
+        };
+      }
+    }
     
     if (!staff) {
       return res.status(400).json({ error: 'Invalid staff member' });
