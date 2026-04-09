@@ -683,6 +683,81 @@ const ManagementDashboard = () => {
         </div>
       </div>
 
+      <div className="content-card">
+        <div className="section-head">
+          <div>
+            <h3>Pending Issues</h3>
+            <p>Issues awaiting staff assignment</p>
+          </div>
+        </div>
+
+        {pending.length === 0 ? (
+          <p className="text-gray-500">No pending issues</p>
+        ) : (
+          <div className="space-y-3">
+            {pending.slice(0, 10).map((item) => (
+              <div key={item.id} className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {item.location} - {item.issueType}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Reported: {new Date(item.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => openAssignModal([item])}
+                    className="primary-form-btn text-sm"
+                  >
+                    Assign
+                  </button>
+                </div>
+              </div>
+            ))}
+            {pending.length > 10 && (
+              <p className="text-gray-500 text-sm">+ {pending.length - 10} more pending</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="content-card">
+        <div className="section-head">
+          <div>
+            <h3>Assigned Issues</h3>
+            <p>Issues currently assigned to staff</p>
+          </div>
+        </div>
+
+        {assigned.length === 0 ? (
+          <p className="text-gray-500">No assigned issues</p>
+        ) : (
+          <div className="space-y-3">
+            {assigned.slice(0, 10).map((item) => (
+              <div key={item.id} className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {item.location} - {item.issueType}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Assigned to: {item.assignedTo} • Status: {item.status}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleMarkFixed([item.id])}
+                    className="secondary-form-btn text-sm"
+                  >
+                    Mark Fixed
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {(escalated.length > 0 || assigned.length > 0) && (
         <div className="content-card">
           <div className="section-head">
