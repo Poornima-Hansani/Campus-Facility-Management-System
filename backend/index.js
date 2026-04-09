@@ -321,7 +321,7 @@ app.post('/api/management/fix', async (req, res) => {
 app.get('/api/management/staff', async (req, res) => {
   try {
     const registeredFromDb = await RegisteredStaff.find({});
-    const allStaff = [...staffMembers, ...registeredFromDb.map(s => ({
+    let allStaff = [...staffMembers, ...registeredFromDb.map(s => ({
       id: s.id,
       name: s.name,
       role: s.role,
@@ -329,6 +329,28 @@ app.get('/api/management/staff', async (req, res) => {
       phone: s.phone,
       email: s.email
     }))];
+    
+    const allReports = await Report.find({});
+    
+    allStaff = allStaff.map(staff => {
+      const activeTasks = allReports.filter(r => 
+        r.assignedToId === staff.id && 
+        (r.status === 'Assigned' || r.status === 'In Progress')
+      ).length;
+      
+      let workloadStatus = 'Free';
+      if (activeTasks >= 5) workloadStatus = 'Busy';
+      else if (activeTasks >= 3) workloadStatus = 'Medium';
+      
+      return {
+        ...staff,
+        activeTasks,
+        workloadStatus
+      };
+    });
+
+    allStaff.sort((a, b) => a.activeTasks - b.activeTasks);
+    
     res.json({ staff: allStaff });
   } catch (error) {
     console.error('Staff fetch error:', error);

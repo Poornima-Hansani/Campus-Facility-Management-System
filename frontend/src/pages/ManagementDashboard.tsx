@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import { apiDelete, apiGet, apiPost } from "../lib/api";
-import { Bell, AlertTriangle, Clock, CheckCircle, Wrench, Users, BarChart3, PieChart, UserPlus } from "lucide-react";
+import { Bell, AlertTriangle, Clock, CheckCircle, Wrench, Users, BarChart3, PieChart, UserPlus, Activity, Zap, HardHat, ThumbsUp, MapPin } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Legend } from "recharts";
 
 type EmailItem = {
@@ -103,6 +103,8 @@ type StaffMember = {
   specialty: string;
   phone: string;
   email: string;
+  activeTasks?: number;
+  workloadStatus?: 'Free' | 'Medium' | 'Busy';
 };
 
 const CHART_COLORS = ['#0d4f34', '#22c55e', '#3b82f6', '#f59e0b'];
@@ -543,16 +545,41 @@ const ManagementDashboard = () => {
     <Layout>
       {loadError && <p className="form-error">{loadError}</p>}
 
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Management Dashboard</h2>
+      {/* Top Alert Banner */}
+      <div className="bg-gradient-to-r from-orange-400 to-orange-500 rounded-xl p-4 mb-6 flex justify-between items-center shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+            <AlertTriangle className="text-white" size={24} />
+          </div>
+          <div>
+            <h3 className="text-white font-bold text-lg">{escalated.length + pending.length} Issues Requiring Attention</h3>
+            <p className="text-white/80 text-sm">{escalated.length} escalations, {pending.length} pending</p>
+          </div>
+        </div>
+        <button className="bg-white text-orange-600 px-6 py-2 rounded-lg font-semibold hover:bg-orange-50 transition-colors shadow-sm">
+          View Now
+        </button>
+      </div>
+
+      {/* Main Title Area */}
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2 text-gray-900">
+            <div className="bg-green-100 p-1.5 rounded-lg">
+              <Activity className="text-green-600" size={24} />
+            </div>
+            Facility Management
+          </h2>
+          <p className="text-gray-500 text-sm mt-1">Real-time campus issue monitoring</p>
+        </div>
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            className="bg-white border border-gray-200 p-2.5 shadow-sm text-orange-500 hover:bg-orange-50 rounded-xl transition-colors relative"
           >
             <Bell size={24} />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center ring-2 ring-white">
                 {unreadCount}
               </span>
             )}
@@ -585,285 +612,145 @@ const ManagementDashboard = () => {
         </div>
       </div>
 
-      <div className="content-card">
-        <div className="section-head">
-          <div>
-            <h3>Issue Management Overview</h3>
-            <p>Track escalated, pending, and assigned facility issues</p>
-          </div>
-        </div>
-
-        <div className="stats-grid availability-stats">
-          <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-red-100 rounded-lg">
-                <AlertTriangle className="text-red-600" size={24} />
-              </div>
-              <div>
-                <h4>Escalated</h4>
-                <h2>{escalated.length}</h2>
-              </div>
+      {/* 4 Columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* Column 1: Action Required */}
+        <div className="bg-red-50/50 border border-red-100 rounded-2xl p-4 flex flex-col h-[500px]">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="bg-red-100 p-2 rounded-full">
+              <Zap className="text-red-500" size={20} />
             </div>
-            <p className="text-xs text-gray-500 mt-2">Requires immediate attention</p>
-          </div>
-
-          <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-yellow-100 rounded-lg">
-                <Clock className="text-yellow-600" size={24} />
-              </div>
-              <div>
-                <h4>Pending</h4>
-                <h2>{pending.length}</h2>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">Awaiting assignment</p>
-          </div>
-
-          <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Wrench className="text-blue-600" size={24} />
-              </div>
-              <div>
-                <h4>Assigned</h4>
-                <h2>{assigned.length}</h2>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">In progress</p>
-          </div>
-
-          <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <CheckCircle className="text-green-600" size={24} />
-              </div>
-              <div>
-                <h4>Resolved</h4>
-                <h2>{stats.fixedReports}</h2>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">Issues fixed</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="content-card">
-        <div className="section-head">
-          <div>
-            <h3>Weekly Performance Summary</h3>
-            <p>Last 7 days performance metrics</p>
-          </div>
-        </div>
-
-        <div className="stats-grid availability-stats">
-          <div className="stat-card">
-            <h4>Reports This Week</h4>
-            <h2>{weeklySummary.totalReports}</h2>
-            <p>New issues reported</p>
-          </div>
-
-          <div className="stat-card">
-            <h4>Fixed This Week</h4>
-            <h2>{weeklySummary.fixedReports}</h2>
-            <p>Issues resolved</p>
-          </div>
-
-          <div className="stat-card">
-            <h4>Avg Response Time</h4>
-            <h2>{weeklySummary.avgResponseTime} min</h2>
-            <p>Average fix time</p>
-          </div>
-
-          <div className="stat-card">
-            <h4>Resolution Rate</h4>
-            <h2>{weeklySummary.resolutionRate}%</h2>
-            <p>Success rate</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="content-card">
-        <div className="section-head">
-          <div>
-            <h3>Pending Issues</h3>
-            <p>Issues awaiting staff assignment</p>
-          </div>
-        </div>
-
-        {pending.length === 0 ? (
-          <p className="text-gray-500">No pending issues</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Location</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Issue Type</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Reported Date</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pending.slice(0, 15).map((item) => (
-                  <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4">{item.location}</td>
-                    <td className="py-3 px-4">{item.issueType}</td>
-                    <td className="py-3 px-4">{new Date(item.createdAt).toLocaleDateString()}</td>
-                    <td className="py-3 px-4">
-                      <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">Pending</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <button
-                        onClick={() => openAssignModal([item])}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                      >
-                        Assign
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {pending.length > 15 && (
-              <p className="text-gray-500 text-sm mt-2">+ {pending.length - 15} more pending</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="content-card">
-        <div className="section-head">
-          <div>
-            <h3>Assigned Issues</h3>
-            <p>Issues currently assigned to staff</p>
-          </div>
-        </div>
-
-        {assigned.length === 0 ? (
-          <p className="text-gray-500">No assigned issues</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Location</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Issue Type</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Assigned To</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {assigned.slice(0, 15).map((item) => (
-                  <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4">{item.location}</td>
-                    <td className="py-3 px-4">{item.issueType}</td>
-                    <td className="py-3 px-4">{item.assignedTo || 'Staff'}</td>
-                    <td className="py-3 px-4">
-                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">{item.status}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <button
-                        onClick={() => handleMarkFixed([item.id])}
-                        className="text-green-600 hover:text-green-800 text-sm font-medium"
-                      >
-                        Mark Fixed
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {(escalated.length > 0 || assigned.length > 0) && (
-        <div className="content-card">
-          <div className="section-head">
             <div>
-              <h3>Quick Actions</h3>
-              <p>Manage escalated and assigned issues</p>
+              <h3 className="font-bold text-gray-900">Action Required</h3>
+              <p className="text-xs text-red-600 font-medium">{escalated.length} escalations</p>
             </div>
           </div>
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+            {escalated.map((item, idx) => (
+              <div key={idx} className="bg-white rounded-xl shadow-sm border border-red-50 p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full flex items-center justify-center min-w-[20px] min-h-[20px]">
+                    {item.count}
+                  </span>
+                  <span className="text-red-500 font-medium text-sm flex-1 ml-2">{item.issueType}</span>
+                  <button className="bg-blue-500 hover:bg-blue-600 text-white text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1 transition-colors">
+                    <UserPlus size={12} /> Assign
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">{item.location}</p>
+              </div>
+            ))}
+            {escalated.length === 0 && <p className="text-gray-400 text-sm text-center mt-10">No escalations currently.</p>}
+          </div>
+        </div>
 
-          {escalated.length > 0 && (
-            <div className="mb-6">
-              <h4 className="font-semibold text-red-600 mb-3 flex items-center gap-2">
-                <AlertTriangle size={18} />
-                Escalated Issues ({escalated.length})
-              </h4>
-              <div className="space-y-3">
-                {escalated.map((item, idx) => (
-                  <div key={idx} className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {item.location} - {item.issueType}
-                        </p>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {item.count} reports • Status: {item.status}
-                        </p>
-                        {item.missingStaff && (
-                          <span className="inline-block mt-2 text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
-                            Needs Staff Assignment
-                          </span>
-                        )}
-                      </div>
-                      {item.ids.length > 0 && (
-                        <button
-                          onClick={() => handleMarkFixed(item.ids)}
-                          className="primary-form-btn text-sm"
-                        >
-                          Mark Fixed
-                        </button>
-                      )}
+        {/* Column 2: Pending */}
+        <div className="bg-yellow-50/50 border border-yellow-100 rounded-2xl p-4 flex flex-col h-[500px]">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="bg-yellow-100 p-2 rounded-full">
+              <Clock className="text-yellow-600" size={20} />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900">Pending</h3>
+              <p className="text-xs text-yellow-600 font-medium">{pending.length} waiting</p>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+            {pending.map((item) => (
+              <div key={item.id} className="bg-white rounded-xl shadow-sm border border-yellow-50 p-4">
+                <div className="flex justify-between items-start mb-1">
+                  <span className="text-gray-900 font-semibold text-sm flex-1">{item.issueType}</span>
+                  <button 
+                    onClick={() => openAssignModal([item])}
+                    className="bg-blue-500 hover:bg-blue-600 text-white text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1 transition-colors"
+                  >
+                    <UserPlus size={12} /> Assign
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500">{item.location}</p>
+              </div>
+            ))}
+            {pending.length === 0 && <p className="text-gray-400 text-sm text-center mt-10">No pending issues.</p>}
+          </div>
+        </div>
+
+        {/* Column 3: In Progress */}
+        <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 flex flex-col h-[500px]">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="bg-blue-100 p-2 rounded-full">
+              <HardHat className="text-blue-500" size={20} />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900">In Progress</h3>
+              <p className="text-xs text-blue-600 font-medium">{assigned.length} assigned</p>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+            {assigned.map((item) => (
+              <div key={item.id} className="bg-white rounded-xl shadow-sm border border-blue-50 p-4">
+                <div className="bg-blue-50/80 rounded-lg p-2.5 mb-3 flex items-start justify-between">
+                  <div>
+                    <p className="text-[11px] text-blue-800 font-medium max-w-[120px] overflow-hidden whitespace-nowrap text-ellipsis">Assignee: {item.assignedTo || "Staff"}</p>
+                    <div className="flex items-center gap-1 mt-1 text-blue-500">
+                      <Clock size={10} />
+                      <span className="text-[10px]">Status: In Progress</span>
                     </div>
                   </div>
-                ))}
+                  <button 
+                    onClick={() => handleMarkFixed([item.id])}
+                    className="bg-green-500 hover:bg-green-600 text-white text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1 transition-colors"
+                  >
+                    <ThumbsUp size={12} /> Fixed
+                  </button>
+                </div>
+                <h4 className="text-sm font-bold text-gray-900">{item.issueType}</h4>
+                <p className="text-xs text-gray-500 mt-0.5">{item.location}</p>
               </div>
-            </div>
-          )}
-
-          {assigned.length > 0 && (
-            <div>
-              <h4 className="font-semibold text-blue-600 mb-3 flex items-center gap-2">
-                <Wrench size={18} />
-                Assigned Issues ({assigned.length})
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {assigned.slice(0, 6).map((item) => (
-                  <div key={item.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="font-medium text-gray-900 text-sm">{item.issueType}</p>
-                    <p className="text-xs text-gray-600">{item.location}</p>
-                    <p className="text-xs text-gray-500 mt-1">Assigned to: {item.assignedTo || "Staff"}</p>
-                    <button
-                      onClick={() => handleMarkFixed([item.id])}
-                      className="mt-2 text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
-                    >
-                      Mark Fixed
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {pending.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <button
-                onClick={() => openAssignModal(pending)}
-                className="primary-form-btn flex items-center gap-2"
-              >
-                <UserPlus size={18} />
-                Assign Staff to {pending.length} Pending
-              </button>
-            </div>
-          )}
+            ))}
+            {assigned.length === 0 && <p className="text-gray-400 text-sm text-center mt-10">No issues in progress.</p>}
+          </div>
         </div>
-      )}
+
+        {/* Column 4: Resolution Rate */}
+        <div className="bg-green-50/50 border border-green-100 rounded-2xl p-4 flex flex-col h-[500px]">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="bg-green-100 p-2 rounded-full">
+              <ThumbsUp className="text-green-600" size={20} />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900">Resolution Rate</h3>
+              <p className="text-xs text-green-600 font-medium">{weeklySummary.resolutionRate}% success</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-green-50 p-5 mt-2">
+            <p className="text-xs font-bold text-green-600 mb-2">{weeklySummary.resolutionRate}%</p>
+            <div className="w-full bg-green-100 rounded-full h-2.5 mb-4 overflow-hidden">
+              <div className="bg-green-500 h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, weeklySummary.resolutionRate))}%` }}></div>
+            </div>
+            <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-50">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-gray-900">{stats.fixedReports}</p>
+                <p className="text-xs text-gray-400 mt-1 uppercase font-semibold">Fixed</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-gray-900">{stats.totalReports - stats.fixedReports}</p>
+                <p className="text-xs text-gray-400 mt-1 uppercase font-semibold">Remaining</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Most Problematic Locations Banner */}
+      <div className="bg-[#1e293b] rounded-2xl p-6 mb-8 flex items-center gap-5 shadow-lg text-white">
+        <div className="bg-white/10 p-4 rounded-full flex-shrink-0">
+          <MapPin className="text-red-400" size={28} />
+        </div>
+        <div>
+          <h3 className="font-bold text-xl mb-1">Most Problematic Locations</h3>
+          <p className="text-sm text-gray-400">Top hotspots requiring attention: <span className="text-gray-300 font-medium">{charts.categoryData.slice(0, 3).map(c => c.name).join(', ') || 'None presently'}</span></p>
+        </div>
+      </div>
 
       <div className="content-card">
         <div className="section-head">
@@ -1349,22 +1236,45 @@ const ManagementDashboard = () => {
                 >
                   <option value="">Choose staff...</option>
                   {staff.map(s => (
-                    <option key={s.id} value={s.id}>
+                    <option key={s.id} value={s.id} disabled={s.workloadStatus === 'Busy'}>
                       {s.name} ({s.role}) - {s.specialty}
+                      {s.activeTasks !== undefined ? ` - ${s.activeTasks} tasks` : ''}
+                      {s.workloadStatus ? ` [${s.workloadStatus}]` : ''}
                     </option>
                   ))}
                 </select>
               </div>
 
               {selectedStaffId && (
-                <div className="mt-4 p-3 bg-green-50 rounded-lg">
-                  <p className="text-sm text-green-700">
-                    Staff: <strong>{staff.find(s => s.id === selectedStaffId)?.name}</strong>
-                    <br />
-                    Role: {staff.find(s => s.id === selectedStaffId)?.role}
-                    <br />
-                    Specialty: {staff.find(s => s.id === selectedStaffId)?.specialty}
-                  </p>
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm text-gray-700">
+                        Staff: <strong>{staff.find(s => s.id === selectedStaffId)?.name}</strong>
+                        <br />
+                        Role: {staff.find(s => s.id === selectedStaffId)?.role}
+                        <br />
+                        Specialty: {staff.find(s => s.id === selectedStaffId)?.specialty}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Active Tasks</p>
+                      <p className="text-2xl font-bold">{staff.find(s => s.id === selectedStaffId)?.activeTasks || 0}</p>
+                    </div>
+                  </div>
+                  {(() => {
+                    const ws = staff.find(s => s.id === selectedStaffId)?.workloadStatus;
+                    const colors = {
+                      'Free': 'bg-green-100 text-green-800',
+                      'Medium': 'bg-yellow-100 text-yellow-800',
+                      'Busy': 'bg-red-100 text-red-800'
+                    };
+                    return ws ? (
+                      <span className={`inline-block mt-2 px-3 py-1 text-sm rounded-full ${colors[ws]}`}>
+                        {ws}
+                      </span>
+                    ) : null;
+                  })()}
                 </div>
               )}
             </div>
