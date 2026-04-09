@@ -175,6 +175,7 @@ const ManagementDashboard = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedPending, setSelectedPending] = useState<ReportItem[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+  const [staffSearch, setStaffSearch] = useState("");
 
   const [timetable, setTimetable] = useState<TimetableRow[]>([]);
   const [lectures, setLectures] = useState<LectureRow[]>([]);
@@ -333,6 +334,7 @@ const ManagementDashboard = () => {
   const openAssignModal = (reports: ReportItem[]) => {
     setSelectedPending(reports);
     setSelectedStaffId("");
+    setStaffSearch("");
     setShowAssignModal(true);
   };
 
@@ -1229,20 +1231,54 @@ const ManagementDashboard = () => {
 
               <div className="form-group">
                 <label>Select Staff Member</label>
-                <select
-                  value={selectedStaffId}
-                  onChange={(e) => setSelectedStaffId(e.target.value)}
-                  className="w-full"
-                >
-                  <option value="">Choose staff...</option>
-                  {staff.map(s => (
-                    <option key={s.id} value={s.id} disabled={s.workloadStatus === 'Busy'}>
-                      {s.name} ({s.role}) - {s.specialty}
-                      {s.activeTasks !== undefined ? ` - ${s.activeTasks} tasks` : ''}
-                      {s.workloadStatus ? ` [${s.workloadStatus}]` : ''}
-                    </option>
+                <input
+                  type="text"
+                  placeholder="Search staff..."
+                  value={staffSearch}
+                  onChange={(e) => setStaffSearch(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-lg mb-3"
+                />
+                <div className="max-h-72 overflow-y-auto space-y-2 mt-2">
+                  {staff.filter(s => s.name.toLowerCase().includes(staffSearch.toLowerCase())).map(s => (
+                    <div
+                      key={s.id}
+                      onClick={() => s.workloadStatus !== 'Busy' && setSelectedStaffId(s.id)}
+                      className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition ${
+                        selectedStaffId === s.id
+                          ? "bg-green-100 border-green-400"
+                          : s.workloadStatus === 'Busy'
+                          ? "bg-gray-50 opacity-50 cursor-not-allowed"
+                          : "bg-white hover:bg-gray-50 border-gray-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center font-bold text-teal-700">
+                          {s.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800">{s.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {s.role} • {s.specialty}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            Tasks: {s.activeTasks || 0}
+                          </p>
+                        </div>
+                      </div>
+                      <span
+                        className={`px-2 py-1 text-xs rounded-full font-medium ${
+                          s.workloadStatus === 'Busy'
+                            ? "bg-red-100 text-red-600"
+                            : s.workloadStatus === 'Medium'
+                            ? "bg-yellow-100 text-yellow-600"
+                            : "bg-green-100 text-green-600"
+                        }`}
+                      >
+                        {s.workloadStatus || 'Free'}
+                      </span>
+                    </div>
                   ))}
-                </select>
+                </div>
               </div>
 
               {selectedStaffId && (
