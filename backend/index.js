@@ -175,6 +175,20 @@ app.post('/api/reports', upload.single('image'), async (req, res) => {
 
     await newReport.save();
 
+    const notification = new Notification({
+      type: 'new_report',
+      recipientType: 'management',
+      recipientId: 'management',
+      message: `New issue reported: ${issueType} at ${location}`,
+      reportId: newReport.id,
+      location: location,
+      issueType: issueType,
+      studentId: studentId || 'STU12345',
+      createdAt: new Date().toISOString(),
+      read: false
+    });
+    await notification.save();
+
     const matchingReports = await Report.find({ location, issueType, status: 'Pending' });
     
     if (matchingReports.length >= 5) {
