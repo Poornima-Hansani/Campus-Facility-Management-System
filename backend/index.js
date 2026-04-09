@@ -321,14 +321,35 @@ app.post('/api/management/fix', async (req, res) => {
 app.get('/api/management/staff', async (req, res) => {
   try {
     const registeredFromDb = await RegisteredStaff.find({});
-    let allStaff = [...staffMembers, ...registeredFromDb.map(s => ({
-      id: s.id,
-      name: s.name,
-      role: s.role,
-      specialty: s.specialty,
-      phone: s.phone,
-      email: s.email
-    }))];
+    const staffFromUsers = await User.find({ role: 'staff' });
+    const staffFromUsersData = staffFromUsers.map(u => ({
+      id: u.userId,
+      name: u.name,
+      role: u.jobType || u.role,
+      specialty: u.jobType || u.role,
+      phone: u.phone || '',
+      email: u.email
+    }));
+    
+    let allStaff = [
+      ...staffMembers, 
+      ...registeredFromDb.map(s => ({
+        id: s.id,
+        name: s.name,
+        role: s.role,
+        specialty: s.specialty,
+        phone: s.phone,
+        email: s.email
+      })),
+      ...staffFromUsersData
+    ];
+    
+    const seen = new Set();
+    allStaff = allStaff.filter(s => {
+      if (seen.has(s.id)) return false;
+      seen.add(s.id);
+      return true;
+    });
     
     const allReports = await Report.find({});
     
