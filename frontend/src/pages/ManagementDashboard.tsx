@@ -694,29 +694,40 @@ const ManagementDashboard = () => {
         {pending.length === 0 ? (
           <p className="text-gray-500">No pending issues</p>
         ) : (
-          <div className="space-y-3">
-            {pending.slice(0, 10).map((item) => (
-              <div key={item.id} className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {item.location} - {item.issueType}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Reported: {new Date(item.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => openAssignModal([item])}
-                    className="primary-form-btn text-sm"
-                  >
-                    Assign
-                  </button>
-                </div>
-              </div>
-            ))}
-            {pending.length > 10 && (
-              <p className="text-gray-500 text-sm">+ {pending.length - 10} more pending</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Location</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Issue Type</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Reported Date</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pending.slice(0, 15).map((item) => (
+                  <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 px-4">{item.location}</td>
+                    <td className="py-3 px-4">{item.issueType}</td>
+                    <td className="py-3 px-4">{new Date(item.createdAt).toLocaleDateString()}</td>
+                    <td className="py-3 px-4">
+                      <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">Pending</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <button
+                        onClick={() => openAssignModal([item])}
+                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      >
+                        Assign
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {pending.length > 15 && (
+              <p className="text-gray-500 text-sm mt-2">+ {pending.length - 15} more pending</p>
             )}
           </div>
         )}
@@ -733,27 +744,38 @@ const ManagementDashboard = () => {
         {assigned.length === 0 ? (
           <p className="text-gray-500">No assigned issues</p>
         ) : (
-          <div className="space-y-3">
-            {assigned.slice(0, 10).map((item) => (
-              <div key={item.id} className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {item.location} - {item.issueType}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Assigned to: {item.assignedTo} • Status: {item.status}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleMarkFixed([item.id])}
-                    className="secondary-form-btn text-sm"
-                  >
-                    Mark Fixed
-                  </button>
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Location</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Issue Type</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Assigned To</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assigned.slice(0, 15).map((item) => (
+                  <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 px-4">{item.location}</td>
+                    <td className="py-3 px-4">{item.issueType}</td>
+                    <td className="py-3 px-4">{item.assignedTo || 'Staff'}</td>
+                    <td className="py-3 px-4">
+                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">{item.status}</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <button
+                        onClick={() => handleMarkFixed([item.id])}
+                        className="text-green-600 hover:text-green-800 text-sm font-medium"
+                      >
+                        Mark Fixed
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
