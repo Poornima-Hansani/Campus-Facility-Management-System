@@ -23,6 +23,9 @@ import ReportIssue from './pages/ReportIssue';
 import ReportHistory from './pages/ReportHistory';
 import AllIssues from './pages/AllIssues';
 import StaffDashboard from './pages/StaffDashboard';
+import LecturerDashboard from './pages/LecturerDashboard';
+import TimetableBuilderPage from './pages/TimetableBuilderPage';
+import TimetablePrintPage from './pages/TimetablePrintPage';
 import StudyAreaBooking from './pages/StudyAreaBooking';
 import LabBooking from './pages/LabBooking';
 
@@ -57,6 +60,7 @@ function Navigation() {
   const getDashboardRoute = () => {
     switch (role) {
       case 'student': return '/student';
+      case 'lecturer': return '/lecturer-dashboard';
       case 'management': return '/management-dashboard';
       case 'staff': return '/staff/dashboard';
       case 'admin': return '/admin-dashboard';
@@ -148,6 +152,24 @@ function AppRoutes() {
           <StaffRoute>
             <StaffDashboard />
           </StaffRoute>
+        } />
+        
+        <Route path="/lecturer-dashboard" element={
+          <ProtectedRoute role="lecturer">
+            <LecturerDashboard />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/timetable-builder" element={
+          <ProtectedRoute role="lecturer">
+            <TimetableBuilderPage />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/timetable-print/:year/:semester/:batch/:specialization/:group" element={
+          <ProtectedRoute role="lecturer">
+            <TimetablePrintPage />
+          </ProtectedRoute>
         } />
         
         <Route path="/dashboard" element={

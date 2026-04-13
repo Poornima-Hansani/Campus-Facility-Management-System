@@ -18,6 +18,9 @@ const managementEmailRoutes = require("./routes/managementEmailRoutes");
 const authRoutes = require("./routes/authRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const energyRoutes = require("./routes/energyRoutes");
+const studentTimetableRoutes = require("./routes/studentTimetableRoutes");
+const lecturerRoutes = require("./routes/lecturerRoutes");
+const locationRoutes = require("./routes/locationRoutes");
 const Reminder = require("./models/Reminder");
 const AcademicTask = require("./models/AcademicTask");
 const User = require("./models/User");
@@ -140,6 +143,9 @@ app.use("/api/management/emails", managementEmailRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/energy", energyRoutes);
+app.use("/api/student-timetable", studentTimetableRoutes);
+app.use("/api/lecturers", lecturerRoutes);
+app.use("/api/locations", locationRoutes);
 app.post('/api/reports', upload.single('image'), async (req, res) => {
   try {
     const { location, issueType, comment, studentId } = req.body;

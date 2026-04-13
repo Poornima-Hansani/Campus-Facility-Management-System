@@ -91,7 +91,7 @@ export default function UnifiedLoginPage() {
 
       const routes: Record<string, string> = {
         student: '/student',
-        lecturer: '/dashboard',
+        lecturer: '/lecturer-dashboard',
         management: '/management-dashboard',
         staff: '/staff/dashboard',
         admin: '/admin-dashboard'
