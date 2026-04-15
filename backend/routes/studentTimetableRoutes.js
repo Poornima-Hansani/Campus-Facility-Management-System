@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const StudentTimeTable = require('../models/StudentTimeTable');
+const labTimetableRoutes = require('./labTimetableRoutes');
+const { rebuildLabTimetables } = labTimetableRoutes;
 
 // Calculate free time from sessions based on batch type
 const calculateFreeTime = (sessions, batch) => {
@@ -128,6 +130,14 @@ router.post('/', async (req, res) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
     
+    // Rebuild LabTimetable after StudentTimeTable changes
+    try {
+      await rebuildLabTimetables();
+    } catch (rebuildError) {
+      console.error('LabTimetable rebuild error:', rebuildError);
+      // Don't fail the main operation if rebuild fails
+    }
+    
     res.json(data);
   } catch (error) {
     console.error('MongoDB Error:', error); // ADD THIS - Shows real error
@@ -195,6 +205,15 @@ router.put('/:id', async (req, res) => {
       { new: true }
     )
     .populate('sessions.lecturer', 'name');
+    
+    // Rebuild LabTimetable after StudentTimeTable changes
+    try {
+      await rebuildLabTimetables();
+    } catch (rebuildError) {
+      console.error('LabTimetable rebuild error:', rebuildError);
+      // Don't fail the main operation if rebuild fails
+    }
+    
     res.json(data);
   } catch (error) {
     res.status(500).json({ message: 'Error updating timetable', error: error.message });
@@ -204,6 +223,15 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     await StudentTimeTable.findByIdAndDelete(req.params.id);
+    
+    // Rebuild LabTimetable after StudentTimeTable changes
+    try {
+      await rebuildLabTimetables();
+    } catch (rebuildError) {
+      console.error('LabTimetable rebuild error:', rebuildError);
+      // Don't fail main operation if rebuild fails
+    }
+    
     res.json({ message: 'Deleted' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting timetable', error: error.message });
