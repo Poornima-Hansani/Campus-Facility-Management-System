@@ -18,9 +18,10 @@ const managementEmailRoutes = require("./routes/managementEmailRoutes");
 const authRoutes = require("./routes/authRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const energyRoutes = require("./routes/energyRoutes");
-const studentTimetableRoutes = require("./routes/studentTimetableRoutes");
+const studentTimetableRoutes = require("./routes/studentTimeTableRoutes");
 const lecturerRoutes = require("./routes/lecturerRoutes");
 const locationRoutes = require("./routes/locationRoutes");
+const labTimetableRoutes = require("./routes/labTimetableRoutes");
 const Reminder = require("./models/Reminder");
 const AcademicTask = require("./models/AcademicTask");
 const User = require("./models/User");
@@ -77,6 +78,7 @@ app.use('/api/energy', energyRoutes);
 app.use('/api/studenttimetables', studentTimetableRoutes);
 app.use('/api/lecturers', lecturerRoutes);
 app.use('/api/locations', locationRoutes);
+app.use('/api/labtimetable', labTimetableRoutes);
 
 const staffMembers = [
   { id: 'STF001', name: 'Kamal Perera', role: 'Electrician', specialty: 'A/C & Electronics', phone: '+94 71 234 5678', email: 'kamal@university.edu' },

@@ -31,7 +31,16 @@ const studentTimeTableSchema = new mongoose.Schema({
   batch: { type: String, enum: ['WD', 'WE'] },
   specialization: String,
   group: String,
-  sessions: [sessionSchema]
+  sessions: [sessionSchema],
+  freeTime: {
+    Monday: { busy: [{ start: Number, end: Number }], free: [{ start: Number, end: Number }] },
+    Tuesday: { busy: [{ start: Number, end: Number }], free: [{ start: Number, end: Number }] },
+    Wednesday: { busy: [{ start: Number, end: Number }], free: [{ start: Number, end: Number }] },
+    Thursday: { busy: [{ start: Number, end: Number }], free: [{ start: Number, end: Number }] },
+    Friday: { busy: [{ start: Number, end: Number }], free: [{ start: Number, end: Number }] },
+    Saturday: { busy: [{ start: Number, end: Number }], free: [{ start: Number, end: Number }] },
+    Sunday: { busy: [{ start: Number, end: Number }], free: [{ start: Number, end: Number }] }
+  }
 });
 
 // Add unique compound index to prevent duplicate timetables

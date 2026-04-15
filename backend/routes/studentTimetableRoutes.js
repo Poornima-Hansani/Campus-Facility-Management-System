@@ -2,6 +2,73 @@ const express = require('express');
 const router = express.Router();
 const StudentTimeTable = require('../models/StudentTimeTable');
 
+// Calculate free time from sessions based on batch type
+const calculateFreeTime = (sessions, batch) => {
+  const result = {};
+  
+  // Define days based on batch type
+  const weekdayDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  const weekendDays = ['Saturday', 'Sunday'];
+  
+  // Process relevant days based on batch
+  const daysToProcess = batch === 'WD' ? weekdayDays : weekendDays;
+  
+  daysToProcess.forEach(day => {
+    // Filter sessions for this day
+    const daySessions = sessions.filter(s => s.day === day);
+    
+    // Define working hours based on day type
+    const workingHours = (day === 'Saturday' || day === 'Sunday') 
+      ? { start: 8.0, end: 20.0 }  // Weekend: 8:00 - 20:00
+      : { start: 8.0, end: 17.5 }; // Weekday: 8:00 - 17:30
+    
+    // Sort sessions by start time
+    daySessions.sort((a, b) => a.startNum - b.startNum);
+    
+    // Extract busy slots
+    const busy = daySessions.map(s => ({
+      start: s.startNum,
+      end: s.endNum
+    }));
+    
+    // Calculate free slots
+    const free = [];
+    let currentTime = workingHours.start;
+    
+    for (const session of daySessions) {
+      // Add free time before this session
+      if (currentTime < session.startNum) {
+        free.push({
+          start: currentTime,
+          end: session.startNum
+        });
+      }
+      // Update current time to end of this session
+      currentTime = Math.max(currentTime, session.endNum);
+    }
+    
+    // Add free time after last session
+    if (currentTime < workingHours.end) {
+      free.push({
+        start: currentTime,
+        end: workingHours.end
+      });
+    }
+    
+    // If no sessions, entire working day is free
+    if (daySessions.length === 0) {
+      free.push({
+        start: workingHours.start,
+        end: workingHours.end
+      });
+    }
+    
+    result[day] = { busy, free };
+  });
+  
+  return result;
+};
+
 // Professional time conversion function
 const timeToNumber = (t) => {
   const [h, m] = t.split(':').map(Number);
@@ -47,12 +114,16 @@ router.post('/', async (req, res) => {
       };
     });
     
+    // Calculate free time from converted sessions based on batch type
+    const freeTime = calculateFreeTime(convertSessions, batch);
+    
     // Atomic upsert - handles both create and update without duplicate key errors
     const data = await StudentTimeTable.findOneAndUpdate(
       { year, semester, batch, specialization, group },
       {
         year, semester, batch, specialization, group,
-        sessions: convertSessions
+        sessions: convertSessions,
+        freeTime: freeTime
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
@@ -112,9 +183,15 @@ router.put('/:id', async (req, res) => {
       endNum: timeToNumber(s.endTime)
     }));
 
+    // Get existing timetable to determine batch type
+    const existingTimetable = await StudentTimeTable.findById(req.params.id);
+    
+    // Calculate free time from converted sessions based on batch type
+    const freeTime = calculateFreeTime(convertSessions, existingTimetable.batch);
+
     const data = await StudentTimeTable.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, sessions: convertSessions },
+      { ...req.body, sessions: convertSessions, freeTime: freeTime },
       { new: true }
     )
     .populate('sessions.lecturer', 'name');

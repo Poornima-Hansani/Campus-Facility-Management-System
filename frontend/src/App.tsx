@@ -28,6 +28,8 @@ import TimetableBuilderPage from './pages/TimetableBuilderPage';
 import TimetablePrintPage from './pages/TimetablePrintPage';
 import StudyAreaBooking from './pages/StudyAreaBooking';
 import LabBooking from './pages/LabBooking';
+import LabTimetableList from './pages/LabTimetableList';
+import LabTimetableView from './pages/LabTimetableView';
 
 function Navigation() {
   const location = useLocation();
@@ -185,6 +187,16 @@ function AppRoutes() {
         <Route path="/admin-dashboard" element={
           <ProtectedRoute role="admin">
             <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/labtimetables" element={
+          <ProtectedRoute role="admin">
+            <LabTimetableList />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/labtimetables/:lab" element={
+          <ProtectedRoute role="admin">
+            <LabTimetableView />
           </ProtectedRoute>
         } />
         <Route path="/timetable" element={

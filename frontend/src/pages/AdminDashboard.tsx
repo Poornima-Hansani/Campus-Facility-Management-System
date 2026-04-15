@@ -23,6 +23,13 @@ const AdminDashboard = () => {
           >
             Open Management Dashboard
           </Link>
+          <Link
+            to="/admin/labtimetables"
+            className="primary-form-btn admin-dashboard-link"
+            style={{ marginLeft: '1rem' }}
+          >
+            Lab Timetable
+          </Link>
         </div>
       </div>
 
