@@ -1,24 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const Lecturer = require('../models/Lecturer');
+const User = require('../models/User');
 
-// Get all lecturers
+// Get REAL lecturers from users collection
 router.get('/', async (req, res) => {
   try {
-    const data = await Lecturer.find().sort({ name: 1 });
-    res.json(data);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching lecturers', error: error.message });
-  }
-});
+    const lecturers = await User.find(
+      { role: 'lecturer' },
+      { _id: 1, name: 1 } // only what frontend needs
+    );
 
-// Create new lecturer
-router.post('/', async (req, res) => {
-  try {
-    const data = await Lecturer.create(req.body);
-    res.json(data);
+    res.json(lecturers);
   } catch (error) {
-    res.status(500).json({ message: 'Error creating lecturer', error: error.message });
+    res.status(500).json({ message: error.message });
   }
 });
 

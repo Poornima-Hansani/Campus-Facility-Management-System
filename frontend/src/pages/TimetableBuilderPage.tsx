@@ -14,8 +14,11 @@ interface Session {
   endNum: number;
   type: 'LECTURE' | 'LAB';
   subject: string;
-  lecturer: string; // Will store ObjectId
-  location: string; // Will store ObjectId
+  lecturer: string | {
+    _id: string;
+    name: string;
+  };
+  location: string;
 }
 
 interface Lecturer {
@@ -25,11 +28,6 @@ interface Lecturer {
   department: string;
 }
 
-interface Location {
-  _id: string;
-  name: string;
-  type: 'LAB' | 'HALL';
-}
 
 interface TimeTable {
   year: string;
@@ -37,7 +35,15 @@ interface TimeTable {
   batch: 'WD' | 'WE';
   specialization: string;
   group: string;
-  sessions: Session[];
+  sessions: {
+    day: string;
+    startTime: string;
+    endTime: string;
+    lecturer: string;
+    location: string;
+    type: 'LECTURE' | 'LAB';
+    subject: string;
+  }[];
 }
 
 export default function TimetableBuilderPage() {
@@ -48,7 +54,7 @@ export default function TimetableBuilderPage() {
   const [semester, setSemester] = useState('S1');
   const [batch, setBatch] = useState<'WD' | 'WE'>('WD');
   const [specialization, setSpecialization] = useState('SE');
-  const [group, setGroup] = useState('A');
+  const [group, setGroup] = useState('1.1');
   
   // State for sessions
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -61,7 +67,6 @@ export default function TimetableBuilderPage() {
   
   // Master data for dropdowns
   const [lecturers, setLecturers] = useState<Lecturer[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
   
   // Modal state
   const [sessionType, setSessionType] = useState<'LECTURE' | 'LAB'>('LECTURE');
@@ -109,14 +114,38 @@ export default function TimetableBuilderPage() {
     return hours + (minutes / 60);
   };
 
+  // Normalize day name to full format (Monday, Tuesday, etc.)
+  const normalizeDayFull = (d: string) => {
+    const x = d.trim().toLowerCase();
+    if (x.startsWith('mon')) return 'Monday';
+    if (x.startsWith('tue')) return 'Tuesday';
+    if (x.startsWith('wed')) return 'Wednesday';
+    if (x.startsWith('thu')) return 'Thursday';
+    if (x.startsWith('fri')) return 'Friday';
+    if (x.startsWith('sat')) return 'Saturday';
+    if (x.startsWith('sun')) return 'Sunday';
+    return d;
+  };
+
 
   // Check if session overlaps with existing sessions
-  const isOverlapping = (day: string, startTime: string, endTime: string, excludeSessionId?: string) => {
+  const isOverlapping = (
+    day: string,
+    startTime: string,
+    endTime: string,
+    excludeSessionId?: string
+  ) => {
+    const newStart = timeToNumber(startTime);
+    const newEnd = timeToNumber(endTime);
+
     return sessions.some(session => {
       if (excludeSessionId && session.sessionId === excludeSessionId) return false;
       if (session.day !== day) return false;
 
-      return !(endTime <= session.startTime || startTime >= session.endTime);
+      const existingStart = timeToNumber(session.startTime);
+      const existingEnd = timeToNumber(session.endTime);
+
+      return newStart < existingEnd && newEnd > existingStart;
     });
   };
 
@@ -136,19 +165,28 @@ export default function TimetableBuilderPage() {
   
   
   // Save session
-  const saveSession = () => {
-    if (!selectedCell || !subject || !lecturer || !location) {
-      setError('Please fill all fields');
+  const saveSession = async () => {
+    // Debug log to verify fix
+    console.log('Save session - selectedCell.time:', selectedCell?.time, 'editingSession?.startTime:', editingSession?.startTime);
+    
+    // Validate required fields
+    if (
+      !selectedCell ||
+      !subject.trim() ||
+      !lecturer ||
+      !location.trim()
+    ) {
+      setError('Please fill all required fields');
       return;
     }
 
     // Validate time
     if (!validateTime(batch, selectedCell.time, endTime)) {
-      setError('Invalid time for selected batch');
+      setError('Invalid time slot for selected batch');
       return;
     }
 
-    // Validate endTime > startTime
+    // Validate end time is after start time
     if (timeToNumber(endTime) <= timeToNumber(selectedCell.time)) {
       setError('End time must be after start time');
       return;
@@ -160,12 +198,15 @@ export default function TimetableBuilderPage() {
       return;
     }
 
+    
+    const realStart = selectedCell.time;
+
     const newSession: Session = {
       sessionId: editingSession?.sessionId || uuid(),
-      day: selectedCell.day,
-      startTime: selectedCell.time,
+      day: normalizeDayFull(selectedCell.day),
+      startTime: realStart,
       endTime,
-      startNum: timeToNumber(selectedCell.time),
+      startNum: timeToNumber(realStart),
       endNum: timeToNumber(endTime),
       type: sessionType,
       subject,
@@ -173,11 +214,13 @@ export default function TimetableBuilderPage() {
       location
     };
 
+    // Update local state only
     if (editingSession) {
-      // Update existing session by sessionId
-      setSessions(prev => prev.map(s => 
-        s.sessionId === editingSession.sessionId ? newSession : s
-      ));
+      // Update existing session by sessionId - remove old first to prevent ghost blocks
+      setSessions(prev => {
+        const withoutOld = prev.filter(s => s.sessionId !== editingSession?.sessionId);
+        return [...withoutOld, newSession];
+      });
     } else {
       // Add new session
       setSessions(prev => [...prev, newSession]);
@@ -209,19 +252,17 @@ export default function TimetableBuilderPage() {
   // Load master data for dropdowns
   const loadMasterData = async () => {
     try {
-      const [lecturersRes, locationsRes] = await Promise.all([
-        fetch(`${API_BASE}/api/lecturers`),
-        fetch(`${API_BASE}/api/locations`)
-      ]);
+      const res = await fetch(`${API_BASE}/api/lecturers`);
+      const json = await res.json();
 
-      if (lecturersRes.ok && locationsRes.ok) {
-        const lecturersData = await lecturersRes.json();
-        const locationsData = await locationsRes.json();
-        setLecturers(lecturersData);
-        setLocations(locationsData);
-      }
+      // IMPORTANT FIX - Handle API response shape
+      const lecturerArray = Array.isArray(json) ? json : json.data;
+      
+      console.log('Lecturers from API:', lecturerArray);
+      setLecturers(lecturerArray || []);
     } catch (error) {
-      console.error('Error loading master data:', error);
+      console.error('Error loading lecturers:', error);
+      setLecturers([]);
     }
   };
 
@@ -230,23 +271,34 @@ export default function TimetableBuilderPage() {
     try {
       setLoading(true);
       
+      // Clear stale currentTimetableId
+      localStorage.removeItem('currentTimetableId');
+      
       // Cancel previous request if still pending
       if (abortRef.current) abortRef.current.abort();
       abortRef.current = new AbortController();
       
-      const response = await fetch(`${API_BASE}/api/student-timetable/filter?year=${year}&semester=${semester}&batch=${batch}&specialization=${specialization}&group=${group}`, {
+      const response = await fetch(`${API_BASE}/api/studenttimetables/filter?year=${year}&semester=${semester}&batch=${batch}&specialization=${specialization}&group=${group}`, {
         signal: abortRef.current.signal
       });
       
       if (response.ok) {
         const data = await response.json();
-        if (data && data.sessions) {
-          setSessions(data.sessions);
-          // Store current timetable ID for clash detection
-          localStorage.setItem('currentTimetableId', data._id || '');
-        } else {
-          setSessions([]);
-          localStorage.setItem('currentTimetableId', '');
+        if (!abortRef.current?.signal.aborted) {
+          if (data && data.sessions) {
+            const withIds = (data.sessions || []).map((s: any) => ({
+              ...s,
+              sessionId: s.sessionId || uuid(), // Add sessionId if missing from DB
+              startNum: timeToNumber(s.startTime),
+              endNum: timeToNumber(s.endTime),
+            }));
+            setSessions(withIds);
+            // Store current timetable ID for clash detection
+            localStorage.setItem('currentTimetableId', data._id || '');
+          } else {
+            setSessions([]);
+            localStorage.setItem('currentTimetableId', '');
+          }
         }
       }
     } catch (error: any) {
@@ -260,16 +312,28 @@ export default function TimetableBuilderPage() {
 
   // Save entire timetable
   const saveTimetable = async () => {
+    setError(''); // Clear any existing error
     try {
       setLoading(true);
       
+      // Sanitize sessions for API calls (remove UI-only fields)
+      const sanitizedSessions = sessions.map(s => ({
+        day: normalizeDayFull(s.day),
+        startTime: s.startTime,
+        endTime: s.endTime,
+        lecturer: typeof s.lecturer === 'string' ? s.lecturer : s.lecturer._id,
+        location: s.location,
+        type: s.type,
+        subject: s.subject
+      }));
+      
       // Call DB clash check first with current timetable ID
       const currentTimetableId = localStorage.getItem('currentTimetableId');
-      const clashRes = await fetch(`${API_BASE}/api/student-timetable/check-clash`, {
+      const clashRes = await fetch(`${API_BASE}/api/studenttimetables/check-clash`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          sessions, 
+          sessions: sanitizedSessions, 
           currentTimetableId 
         })
       });
@@ -290,16 +354,18 @@ export default function TimetableBuilderPage() {
         batch,
         specialization,
         group,
-        sessions
+        sessions: sanitizedSessions
       };
 
-      const response = await fetch(`${API_BASE}/api/student-timetable`, {
+      const response = await fetch(`${API_BASE}/api/studenttimetables`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(timetableData)
       });
 
       if (response.ok) {
+        const saved = await response.json();
+        localStorage.setItem('currentTimetableId', saved._id);
         alert('Timetable saved successfully!');
       } else {
         alert('Error saving timetable');
@@ -337,18 +403,47 @@ export default function TimetableBuilderPage() {
 
   // Auto-fix end time when start time changes
   useEffect(() => {
-    if (selectedCell && endTime) {
-      const start = timeToNumber(selectedCell.time);
-      const end = timeToNumber(endTime);
-      if (end <= start) {
-        const next = start + 1;
-        setEndTime(timeToString(next));
-      }
+    if (!selectedCell) return;
+
+    const start = timeToNumber(selectedCell.time);
+    const end = timeToNumber(endTime);
+
+    if (!endTime || end <= start) {
+      const next = start + 1;
+      setEndTime(timeToString(next));
     }
-  }, [selectedCell?.time]);
+  }, [selectedCell]);
+
+  // Filter invalid sessions when batch changes
+  useEffect(() => {
+    const max = batch === 'WD' ? 17.5 : 20;
+
+    setSessions(prev =>
+      prev.filter(s => timeToNumber(s.endTime) <= max)
+    );
+  }, [batch]);
+
+  // Force re-render validation when day/time changes in modal
+  useEffect(() => {
+    // This effect forces re-evaluation of overlap checks when modal day/time changes
+  }, [selectedCell?.day, selectedCell?.time]);
+
+  // Ensure lecturers are loaded when modal opens
+  useEffect(() => {
+    if (showModal && lecturers.length === 0) {
+      loadMasterData();
+    }
+  }, [showModal]);
 
   const timeSlots = generateTimeSlots(batch);
   const days = getDays();
+
+  // Create lecturer map for efficient name lookup
+  const lecturerMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    lecturers.forEach(l => map[l._id] = l.name);
+    return map;
+  }, [lecturers]);
 
   // Build grid map ONCE for performance optimization (React safe)
   const gridMap = useMemo(() => {
@@ -357,22 +452,25 @@ export default function TimetableBuilderPage() {
       const start = timeToNumber(s.startTime);
       const end = timeToNumber(s.endTime);
       for (let t = start; t < end; t += 0.5) {
-        map[`${s.day}-${t}`] = s;
+        const key = `${normalizeDayFull(s.day)}-${timeToString(t)}`;
+        map[key] = s;
       }
     });
     return map;
-  }, [sessions]);
+  }, [sessions, editingSession]);
 
   // Handle cell click
   const handleCellClick = (day: string, time: number) => {
-    const existingSession = gridMap[`${day}-${time}`];
+    if (showModal) return; // Prevent rapid double clicks
+    
+    const existingSession = gridMap[`${normalizeDayFull(day)}-${timeToString(time)}`];
     
     if (existingSession) {
       // Edit existing session - use session's actual start time
       setEditingSession(existingSession);
       setSessionType(existingSession.type);
       setSubject(existingSession.subject);
-      setLecturer(existingSession.lecturer);
+      setLecturer(typeof existingSession.lecturer === 'string' ? existingSession.lecturer : existingSession.lecturer._id);
       setLocation(existingSession.location);
       setEndTime(existingSession.endTime);
     } else {
@@ -382,14 +480,15 @@ export default function TimetableBuilderPage() {
       setSubject('');
       setLecturer('');
       setLocation('');
+      setEndTime(''); // Clear old endTime first
       const max = batch === 'WD' ? 17.5 : 20;
       const defaultEnd = Math.min(time + 1, max);
       setEndTime(timeToString(defaultEnd));
     }
     
     setSelectedCell({ 
-      day: existingSession ? existingSession.day : day, 
-      time: existingSession ? existingSession.startTime : timeToString(time) 
+      day,
+      time: existingSession ? existingSession.startTime : timeToString(time)
     });
     setShowModal(true);
   };
@@ -464,10 +563,9 @@ export default function TimetableBuilderPage() {
               onChange={(e) => setGroup(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="A">Group A</option>
-              <option value="B">Group B</option>
-              <option value="C">Group C</option>
-              <option value="D">Group D</option>
+              {["1.1","1.2","2.1","2.2","3.1","3.2","4.1","4.2","5.1","5.2"].map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -499,7 +597,10 @@ export default function TimetableBuilderPage() {
             <h4 className="text-sm font-semibold text-blue-800 mb-2">Scheduled Sessions:</h4>
             <div className="space-y-1 max-h-32 overflow-y-auto">
               {[...sessions].sort((a, b) => {
-                const dayOrder = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+                const dayOrder =
+                  batch === 'WD'
+                    ? ['Monday','Tuesday','Wednesday','Thursday','Friday']
+                    : ['Saturday','Sunday'];
                 if (a.day !== b.day) {
                   return dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
                 }
@@ -511,7 +612,12 @@ export default function TimetableBuilderPage() {
                     {session.type}
                   </span>
                   <span className="ml-2 font-medium">{session.subject}</span>
-                  <span className="text-gray-600 ml-2">{session.lecturer} @ {session.location}</span>
+                  <span className="text-gray-600 ml-2">
+                  {typeof session.lecturer === 'string'
+                    ? lecturerMap[session.lecturer] || 'Loading...'
+                    : session.lecturer.name
+                  } @ {session.location}
+                </span>
                 </div>
               ))}
             </div>
@@ -570,7 +676,7 @@ export default function TimetableBuilderPage() {
                   {formatTime(time)}
                 </td>
                 {days.map(day => {
-                  const session = gridMap[`${day}-${time}`];
+                  const session = gridMap[`${day}-${timeToString(time)}`];
                   return (
                     <td 
                       key={`${day}-${time}`}
@@ -582,10 +688,21 @@ export default function TimetableBuilderPage() {
                           className={`p-2 rounded text-xs text-white font-medium ${
                             session.type === 'LECTURE' ? 'bg-blue-500' : 'bg-green-500'
                           }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCellClick(day, time);
+                          }}
                         >
-                          <div className="font-semibold">{session.subject}</div>
-                          <div>{session.lecturer}</div>
-                          <div>{session.location}</div>
+                          <div>
+                            <div className="font-semibold">{session.subject}</div>
+                            <div>
+                              {typeof session.lecturer === 'string'
+                                ? lecturerMap[session.lecturer] || 'Loading...'
+                                : session.lecturer?.name
+                              }
+                            </div>
+                            <div>{session.location}</div>
+                          </div>
                         </div>
                       )}
                     </td>
@@ -617,8 +734,8 @@ export default function TimetableBuilderPage() {
 
       {/* Session Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-none">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md relative z-50 pointer-events-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
                 {editingSession ? 'Edit Session' : 'Add Session'}
@@ -637,7 +754,7 @@ export default function TimetableBuilderPage() {
                 <select 
                   value={sessionType}
                   onChange={(e) => setSessionType(e.target.value as 'LECTURE' | 'LAB')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="LECTURE">Lecture</option>
                   <option value="LAB">Lab</option>
@@ -651,7 +768,7 @@ export default function TimetableBuilderPage() {
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="e.g. Data Structures"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -660,10 +777,10 @@ export default function TimetableBuilderPage() {
                 <select
                   value={lecturer}
                   onChange={(e) => setLecturer(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Lecturer</option>
-                  {lecturers.map(l => (
+                  {Array.isArray(lecturers) && lecturers.map(l => (
                     <option key={l._id} value={l._id}>{l.name}</option>
                   ))}
                 </select>
@@ -671,14 +788,26 @@ export default function TimetableBuilderPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                <select
+                <input
+                  type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter Location"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
+                <select
+                  value={selectedCell?.day}
+                  onChange={(e) =>
+                    setSelectedCell(prev => prev ? { ...prev, day: e.target.value } : null)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Select Location</option>
-                  {locations.map(l => (
-                    <option key={l._id} value={l._id}>{l.name} ({l.type})</option>
+                  {days.map(d => (
+                    <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
               </div>
@@ -688,7 +817,7 @@ export default function TimetableBuilderPage() {
                 <select
                   value={selectedCell?.time}
                   onChange={(e) => setSelectedCell(prev => prev ? { ...prev, time: e.target.value } : null)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {timeSlots.map(t => (
                     <option key={t} value={timeToString(t)}>
@@ -703,7 +832,7 @@ export default function TimetableBuilderPage() {
                 <select 
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {timeSlots
                     .filter(t => t > timeToNumber(selectedCell?.time || '08:00'))

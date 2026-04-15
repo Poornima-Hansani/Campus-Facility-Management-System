@@ -13,16 +13,16 @@ const sessionSchema = new mongoose.Schema({
     match: /^([01]\d|2[0-3]):(00|30)$/ 
   },
   endTime: { 
-    type: String, 
+    type: String,
     required: true,
-    match: /^([01]\d|2[0-3]):(00|30)$/ 
+    match: /^([01]\d|2[0-3]):(00|30)$/
   },
   startNum: { type: Number, required: true }, // 8, 8.5, 9, 9.5 for numeric comparison
   endNum: { type: Number, required: true },   // Numeric time for efficient queries
   type: { type: String, enum: ['LECTURE', 'LAB'], required: true },
   subject: { type: String, required: true, trim: true },
-  lecturer: { type: mongoose.Schema.Types.ObjectId, ref: 'Lecturer', required: true },
-  location: { type: mongoose.Schema.Types.ObjectId, ref: 'Location', required: true },
+  lecturer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  location: { type: String, required: true }
 });
 
 const studentTimeTableSchema = new mongoose.Schema({

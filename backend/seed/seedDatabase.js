@@ -235,7 +235,24 @@ async function seedDatabase() {
     console.log("Seeded management emails");
   }
 
-  if ((await User.countDocuments()) === 0) {
+  
+  const lecExists = await User.findOne({ role: "lecturer" });
+
+if (!lecExists) {
+  await User.create({
+    userId: "LEC001",
+    role: "lecturer",
+    name: "Dr. Perera",
+    email: "perera@university.edu",
+    password: "lecturer123",
+    phone: "0712345679",
+    faculty: "Computing"
+  });
+
+  console.log("Seeded lecturer user");
+}
+
+if ((await User.countDocuments()) === 0) {
     await User.insertMany([
       {
         userId: "ST1001",

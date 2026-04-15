@@ -62,6 +62,22 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
 
+// Mount API routes
+app.use('/api/academic-tasks', academicTaskRoutes);
+app.use('/api/lectures', lectureRoutes);
+app.use('/api/lecture-reminders', lectureReminderRoutes);
+app.use('/api/timetable', timetableRoutes);
+app.use('/api/assignments-exams', assignmentExamRoutes);
+app.use('/api/study-goals', studyGoalRoutes);
+app.use('/api/help-requests', helpRequestRoutes);
+app.use('/api/management/emails', managementEmailRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/energy', energyRoutes);
+app.use('/api/studenttimetables', studentTimetableRoutes);
+app.use('/api/lecturers', lecturerRoutes);
+app.use('/api/locations', locationRoutes);
+
 const staffMembers = [
   { id: 'STF001', name: 'Kamal Perera', role: 'Electrician', specialty: 'A/C & Electronics', phone: '+94 71 234 5678', email: 'kamal@university.edu' },
   { id: 'STF002', name: 'Sunil Fernando', role: 'Plumber', specialty: 'Water & Drainage', phone: '+94 71 345 6789', email: 'sunil@university.edu' },
@@ -1030,13 +1046,13 @@ if (
 }
 
 mongoose
-  .connect(MONGO_URI, {
-    serverSelectionTimeoutMS: 10_000,
-  })
+  .connect(MONGO_URI)
   .then(async () => {
-    console.log("MongoDB connected:", MONGO_URI.replace(/:[^:@]+@/, ":****@"));
+    console.log("MongoDB connected: " + process.env.MONGO_URI);
+    
+    // Seed database
     await seedDatabase();
-
+    
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on http://127.0.0.1:${PORT}`);
     });

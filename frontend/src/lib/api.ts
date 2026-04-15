@@ -1,9 +1,9 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? "";
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 async function parseError(res: Response): Promise<string> {
   if (res.status === 502 || res.status === 504) {
     return (
-      "Cannot reach the API (bad gateway). Start the backend on port 5000: cd backend && npm run dev"
+      "Cannot reach the API (bad gateway). Start the backend on port 3000: cd backend && npm run dev"
     );
   }
   if (res.status === 503) {
@@ -23,7 +23,7 @@ async function fetchApi(path: string, init?: RequestInit): Promise<Response> {
     return await fetch(`${API_BASE}${path}`, init);
   } catch {
     throw new Error(
-      "Cannot connect to the API. Start the backend: cd backend && npm run dev (port 5000), or from the repo root run: npm run dev"
+      "Cannot connect to the API. Start the backend: cd backend && npm run dev (port 3000), or from the repo root run: npm run dev"
     );
   }
 }

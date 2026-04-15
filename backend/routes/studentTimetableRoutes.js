@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const StudentTimeTable = require('../models/StudentTimeTable');
-const Lecturer = require('../models/Lecturer');
-const Location = require('../models/Location');
 
 // Professional time conversion function
 const timeToNumber = (t) => {
@@ -26,39 +24,50 @@ router.post('/', async (req, res) => {
       }
     }
     
-    // Convert time strings to numbers for proper comparison
-    const convertSessions = sessions.map(s => ({
-      ...s,
-      startNum: timeToNumber(s.startTime),
-      endNum: timeToNumber(s.endTime)
-    }));
+    // Convert time strings to numbers for proper comparison while preserving sessionId and endTime
+    const convertSessions = sessions.map(s => {
+      const startNum = timeToNumber(s.startTime);
+      const endNum = timeToNumber(s.endTime);
+
+      if (endNum <= startNum) {
+        throw new Error(`Invalid time range on ${s.day}: ${s.startTime} must be before ${s.endTime}`);
+      }
+
+      return {
+        sessionId: s.sessionId || require('uuid').v4(), // PRESERVE OR CREATE
+        day: s.day,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        startNum,
+        endNum,
+        type: s.type,
+        subject: s.subject,
+        lecturer: s.lecturer,
+        location: s.location
+      };
+    });
     
-    // Check if timetable already exists
-    const existing = await StudentTimeTable.findOne({ year, semester, batch, specialization, group });
-    
-    if (existing) {
-      // Update existing timetable
-      existing.sessions = convertSessions;
-      await existing.save();
-      res.json(existing);
-    } else {
-      // Create new timetable
-      const data = await StudentTimeTable.create({
+    // Atomic upsert - handles both create and update without duplicate key errors
+    const data = await StudentTimeTable.findOneAndUpdate(
+      { year, semester, batch, specialization, group },
+      {
         year, semester, batch, specialization, group,
         sessions: convertSessions
-      });
-      res.json(data);
-    }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    
+    res.json(data);
   } catch (error) {
-    res.status(500).json({ message: 'Error saving timetable', error: error.message });
+    console.error('MongoDB Error:', error); // ADD THIS - Shows real error
+    res.status(500).json({ message: error.message });
   }
 });
 
 router.get('/', async (req, res) => {
   try {
     const data = await StudentTimeTable.find()
-      .populate('sessions.lecturer', 'name')
-      .populate('sessions.location', 'name type');
+      .populate('sessions.lecturer', 'name');
     res.json(data);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching timetables', error: error.message });
@@ -72,8 +81,7 @@ router.get('/filter', async (req, res) => {
     const data = await StudentTimeTable.findOne({
       year, semester, batch, specialization, group
     })
-    .populate('sessions.lecturer', 'name')
-    .populate('sessions.location', 'name type');
+    .populate('sessions.lecturer', 'name');
     
     res.json(data || { sessions: [] });
   } catch (error) {
@@ -109,8 +117,7 @@ router.put('/:id', async (req, res) => {
       { ...req.body, sessions: convertSessions },
       { new: true }
     )
-    .populate('sessions.lecturer', 'name')
-    .populate('sessions.location', 'name type');
+    .populate('sessions.lecturer', 'name');
     res.json(data);
   } catch (error) {
     res.status(500).json({ message: 'Error updating timetable', error: error.message });
@@ -132,8 +139,7 @@ router.get('/lecturer/:id', async (req, res) => {
     const data = await StudentTimeTable.find({
       "sessions.lecturer": req.params.id
     })
-    .populate('sessions.lecturer', 'name')
-    .populate('sessions.location', 'name type');
+    .populate('sessions.lecturer', 'name');
     res.json(data);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching lecturer timetables', error: error.message });
@@ -184,8 +190,7 @@ router.post('/check-clash', async (req, res) => {
           }
         }
       })
-      .populate('sessions.lecturer', 'name')
-      .populate('sessions.location', 'name type');
+      .populate('sessions.lecturer', 'name');
 
       if (clash) {
         // Find the specific conflicting session
@@ -204,7 +209,7 @@ router.post('/check-clash', async (req, res) => {
             message = `Lecturer ${name} is already scheduled at ${newS.day} ${newS.startTime}-${newS.endTime}`;
           } else {
             clashType = 'LOCATION';
-            name = conflictingSession.location.name;
+            name = conflictingSession.location; // Location is now a string
             message = `Location ${name} is already occupied at ${newS.day} ${newS.startTime}-${newS.endTime}`;
           }
 

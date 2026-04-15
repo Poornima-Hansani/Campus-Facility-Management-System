@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Printer } from 'lucide-react';
 
@@ -33,11 +33,35 @@ export default function TimetablePrintPage() {
   useEffect(() => {
     const loadTimetable = async () => {
       try {
-        const response = await fetch(`${API_BASE}/api/student-timetable/filter?year=${year}&semester=${semester}&batch=${batch}&specialization=${specialization}&group=${group}`);
+        const response = await fetch(`${API_BASE}/api/studenttimetables/filter?year=${year}&semester=${semester}&batch=${batch}&specialization=${specialization}&group=${group}`);
         
         if (response.ok) {
-          const data = await response.json();
-          setTimetable(data);
+          const raw = await response.json();
+
+          const sessionsArray = Array.isArray(raw.sessions) ? raw.sessions : [];
+
+          const mappedSessions: Session[] = sessionsArray.map((s: any) => ({
+            sessionId: s._id,
+            day: s.day.trim().charAt(0).toUpperCase() + s.day.trim().slice(1).toLowerCase(),
+            startTime: normalizeTimeString(s.startTime),
+            endTime: normalizeTimeString(s.endTime),
+            type: s.type,
+            subject: s.subject,
+            lecturer:
+            typeof s.lecturer === 'object'
+              ? s.lecturer?.name
+              : s.lecturer || 'N/A',
+            location: s.location
+          }));
+
+          setTimetable({
+            year: raw.year,
+            semester: raw.semester,
+            batch: raw.batch,
+            specialization: raw.specialization,
+            group: raw.group,
+            sessions: mappedSessions
+          });
         }
       } catch (error) {
         console.error('Error loading timetable:', error);
@@ -79,8 +103,45 @@ export default function TimetablePrintPage() {
   };
 
   const timeToNumber = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return hours + (minutes / 60);
+    const clean = timeStr.trim();           // remove spaces
+    const [h, m] = clean.split(':');
+
+    const hours = parseInt(h, 10);
+    const minutes = parseInt(m, 10);
+
+    if (isNaN(hours) || isNaN(minutes)) return -1;
+
+    return hours + minutes / 60;
+  };
+
+  const normalizeDayFull = (d: string) => {
+    const x = d.trim().toLowerCase();
+
+    if (x.startsWith('mon')) return 'monday';
+    if (x.startsWith('tue')) return 'tuesday';
+    if (x.startsWith('wed')) return 'wednesday';
+    if (x.startsWith('thu')) return 'thursday';
+    if (x.startsWith('fri')) return 'friday';
+    if (x.startsWith('sat')) return 'saturday';
+    if (x.startsWith('sun')) return 'sunday';
+
+    return x;
+  };
+
+  const normalizeTimeString = (t: string) => {
+    // remove seconds if exist (08:00:00 -> 08:00)
+    if (t.includes(':')) {
+      const parts = t.split(':');
+      return `${parts[0].padStart(2,'0')}:${parts[1].padStart(2,'0')}`;
+    }
+
+    // handle 8.30 , 8.00
+    if (t.includes('.')) {
+      const [h, m] = t.split('.');
+      return `${h.padStart(2,'0')}:${m === '5' ? '30' : '00'}`;
+    }
+
+    return t;
   };
 
   const getSlotsBetween = (start: number, end: number) => {
@@ -92,17 +153,24 @@ export default function TimetablePrintPage() {
   };
 
   // Pre-build grid map for performance optimization
-  const gridMap: { [key: string]: Session } = {};
-  
-  if (timetable) {
+  const gridMap = useMemo(() => {
+    const map: { [key: string]: Session } = {};
+
+    if (!timetable) return map;
+
     timetable.sessions.forEach(s => {
       const start = timeToNumber(s.startTime);
       const end = timeToNumber(s.endTime);
+
+      if (start === -1 || end === -1) return;
+
       getSlotsBetween(start, end).forEach(t => {
-        gridMap[`${s.day}-${t}`] = s;
+        map[`${normalizeDayFull(s.day)}-${timeToString(t)}`] = s;
       });
     });
-  }
+
+    return map;
+  }, [timetable]);
 
   const handlePrint = () => {
     window.print();
@@ -205,7 +273,7 @@ export default function TimetablePrintPage() {
                     {formatTime(time)}
                   </td>
                   {days.map(day => {
-                    const session = gridMap[`${day}-${time}`];
+                    const session = gridMap[`${normalizeDayFull(day)}-${timeToString(time)}`];
                     return (
                       <td 
                         key={`${day}-${time}`}
