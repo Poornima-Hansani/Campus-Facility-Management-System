@@ -3,6 +3,7 @@ const router = express.Router();
 const StudentTimeTable = require('../models/StudentTimeTable');
 const labTimetableRoutes = require('./labTimetableRoutes');
 const { rebuildLabTimetables } = labTimetableRoutes;
+const { rebuildLabStudentCommonFreeTable } = require('../services/labStudentCommonFreeService');
 
 // Calculate free time from sessions based on batch type
 const calculateFreeTime = (sessions, batch) => {
