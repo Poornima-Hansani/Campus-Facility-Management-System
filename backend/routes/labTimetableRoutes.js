@@ -126,6 +126,16 @@ const rebuildLabTimetables = async () => {
     }
     
     console.log('LabTimetable rebuild completed successfully');
+    
+    // Rebuild LabStudentCommonFree table after LabTimetable changes
+    try {
+      const { rebuildLabStudentCommonFreeTable } = require('../services/labStudentCommonFreeService');
+      await rebuildLabStudentCommonFreeTable();
+    } catch (rebuildError) {
+      console.error('LabStudentCommonFree rebuild error:', rebuildError);
+      // Don't fail the main operation if rebuild fails
+    }
+    
     return { success: true, message: 'LabTimetable rebuilt successfully' };
     
   } catch (error) {
