@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Shield, Lock, User } from 'lucide-react';
+import { Lock, User } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -72,6 +72,11 @@ export default function UnifiedLoginPage() {
         throw new Error(data.message || 'Login failed');
       }
 
+      console.log('Login response:', data);
+      console.log('Role:', data.role);
+      console.log('User ID:', data.userId);
+      console.log('Name:', data.name);
+
       localStorage.setItem('unifiedRole', data.role);
       localStorage.setItem('unifiedUserId', data.userId);
       localStorage.setItem('unifiedName', data.name);
@@ -98,6 +103,7 @@ export default function UnifiedLoginPage() {
       };
 
       const destination = routes[data.role] || '/';
+      console.log('Navigating to:', destination);
       navigate(destination);
 
     } catch (err: any) {

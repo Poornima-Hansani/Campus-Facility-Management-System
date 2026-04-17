@@ -1,8 +1,35 @@
-import { Calendar, Users, BookOpen, Award, Clock, TrendingUp } from 'lucide-react';
+import { Calendar, Users, BookOpen, Award, Clock, TrendingUp, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import { getLecturerLabAlerts, confirmLabAlert, type LabAlert } from "../api/labGapApi";
 
 export default function LecturerDashboard() {
   const navigate = useNavigate();
+  const [labAlerts, setLabAlerts] = useState<LabAlert[]>([]);
+  const lecturerId = localStorage.getItem("unifiedUserId") || localStorage.getItem("lecturerId") || '';
+
+  useEffect(() => {
+    fetchAlerts();
+  }, []);
+
+  const fetchAlerts = async () => {
+    try {
+      const res = await getLecturerLabAlerts(lecturerId);
+      setLabAlerts(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleConfirmAlert = async (alertId: string) => {
+    try {
+      await confirmLabAlert(alertId);
+      fetchAlerts(); // Refresh alerts
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -122,6 +149,47 @@ export default function LecturerDashboard() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Lab Free Time Alerts */}
+      <div className="bg-yellow-50 border border-yellow-300 p-6 rounded-xl">
+        <h2 className="text-lg font-semibold text-yellow-800 mb-4">
+          ⚠ Lab Free Time Alerts (Turn off AC & Lights)
+        </h2>
+
+        {labAlerts.map((a, i) => (
+          <div key={i} className="mb-3 p-3 bg-white rounded border">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <p className="font-medium text-gray-900">
+                  🏢 {a.labName} - {a.day}
+                </p>
+                <p className="text-sm text-gray-700">
+                  Free from {a.start}:00 to {a.end}:00 ({a.duration} hours)
+                </p>
+                <p className="text-xs text-gray-500">
+                  Week {a.weekNumber} - {a.year}
+                </p>
+              </div>
+              <div className="ml-4">
+                {!a.confirmed ? (
+                  <button
+                    onClick={() => handleConfirmAlert(a._id)}
+                    className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="text-sm">Confirm Turn Off</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-600 rounded-lg">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="text-sm">Confirmed</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Schedule Preview */}

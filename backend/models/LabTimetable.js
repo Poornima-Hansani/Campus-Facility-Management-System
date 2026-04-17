@@ -10,6 +10,7 @@ const labSessionSchema = new mongoose.Schema({
   specialization: { type: String, required: true },
   group: { type: String, required: true },
   lecturerName: { type: String, required: true },
+  lecturerId: { type: String, required: true },
   subject: { type: String, required: true }
 });
 
