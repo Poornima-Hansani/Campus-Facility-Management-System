@@ -8,7 +8,7 @@ const labTimetableRoutes = require('./labTimetableRoutes');
 
 const { rebuildLabTimetables } = labTimetableRoutes;
 
-const { rebuildLabStudentCommonFreeTable } = require('../services/labStudentCommonFreeService');
+const { rebuildForOneGroup } = require('../services/labStudentCommonFreeService');
 
 // Calculate free time from sessions based on batch type
 
@@ -278,7 +278,7 @@ router.post('/', async (req, res) => {
 
     // Rebuild LabStudentCommonFree table after StudentTimeTable changes
     try {
-      await rebuildLabStudentCommonFreeTable();
+      await rebuildForOneGroup(data);
     } catch (rebuildError) {
       console.error('LabStudentCommonFree rebuild error:', rebuildError);
       // Don't fail the main operation if rebuild fails
@@ -436,7 +436,7 @@ router.put('/:id', async (req, res) => {
 
     // Rebuild LabStudentCommonFree table after StudentTimeTable changes
     try {
-      await rebuildLabStudentCommonFreeTable();
+      await rebuildForOneGroup(data);
     } catch (rebuildError) {
       console.error('LabStudentCommonFree rebuild error:', rebuildError);
       // Don't fail the main operation if rebuild fails
@@ -458,6 +458,9 @@ router.delete('/:id', async (req, res) => {
 
   try {
 
+    // Get existing data before deletion
+    const existing = await StudentTimeTable.findById(req.params.id);
+    
     await StudentTimeTable.findByIdAndDelete(req.params.id);
 
     
@@ -476,12 +479,14 @@ router.delete('/:id', async (req, res) => {
 
     }
 
-    // Rebuild LabStudentCommonFree table after StudentTimeTable changes
-    try {
-      await rebuildLabStudentCommonFreeTable();
-    } catch (rebuildError) {
-      console.error('LabStudentCommonFree rebuild error:', rebuildError);
-      // Don't fail main operation if rebuild fails
+    // Rebuild using existing data before deletion
+    if (existing) {
+      try {
+        await rebuildForOneGroup(existing);
+      } catch (rebuildError) {
+        console.error('LabStudentCommonFree rebuild error:', rebuildError);
+        // Don't fail main operation if rebuild fails
+      }
     }
 
     res.json({ message: 'Deleted' });

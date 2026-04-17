@@ -62,6 +62,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [persist]
   );
 
+  const loginAsLecturer = useCallback(() => {
+    persist("lecturer");
+  }, [persist]);
+
   const logoutToStudent = useCallback(() => {
     persist("student");
   }, [persist]);
@@ -74,9 +78,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isManagement: role === "management",
       loginAsStudent,
       loginAsAdmin,
+      loginAsLecturer,
       logoutToStudent,
     }),
-    [role, loginAsStudent, loginAsAdmin, logoutToStudent]
+    [role, loginAsStudent, loginAsAdmin, loginAsLecturer, logoutToStudent]
   );
 
   return (

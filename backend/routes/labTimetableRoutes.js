@@ -127,14 +127,11 @@ const rebuildLabTimetables = async () => {
     
     console.log('LabTimetable rebuild completed successfully');
     
-    // Rebuild LabStudentCommonFree table after LabTimetable changes
-    try {
-      const { rebuildLabStudentCommonFreeTable } = require('../services/labStudentCommonFreeService');
-      await rebuildLabStudentCommonFreeTable();
-    } catch (rebuildError) {
-      console.error('LabStudentCommonFree rebuild error:', rebuildError);
-      // Don't fail the main operation if rebuild fails
-    }
+    // NOTE: LabStudentCommonFree rebuild removed from automatic updates
+    // Lab timetable changes affect ALL student groups, so manual rebuild via /api/lab-student-common-free/rebuild is safer
+    console.log('Lab timetable rebuilt. Manual LabStudentCommonFree rebuild may be needed.');
+    
+    // FIXED: Removed dangerous deleteMany() and insertMany() - upserts above are sufficient
     
     return { success: true, message: 'LabTimetable rebuilt successfully' };
     
