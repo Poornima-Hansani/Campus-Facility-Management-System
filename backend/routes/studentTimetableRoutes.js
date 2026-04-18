@@ -777,4 +777,112 @@ router.get('/lab-sessions', async (req, res) => {
 
 
 
+// Get user's free time slots for study area booking
+router.get('/free-slots/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { date } = req.query;
+    
+    // Get user information
+    const User = require('../models/User');
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Get student's timetable
+    const timetable = await StudentTimeTable.findOne({
+      year: user.year,
+      semester: user.semester,
+      batch: user.batch,
+      group: user.group
+    });
+    
+    if (!timetable) {
+      return res.status(404).json({
+        success: false,
+        message: 'Timetable not found for this student'
+      });
+    }
+    
+    // If specific date is provided, get free slots for that day
+    if (date) {
+      const targetDate = new Date(date);
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const dayName = days[targetDate.getDay()];
+      
+      const freeSlots = timetable.freeTime[dayName] || { free: [] };
+      
+      // Convert numeric times to readable format
+      const timeToString = (num) => {
+        const hours = Math.floor(num);
+        const minutes = (num % 1) * 60;
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      };
+      
+      const formattedSlots = freeSlots.free.map(slot => ({
+        day: dayName,
+        startTime: timeToString(slot.start),
+        endTime: timeToString(slot.end),
+        startNum: slot.start,
+        endNum: slot.end,
+        duration: slot.end - slot.start
+      }));
+      
+      return res.json({
+        success: true,
+        data: {
+          date: date,
+          day: dayName,
+          freeSlots: formattedSlots
+        }
+      });
+    }
+    
+    // If no specific date, return all free slots for the week
+    const timeToString = (num) => {
+      const hours = Math.floor(num);
+      const minutes = (num % 1) * 60;
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    };
+    
+    const allFreeSlots = {};
+    Object.keys(timetable.freeTime).forEach(day => {
+      const dayData = timetable.freeTime[day];
+      allFreeSlots[day] = dayData.free.map(slot => ({
+        startTime: timeToString(slot.start),
+        endTime: timeToString(slot.end),
+        startNum: slot.start,
+        endNum: slot.end,
+        duration: slot.end - slot.start
+      }));
+    });
+    
+    res.json({
+      success: true,
+      data: {
+        userInfo: {
+          year: user.year,
+          semester: user.semester,
+          batch: user.scheduleType,
+          specialization: user.specialization,
+          group: user.group
+        },
+        freeSlots: allFreeSlots
+      }
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching free time slots',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

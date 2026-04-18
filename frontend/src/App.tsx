@@ -27,9 +27,10 @@ import LecturerDashboard from './pages/LecturerDashboard';
 import TimetableBuilderPage from './pages/TimetableBuilderPage';
 import TimetablePrintPage from './pages/TimetablePrintPage';
 import StudyAreaBooking from './pages/StudyAreaBooking';
-import LabBooking from './pages/LabBooking';
-import LabTimetableList from './pages/LabTimetableList';
-import LabTimetableView from './pages/LabTimetableView';
+import LabBooking from "./pages/LabBooking";
+import LabTimetableList from "./pages/LabTimetableList";
+import LabTimetableView from "./pages/LabTimetableView";
+import EnergyAlertsPage from "./pages/EnergyAlertsPage";
 
 function Navigation() {
   const location = useLocation();
@@ -163,7 +164,7 @@ function AppRoutes() {
         } />
         
         <Route path="/timetable-builder" element={
-          <ProtectedRoute role="lecturer">
+          <ProtectedRoute role={["lecturer", "management"]}>
             <TimetableBuilderPage />
           </ProtectedRoute>
         } />
@@ -187,6 +188,11 @@ function AppRoutes() {
         <Route path="/admin-dashboard" element={
           <ProtectedRoute role="admin">
             <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/energy-alerts" element={
+          <ProtectedRoute role="admin">
+            <EnergyAlertsPage />
           </ProtectedRoute>
         } />
         <Route path="/admin/labtimetables" element={

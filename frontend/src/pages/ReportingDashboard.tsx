@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Clock, CheckCircle, TrendingUp, Star, Award, Users, History } from 'lucide-react';
+import { CheckCircle, Star, Award, Users, Search, Eye, ChevronUp, ChevronDown, FileText, TrendingUp, History } from 'lucide-react';
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
+import '../styles/professionalTables.css';
 
 type Report = {
   id: string;
@@ -27,6 +28,14 @@ export default function ReportingDashboard() {
   const [loading, setLoading] = useState(true);
   const [ratingReportId, setRatingReportId] = useState<string | null>(null);
   const [ratingValue, setRatingValue] = useState(0);
+  
+  // Table state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortColumn, setSortColumn] = useState<keyof Report>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   const fetchReports = async () => {
     try {
@@ -52,10 +61,58 @@ export default function ReportingDashboard() {
       setRatingReportId(null);
       setRatingValue(0);
     } catch (err) {
-      console.error(err);
+      console.error('Error submitting rating:', err);
     }
   };
 
+  // Table functions
+  const handleSort = (column: keyof Report) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getFilteredAndSortedReports = () => {
+    let filtered = reports;
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(report =>
+        report.issueType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        report.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        report.comment.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(report => report.status === statusFilter);
+    }
+
+    // Apply sorting
+    filtered = [...filtered].sort((a, b) => {
+      const aValue = a[sortColumn];
+      const bValue = b[sortColumn];
+      
+      if (aValue === undefined || bValue === undefined) return 0;
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  };
+
+  const paginatedReports = getFilteredAndSortedReports();
+  const totalPages = Math.ceil(paginatedReports.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentReports = paginatedReports.slice(startIndex, endIndex);
+
+  
   const fixedWithoutRating = reports.filter(r => r.status === 'Fixed' && !r.rating);
 
   const fetchWeeklySummary = async () => {
@@ -312,48 +369,204 @@ export default function ReportingDashboard() {
           )}
         </div>
 
-        {/* Recent Reports */}
-        <div className="bg-white p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-700 font-semibold">Recent Reports</h3>
-            {reports.length > 3 && (
-              <Link to="/reporting/view" className="text-blue-600 hover:text-blue-700 text-sm transition-colors">
-                View all →
+        {/* Professional Reports Table */}
+        <div className="bg-white rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-gray-700 font-semibold text-lg">Reports Management</h3>
+              <Link to="/reporting/view" className="text-blue-600 hover:text-blue-700 text-sm transition-colors flex items-center gap-1">
+                View All <Eye size={16} />
               </Link>
-            )}
-          </div>
-          {reports.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <p>No reports submitted yet</p>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {reports.slice(0, 5).map((report) => (
-                <div key={report.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg transition-all duration-300 hover:shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      report.status === 'Fixed' ? 'bg-green-100' : 'bg-yellow-100'
-                    }`}>
-                      {report.status === 'Fixed' ? (
-                        <CheckCircle className="text-green-600" size={14} />
-                      ) : (
-                        <Clock className="text-yellow-600" size={14} />
-                      )}
+
+            {/* Table Controls */}
+            <div className="table-controls">
+              <div className="table-search">
+                <Search size={18} className="text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search reports..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="table-filters">
+                <select
+                  className="table-filter-select"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Status</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Action Required">Action Required</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Assigned">Assigned</option>
+                  <option value="Fixed">Fixed</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Professional Data Table */}
+            {currentReports.length === 0 ? (
+              <div className="table-empty">
+                <div className="table-empty-icon">{'\ud83d\udccb'}</div>
+                <div className="table-empty-title">No Reports Found</div>
+                <div className="table-empty-description">
+                  {searchTerm || statusFilter !== 'all' 
+                    ? 'Try adjusting your search or filters' 
+                    : 'No reports have been submitted yet'
+                  }
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="professional-table">
+                    <thead>
+                      <tr>
+                        <th 
+                          className="sortable"
+                          onClick={() => handleSort('id')}
+                        >
+                          ID
+                          {sortColumn === 'id' && (
+                            <span className="ml-1">
+                              {sortDirection === 'asc' ? '\u2191' : '\u2193'}
+                            </span>
+                          )}
+                        </th>
+                        <th 
+                          className="sortable"
+                          onClick={() => handleSort('issueType')}
+                        >
+                          Issue Type
+                          {sortColumn === 'issueType' && (
+                            <span className="ml-1">
+                              {sortDirection === 'asc' ? '\u2191' : '\u2193'}
+                            </span>
+                          )}
+                        </th>
+                        <th 
+                          className="sortable"
+                          onClick={() => handleSort('location')}
+                        >
+                          Location
+                          {sortColumn === 'location' && (
+                            <span className="ml-1">
+                              {sortDirection === 'asc' ? '\u2191' : '\u2193'}
+                            </span>
+                          )}
+                        </th>
+                        <th>Comment</th>
+                        <th 
+                          className="sortable"
+                          onClick={() => handleSort('status')}
+                        >
+                          Status
+                          {sortColumn === 'status' && (
+                            <span className="ml-1">
+                              {sortDirection === 'asc' ? '\u2191' : '\u2193'}
+                            </span>
+                          )}
+                        </th>
+                        <th 
+                          className="sortable"
+                          onClick={() => handleSort('createdAt')}
+                        >
+                          Created
+                          {sortColumn === 'createdAt' && (
+                            <span className="ml-1">
+                              {sortDirection === 'asc' ? '\u2191' : '\u2193'}
+                            </span>
+                          )}
+                        </th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentReports.map((report) => (
+                        <tr key={report.id} className="hover:bg-gray-50">
+                          <td className="font-medium text-gray-900">
+                            #{report.id.slice(-6)}
+                          </td>
+                          <td>
+                            <div className="font-medium text-gray-900">
+                              {report.issueType}
+                            </div>
+                          </td>
+                          <td className="text-gray-600">
+                            {report.location}
+                          </td>
+                          <td className="text-gray-600 max-w-xs truncate">
+                            {report.comment}
+                          </td>
+                          <td>
+                            <span className={`status-badge ${report.status.toLowerCase().replace(' ', '-')}`}>
+                              {report.status}
+                            </span>
+                          </td>
+                          <td className="text-gray-600">
+                            {new Date(report.createdAt).toLocaleDateString()}
+                          </td>
+                          <td>
+                            <div className="action-buttons">
+                              <button className="action-btn view">
+                                <Eye size={14} />
+                                View
+                              </button>
+                              {report.status === 'Fixed' && !report.rating && (
+                                <button 
+                                  className="action-btn edit"
+                                  onClick={() => setRatingReportId(report.id)}
+                                >
+                                  <Star size={14} />
+                                  Rate
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="table-pagination">
+                    <div className="pagination-info">
+                      Showing {startIndex + 1} to {Math.min(endIndex, paginatedReports.length)} of {paginatedReports.length} reports
                     </div>
-                    <div>
-                      <p className="text-gray-800 text-sm font-medium">{report.issueType}</p>
-                      <p className="text-gray-500 text-xs">{report.location}</p>
+                    <div className="pagination-controls">
+                      <button
+                        className="pagination-btn"
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </button>
+                      {[...Array(totalPages)].map((_, index) => (
+                        <button
+                          key={index + 1}
+                          className={`pagination-btn ${currentPage === index + 1 ? 'active' : ''}`}
+                          onClick={() => setCurrentPage(index + 1)}
+                        >
+                          {index + 1}
+                        </button>
+                      ))}
+                      <button
+                        className="pagination-btn"
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </button>
                     </div>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    report.status === 'Fixed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                  }`}>
-                    {report.status === 'Fixed' ? 'Fixed' : report.status === 'Action Required' ? 'Action Required' : 'Pending'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+                )}
+              </>
+            )}
+          </div>
         </div>
 
       </div>

@@ -25,6 +25,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 function readStoredRole(): UserRole {
   try {
+    // First check if user is logged in via unified login
+    const unifiedRole = localStorage.getItem('unifiedRole');
+    if (unifiedRole && (unifiedRole === "admin" || unifiedRole === "student" || unifiedRole === "staff" || unifiedRole === "management" || unifiedRole === "lecturer")) {
+      return unifiedRole as UserRole;
+    }
+    
+    // Fallback to old storage method
     const v = localStorage.getItem(STORAGE_KEY);
     if (v === "admin" || v === "student" || v === "staff" || v === "management" || v === "lecturer") return v as UserRole;
   } catch {

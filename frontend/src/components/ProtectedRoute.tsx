@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import type { UserRole } from "../context/AuthContext";
 
 type Props = {
-  role: UserRole;
+  role: UserRole | UserRole[];
   children: React.ReactNode;
 };
 
@@ -11,7 +11,11 @@ const ProtectedRoute = ({ role: requiredRole, children }: Props) => {
   const { role } = useAuth();
   const location = useLocation();
 
-  if (role !== requiredRole) {
+  const hasAccess = Array.isArray(requiredRole) 
+    ? requiredRole.includes(role)
+    : role === requiredRole;
+
+  if (!hasAccess) {
     // Redirect to the appropriate dashboard for the user's actual role
     const getDashboardRoute = (userRole: UserRole) => {
       switch (userRole) {
