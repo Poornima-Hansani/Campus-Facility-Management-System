@@ -227,7 +227,7 @@ export default function LabBooking() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-6">
-          <Link to="/dashboard" className="p-2 hover:bg-white/50 rounded-lg transition-colors">
+          <Link to="/student" className="p-2 hover:bg-white/50 rounded-lg transition-colors">
             <ArrowLeft size={24} className="text-gray-600" />
           </Link>
           <div>
