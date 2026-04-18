@@ -885,4 +885,70 @@ router.get('/free-slots/:userId', async (req, res) => {
   }
 });
 
+// Get student free time by day - STEP 1 Foundation
+router.get('/free-time/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { day } = req.query;
+    
+    // 1. Find the user by userId from Users collection
+    const User = require('../models/User');
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // 2. Convert user fields to timetable format
+    const timetableQuery = {
+      year: `Y${user.year}`,
+      semester: `S${user.semester}`,
+      batch: user.scheduleType === 'Weekend' ? 'WE' : 'WD',
+      specialization: user.specialization,
+      group: user.group
+    };
+    
+    // 3. Find StudentTimeTable using converted fields
+    const timetable = await StudentTimeTable.findOne(timetableQuery);
+    
+    if (!timetable) {
+      return res.status(404).json({ message: 'Timetable not found for this student' });
+    }
+    
+    // 4. Validate day parameter
+    const validDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    if (!day || !validDays.includes(day)) {
+      return res.status(400).json({ message: 'Valid day parameter is required' });
+    }
+    
+    // 5. Get free slots for the specific day
+    const dayFreeTime = timetable.freeTime[day];
+    if (!dayFreeTime || !dayFreeTime.free) {
+      return res.json({ day, freeSlots: [] });
+    }
+    
+    // 6. Convert numeric time to string format (8→08:00, 8.5→08:30)
+    const numericToTimeString = (num) => {
+      const hours = Math.floor(num);
+      const minutes = (num % 1) * 60;
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    };
+    
+    // 7. Format free slots
+    const freeSlots = dayFreeTime.free.map(slot => ({
+      startTime: numericToTimeString(slot.start),
+      endTime: numericToTimeString(slot.end),
+      duration: slot.end - slot.start
+    }));
+    
+    res.json({
+      day,
+      freeSlots
+    });
+    
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching free time', error: error.message });
+  }
+});
+
 module.exports = router;
