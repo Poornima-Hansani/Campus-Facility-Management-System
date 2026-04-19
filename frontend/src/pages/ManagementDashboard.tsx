@@ -592,12 +592,28 @@ const ManagementDashboard = () => {
               Dashboard
             </button>
             <button
+              onClick={() => setActiveSection("facility")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeSection === "facility" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Facility
+            </button>
+            <button
               onClick={() => setActiveSection("timetable")}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeSection === "timetable" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
               }`}
             >
               Timetable
+            </button>
+            <button
+              onClick={() => setActiveSection("lecturers")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeSection === "lecturers" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Staff
             </button>
             <button
               onClick={() => setActiveSection("emails")}
