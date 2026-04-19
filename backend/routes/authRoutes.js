@@ -69,7 +69,13 @@ router.post('/login', async (req, res) => {
     res.json({
       userId: user.userId,
       role: user.role,
-      name: user.name
+      name: user.name,
+      phone: user.phone,
+      faculty: user.faculty,
+      year: user.year,
+      semester: user.semester,
+      scheduleType: user.scheduleType,
+      specialization: user.specialization
     });
   } catch (error) {
     console.error("Login error:", error);

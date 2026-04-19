@@ -79,6 +79,11 @@ export default function UnifiedLoginPage() {
       if (data.role === 'student') {
         localStorage.setItem('studentLoggedIn', 'true');
         localStorage.setItem('studentId', data.userId);
+        if (data.faculty) localStorage.setItem('faculty', data.faculty);
+        if (data.year) localStorage.setItem('year', data.year);
+        if (data.semester) localStorage.setItem('semester', data.semester);
+        if (data.scheduleType) localStorage.setItem('scheduleType', data.scheduleType);
+        if (data.specialization) localStorage.setItem('specialization', data.specialization);
       } else if (data.role === 'staff') {
         localStorage.setItem('staffLoggedIn', 'true');
         localStorage.setItem('staffId', data.userId);

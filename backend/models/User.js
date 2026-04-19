@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema({
   year: String,
   semester: String,
   scheduleType: String,
+  specialization: String,
 
   // -- lecturer
   moduleCode: String,

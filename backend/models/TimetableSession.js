@@ -10,13 +10,16 @@ const timetableSessionSchema = new mongoose.Schema(
       enum: ["Lecture", "Practical", "Lab", "Tutorial"],
       required: false,
     },
-    /** @deprecated legacy rows only; prefer sessionType */
     venueType: { type: String, required: false },
     venueName: { type: String, required: true, trim: true },
     lecturer: { type: String, required: true, trim: true },
     day: { type: String, required: true, trim: true },
     startTime: { type: String, required: true, trim: true },
     endTime: { type: String, required: true, trim: true },
+    faculty: { type: String, default: "Computing", trim: true },
+    year: { type: Number, required: true },
+    specialization: { type: String, default: "SE", trim: true },
+    scheduleType: { type: String, enum: ["Weekday", "Weekend"], default: "Weekday" },
   },
   { timestamps: true }
 );

@@ -39,6 +39,10 @@ function serialize(doc) {
     day: doc.day,
     startTime: doc.startTime,
     endTime: doc.endTime,
+    faculty: doc.faculty || "Computing",
+    year: doc.year,
+    specialization: doc.specialization || "SE",
+    scheduleType: doc.scheduleType || "Weekday",
   };
 }
 
@@ -64,7 +68,71 @@ function buildLecturer(lecturerTitle, lecturerName) {
 
 router.get("/", async (req, res) => {
   try {
-    const list = await TimetableSession.find().lean();
+    const { lecturer, year, faculty, specialization, scheduleType } = req.query;
+    let filter = {};
+    
+    if (lecturer) {
+      filter.lecturer = { $regex: lecturer, $options: 'i' };
+    }
+    if (year) {
+      filter.year = Number(year);
+    }
+    if (faculty) {
+      filter.faculty = { $regex: faculty, $options: 'i' };
+    }
+    if (specialization) {
+      filter.specialization = { $regex: specialization, $options: 'i' };
+    }
+    if (scheduleType) {
+      filter.scheduleType = scheduleType;
+    }
+    
+    const list = await TimetableSession.find(filter).lean();
+    list.sort((a, b) => {
+      const d = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
+      if (d !== 0) return d;
+      return a.startTime.localeCompare(b.startTime);
+    });
+    res.json(list.map(serialize));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+router.get("/lecturer", async (req, res) => {
+  try {
+    const { lecturer } = req.query;
+    if (!lecturer) {
+      return res.status(400).json({ message: "Lecturer name is required" });
+    }
+    const list = await TimetableSession.find({ 
+      lecturer: { $regex: lecturer, $options: 'i' } 
+    }).lean();
+    list.sort((a, b) => {
+      const d = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
+      if (d !== 0) return d;
+      return a.startTime.localeCompare(b.startTime);
+    });
+    res.json(list.map(serialize));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+router.get("/student", async (req, res) => {
+  try {
+    const { year, faculty, specialization, scheduleType } = req.query;
+    if (!year || !faculty) {
+      return res.status(400).json({ message: "Year and faculty are required" });
+    }
+    let filter = { year: Number(year), faculty: { $regex: faculty, $options: 'i' } };
+    if (specialization) {
+      filter.specialization = { $regex: specialization, $options: 'i' };
+    }
+    if (scheduleType) {
+      filter.scheduleType = scheduleType;
+    }
+    const list = await TimetableSession.find(filter).lean();
     list.sort((a, b) => {
       const d = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
       if (d !== 0) return d;
@@ -88,6 +156,10 @@ router.post("/", async (req, res) => {
       day,
       startTime,
       endTime,
+      faculty,
+      year,
+      specialization,
+      scheduleType,
     } = req.body;
 
     const cleanModuleCode = String(moduleCode || "").trim().toUpperCase();
@@ -95,6 +167,10 @@ router.post("/", async (req, res) => {
     const cleanVenueName = String(venueName || "").trim();
     const cleanLecturer = buildLecturer(lecturerTitle, lecturerName);
     const cleanSessionType = String(sessionType || "").trim();
+    const cleanFaculty = String(faculty || "Computing").trim();
+    const cleanYear = Number(year) || 1;
+    const cleanSpec = String(specialization || "SE").trim();
+    const cleanScheduleType = (scheduleType === "Weekend" ? "Weekend" : "Weekday");
 
     if (
       !cleanModuleCode ||
@@ -192,6 +268,10 @@ router.post("/", async (req, res) => {
       day,
       startTime,
       endTime,
+      faculty: cleanFaculty,
+      year: cleanYear,
+      specialization: cleanSpec,
+      scheduleType: cleanScheduleType,
     });
     res.status(201).json(serialize(doc.toObject()));
   } catch (e) {

@@ -91,7 +91,8 @@ export default function LecturerDashboard() {
   const fetchData = async () => {
     try {
       const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const tt = await fetch(`${API_BASE}/api/timetable`).then(r => r.json());
+      const lecturerParam = encodeURIComponent(String(lecturerName || lecturerId || ''));
+      const tt = await fetch(`${API_BASE}/api/timetable/lecturer?lecturer=${lecturerParam}`).then(r => r.json());
       
       setTimetableData(Array.isArray(tt) ? tt : []);
     } catch (e: any) {
