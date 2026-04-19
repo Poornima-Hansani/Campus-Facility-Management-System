@@ -178,8 +178,8 @@ const ManagementDashboard = () => {
   const [staffSearch, setStaffSearch] = useState("");
   const [assignError, setAssignError] = useState("");
 
-  type TabType = "dashboard" | "timetable" | "emails";
-  const [activeTab, setActiveTab] = useState<TabType>("dashboard");
+  type SectionType = "dashboard" | "facility" | "timetable" | "lecturers" | "emails";
+  const [activeSection, setActiveSection] = useState<SectionType>("dashboard");
 
   const [timetable, setTimetable] = useState<TimetableRow[]>([]);
   const [lectures, setLectures] = useState<LectureRow[]>([]);
@@ -584,25 +584,25 @@ const ManagementDashboard = () => {
         <div className="flex items-center gap-3">
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
-              onClick={() => setActiveTab("dashboard")}
+              onClick={() => setActiveSection("dashboard")}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === "dashboard" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                activeSection === "dashboard" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
               }`}
             >
               Dashboard
             </button>
             <button
-              onClick={() => setActiveTab("timetable")}
+              onClick={() => setActiveSection("timetable")}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === "timetable" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                activeSection === "timetable" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
               }`}
             >
               Timetable
             </button>
             <button
-              onClick={() => setActiveTab("emails")}
+              onClick={() => setActiveSection("emails")}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === "emails" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                activeSection === "emails" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
               }`}
             >
               Emails
