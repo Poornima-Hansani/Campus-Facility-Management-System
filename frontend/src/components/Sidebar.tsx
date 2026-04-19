@@ -42,6 +42,26 @@ const Sidebar = () => {
           label: "Issues List",
           icon: <FaFileAlt />,
         },
+        {
+          path: "/management/facility",
+          label: "Facility",
+          icon: <FaFileAlt />,
+        },
+        {
+          path: "/management/timetable",
+          label: "Timetable",
+          icon: <FaChalkboardTeacher />,
+        },
+        {
+          path: "/management/staff",
+          label: "Staff",
+          icon: <FaUserShield />,
+        },
+        {
+          path: "/management/emails",
+          label: "Emails",
+          icon: <FaHandsHelping />,
+        },
       ]
     : [
         { path: "/dashboard", label: "Dashboard", icon: <FaTachometerAlt /> },
