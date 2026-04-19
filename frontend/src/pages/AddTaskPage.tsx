@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 type TaskType = "assignment" | "exam";
@@ -27,35 +27,34 @@ interface TaskFormData {
 
 const STORAGE_KEY = "assignment_exam_manager_tasks";
 
-export default function AddTaskPage() {
+const defaultForm = (): TaskFormData => ({
+  type: "assignment",
+  title: "",
+  moduleCode: "",
+  description: "",
+  dueDateTime: "",
+  status: "pending",
+  reminders: ["1 day before", "1 hour before"],
+});
+
+function taskToForm(task: Task): TaskFormData {
+  return {
+    type: task.type,
+    title: task.title,
+    moduleCode: task.moduleCode,
+    description: task.description,
+    dueDateTime: task.dueDateTime,
+    status: task.status,
+    reminders: task.reminders,
+  };
+}
+
+function AddTaskForm({ editingTask }: { editingTask?: Task }) {
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const editingTask = (location.state as { task?: Task } | null)?.task;
-
-  const [form, setForm] = useState<TaskFormData>({
-    type: "assignment",
-    title: "",
-    moduleCode: "",
-    description: "",
-    dueDateTime: "",
-    status: "pending",
-    reminders: ["1 day before", "1 hour before"],
-  });
-
-  useEffect(() => {
-    if (editingTask) {
-      setForm({
-        type: editingTask.type,
-        title: editingTask.title,
-        moduleCode: editingTask.moduleCode,
-        description: editingTask.description,
-        dueDateTime: editingTask.dueDateTime,
-        status: editingTask.status,
-        reminders: editingTask.reminders,
-      });
-    }
-  }, [editingTask]);
+  const [form, setForm] = useState<TaskFormData>(() =>
+    editingTask ? taskToForm(editingTask) : defaultForm()
+  );
 
   const reminderOptions = [
     "1 week before",
@@ -95,7 +94,6 @@ export default function AddTaskPage() {
       };
     });
   };
-//vlidtion
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -304,6 +302,18 @@ export default function AddTaskPage() {
         </section>
       </main>
     </div>
+  );
+}
+
+export default function AddTaskPage() {
+  const location = useLocation();
+  const editingTask = (location.state as { task?: Task } | null)?.task;
+
+  return (
+    <AddTaskForm
+      key={editingTask?.id ?? "__new__"}
+      editingTask={editingTask}
+    />
   );
 }
 

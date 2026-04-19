@@ -7,13 +7,15 @@ import {
   type ReactNode,
 } from "react";
 
-export type UserRole = "student" | "admin";
+export type UserRole = "student" | "admin" | "staff" | "management" | "lecturer";
 
-const STORAGE_KEY = "unimanage_role";
+const STORAGE_KEY = "unifiedRole";
 
 type AuthContextValue = {
   role: UserRole;
   isAdmin: boolean;
+  isStaff: boolean;
+  isManagement: boolean;
   loginAsStudent: () => void;
   loginAsAdmin: (password: string) => boolean;
   logoutToStudent: () => void;
@@ -23,8 +25,15 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 function readStoredRole(): UserRole {
   try {
+    // First check if user is logged in via unified login
+    const unifiedRole = localStorage.getItem('unifiedRole');
+    if (unifiedRole && (unifiedRole === "admin" || unifiedRole === "student" || unifiedRole === "staff" || unifiedRole === "management" || unifiedRole === "lecturer")) {
+      return unifiedRole as UserRole;
+    }
+    
+    // Fallback to old storage method
     const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "admin" || v === "student") return v;
+    if (v === "admin" || v === "student" || v === "staff" || v === "management" || v === "lecturer") return v as UserRole;
   } catch {
     /* ignore */
   }
@@ -60,6 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [persist]
   );
 
+  const loginAsLecturer = useCallback(() => {
+    persist("lecturer");
+  }, [persist]);
+
   const logoutToStudent = useCallback(() => {
     persist("student");
   }, [persist]);
@@ -68,11 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       role,
       isAdmin: role === "admin",
+      isStaff: role === "staff",
+      isManagement: role === "management",
       loginAsStudent,
       loginAsAdmin,
+      loginAsLecturer,
       logoutToStudent,
     }),
-    [role, loginAsStudent, loginAsAdmin, logoutToStudent]
+    [role, loginAsStudent, loginAsAdmin, loginAsLecturer, logoutToStudent]
   );
 
   return (
@@ -80,6 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Consumer hook for `AuthProvider`. */
+// eslint-disable-next-line react-refresh/only-export-components -- hook must live next to context
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) {

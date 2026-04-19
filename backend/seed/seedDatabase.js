@@ -4,6 +4,8 @@ const AssignmentExamTask = require("../models/AssignmentExamTask");
 const StudyGoal = require("../models/StudyGoal");
 const HelpRequest = require("../models/HelpRequest");
 const EncouragementEmail = require("../models/EncouragementEmail");
+const User = require("../models/User");
+const StudyArea = require("../models/StudyArea");
 
 function toISODate(y, m0, d) {
   return `${y}-${String(m0 + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -231,6 +233,102 @@ async function seedDatabase() {
       },
     ]);
     console.log("Seeded management emails");
+  }
+
+  
+  const lecExists = await User.findOne({ role: "lecturer" });
+
+if (!lecExists) {
+  await User.create({
+    userId: "LEC001",
+    role: "lecturer",
+    name: "Dr. Perera",
+    email: "perera@university.edu",
+    password: "lecturer123",
+    phone: "0712345679",
+    faculty: "Computing"
+  });
+
+  console.log("Seeded lecturer user");
+}
+
+if ((await User.countDocuments()) === 0) {
+    await User.insertMany([
+      {
+        userId: "ST1001",
+        role: "student",
+        name: "Test Student",
+        email: "student@test.com",
+        password: "student123",
+        phone: "0712345678",
+        faculty: "Computing",
+        year: "1",
+        semester: "1",
+        scheduleType: "Weekday"
+      },
+      {
+        userId: "STF001",
+        role: "staff",
+        name: "Kamal Perera",
+        email: "kamal@university.edu",
+        password: "staff123",
+        jobType: "Electrician"
+      },
+      {
+        userId: "MNG001",
+        role: "management",
+        name: "Management User",
+        email: "management@university.edu",
+        password: "management123",
+        department: "Facilities"
+      },
+      {
+        userId: "ADM001",
+        role: "admin",
+        name: "Admin User",
+        email: "admin@university.edu",
+        password: "admin123"
+      }
+    ]);
+    console.log("Seeded users");
+  }
+
+  if ((await StudyArea.countDocuments()) === 0) {
+    await StudyArea.insertMany([
+      {
+        name: "Main Library Study Room A",
+        location: "Ground Floor, Main Library",
+        capacity: 40,
+        description: "Quiet study area with individual desks",
+        amenities: ["WiFi", "Power Outlets", "Silent Zone"],
+        isActive: true
+      },
+      {
+        name: "Computing Hub",
+        location: "1st Floor, Computing Building",
+        capacity: 30,
+        description: "Computer lab with study desks",
+        amenities: ["Computers", "WiFi", "Printing"],
+        isActive: true
+      },
+      {
+        name: "Outdoor Garden Study",
+        location: "Central Campus Garden",
+        capacity: 20,
+        description: "Open air study area with seating",
+        amenities: ["WiFi", "Natural Light", "Seating"],
+        isActive: true
+      },
+      {
+        name: "Quiet Reading Room",
+        location: "2nd Floor, Main Library",
+        capacity: 25,
+        description: "Ultra-quiet reading room",
+        amenities: ["Silent Zone", "WiFi", "Comfortable Seating"],
+        isActive: true
+      }
+    ]);
+    console.log("Seeded study areas");
   }
 }
 

@@ -51,10 +51,23 @@ const TimetableManager = () => {
   }, []);
 
   useEffect(() => {
-    refreshSessions().catch((e) =>
-      setLoadError(e instanceof Error ? e.message : "Could not load timetable.")
-    );
-  }, [refreshSessions]);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await apiGet<TimetableItem[]>("/api/timetable");
+        if (!cancelled) setSessions(list);
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(
+            e instanceof Error ? e.message : "Could not load timetable."
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [formData, setFormData] = useState({
     moduleCode: "",

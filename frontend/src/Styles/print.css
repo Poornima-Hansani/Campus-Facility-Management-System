@@ -1,0 +1,106 @@
+/* Basic Print Styles for Weekly Report */
+
+@media print {
+  /* Hide navigation and non-print elements */
+  .no-print {
+    display: none !important;
+  }
+  
+  /* Show print-only elements */
+  .print-only {
+    display: block !important;
+  }
+  
+  /* Basic page setup */
+  @page {
+    margin: 1cm;
+    size: A4;
+  }
+  
+  /* Basic body styles */
+  body {
+    font-size: 12px;
+    line-height: 1.4;
+    color: #000;
+    background: #fff;
+    font-family: Arial, sans-serif;
+  }
+  
+  /* Remove all styling from content cards */
+  .content-card {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  
+  /* Hide all styled sections */
+  .admin-dashboard-intro,
+  .admin-dashboard-actions,
+  .energy-alerts-section,
+  .student-timetables-section,
+  .bulb-report-header,
+  .bulb-summary,
+  .week-bulb-container,
+  .bulbs-grid,
+  .lab-bulb,
+  .bulb-shape,
+  .bulb-content,
+  .summary-bulbs {
+    display: none !important;
+  }
+  
+  /* Only show basic content for printing */
+  h1, h2, h3, h4, h5, h6 {
+    color: #000 !important;
+    font-weight: normal !important;
+    margin: 1rem 0 0.5rem 0 !important;
+  }
+  
+  h1 { font-size: 18px !important; }
+  h2 { font-size: 16px !important; }
+  h3 { font-size: 14px !important; }
+  h4 { font-size: 13px !important; }
+  h5 { font-size: 12px !important; }
+  h6 { font-size: 11px !important; }
+  
+  p {
+    color: #000 !important;
+    margin: 0.5rem 0 !important;
+  }
+  
+  /* Basic data display */
+  div {
+    color: #000 !important;
+    margin: 0.5rem 0 !important;
+  }
+  
+  /* Remove all backgrounds, borders, shadows */
+  * {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    text-shadow: none !important;
+  }
+  
+  /* Basic text formatting */
+  strong {
+    font-weight: bold !important;
+    color: #000 !important;
+  }
+  
+  /* Remove animations and transitions */
+  * {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+  
+  /* Ensure proper page breaks */
+  div[style*="margin-bottom"] {
+    page-break-inside: avoid;
+  }
+}
