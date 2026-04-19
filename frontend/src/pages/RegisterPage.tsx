@@ -210,6 +210,21 @@ export default function RegisterPage() {
                       placeholder="Faculty (e.g. Computing)" 
                       className="w-full appearance-none border border-gray-300 rounded-lg py-2 px-4 text-sm text-gray-900 bg-white/90 focus:ring-teal-500 focus:border-transparent" 
                     />
+                    <select 
+                      name="specialization" 
+                      value={formData.specialization} 
+                      onChange={handleInputChange} 
+                      className="w-full border border-gray-300 rounded-lg py-2 px-4 text-sm text-gray-900 bg-white focus:ring-teal-500"
+                    >
+                      <option value="">Select Specialization</option>
+                      <option value="Computer Science">Computer Science</option>
+                      <option value="Information Systems">Information Systems</option>
+                      <option value="Software Engineering">Software Engineering</option>
+                      <option value="Data Science">Data Science</option>
+                      <option value="Cyber Security">Cyber Security</option>
+                      <option value="Artificial Intelligence">Artificial Intelligence</option>
+                      <option value="Computer Engineering">Computer Engineering</option>
+                    </select>
                     <div className="grid grid-cols-2 gap-4">
                       <select 
                         name="year" 
