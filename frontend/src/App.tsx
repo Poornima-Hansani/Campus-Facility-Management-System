@@ -160,6 +160,11 @@ function AppRoutes() {
             <LectureAvailabilityPage />
           </StudentRoute>
         } />
+        <Route path="/lecture-availability" element={
+          <ProtectedRoute role="lecturer">
+            <LectureAvailabilityPage />
+          </ProtectedRoute>
+        } />
         <Route path="/admin-dashboard" element={
           <ProtectedRoute role="admin">
             <AdminDashboard />

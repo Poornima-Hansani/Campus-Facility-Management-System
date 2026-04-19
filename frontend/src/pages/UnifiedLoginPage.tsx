@@ -87,11 +87,13 @@ export default function UnifiedLoginPage() {
          localStorage.setItem('managementLoggedIn', 'true');
       } else if (data.role === 'admin') {
          localStorage.setItem('adminLoggedIn', 'true');
+      } else if (data.role === 'lecturer') {
+         localStorage.setItem('lecturerLoggedIn', 'true');
       }
 
       const routes: Record<string, string> = {
         student: '/student',
-        lecturer: '/dashboard',
+        lecturer: '/lecture-availability',
         management: '/management-dashboard',
         staff: '/staff/dashboard',
         admin: '/admin-dashboard'
