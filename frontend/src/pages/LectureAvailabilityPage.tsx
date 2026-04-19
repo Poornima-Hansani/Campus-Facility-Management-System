@@ -73,13 +73,24 @@ const LectureAvailabilityPage = () => {
   const [error, setError] = useState("");
   const [reminders, setReminders] = useState<number[]>([]);
 
+  const studentYear = localStorage.getItem("year");
+  const studentFaculty = localStorage.getItem("faculty");
+  const studentSpec = localStorage.getItem("specialization");
+  const studentScheduleType = localStorage.getItem("scheduleType");
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
+        const queryParams = new URLSearchParams();
+        if (studentYear) queryParams.append("year", studentYear);
+        if (studentFaculty) queryParams.append("faculty", studentFaculty);
+        if (studentSpec) queryParams.append("specialization", studentSpec);
+        if (studentScheduleType) queryParams.append("scheduleType", studentScheduleType);
+        
         const [lectures, tt, rem] = await Promise.all([
           apiGet<LectureItem[]>("/api/lectures"),
-          apiGet<TimetableItem[]>("/api/timetable"),
+          apiGet<TimetableItem[]>(`/api/timetable/student?${queryParams.toString()}`),
           apiGet<{ sessionIds: number[] }>("/api/lecture-reminders"),
         ]);
         if (!cancelled) {
@@ -101,7 +112,7 @@ const LectureAvailabilityPage = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [studentYear, studentFaculty, studentSpec, studentScheduleType]);
 
   const filteredCatalog = useMemo(() => {
     const codeValue = moduleCode.trim().toUpperCase();

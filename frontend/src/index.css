@@ -1,3 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --animate-fade-in-up: fade-in-up 0.8s ease-out forwards;
+}
+
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
 :root {
   --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, Segoe UI, sans-serif;
   --color-bg: #f0f4f8;
@@ -5,20 +16,8 @@
   --color-text: #0f172a;
   --color-text-muted: #64748b;
   --color-border: #e2e8f0;
-  --color-heading: #111827;
-  --color-subheading: #374151;
-  --color-subtle-bg: #f9fafb;
-  --color-input-bg: #ffffff;
   --color-primary: #0d4f34;
   --color-primary-hover: #166534;
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
-  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.07);
-  --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.1);
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
-  /* Top bar background (all pages). Use any URL or e.g. url("/your-photo.jpg") from public/. */
-  --topbar-bg-image: url("https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1800&q=85");
 }
 
 [data-theme="dark"] {
@@ -28,21 +27,8 @@
   --color-text: #e2e8f0;
   --color-text-muted: #94a3b8;
   --color-border: #2d3d55;
-  --color-heading: #f1f5f9;
-  --color-subheading: #cbd5e1;
-  --color-subtle-bg: #1a2438;
-  --color-input-bg: #1e293b;
   --color-primary: #22c55e;
   --color-primary-hover: #4ade80;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.5);
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
 }
 
 html {
@@ -50,51 +36,13 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
-html,
-body,
-#root {
-  width: 100%;
-  min-height: 100%;
-  font-family: var(--font-sans);
-  background: var(--color-bg);
-  color: var(--color-text);
-  line-height: 1.5;
-}
-
 a {
   text-decoration: none;
   color: inherit;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
-button:focus-visible,
-a:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
 }
 
 button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
   pointer-events: none;
-}
-
-[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-[data-theme="dark"] select,
-[data-theme="dark"] textarea {
-  background-color: var(--color-input-bg);
-  color: var(--color-text);
-  border-color: var(--color-border);
-}
-
-[data-theme="dark"] input::placeholder,
-[data-theme="dark"] textarea::placeholder {
-  color: var(--color-text-muted);
-  opacity: 0.9;
 }

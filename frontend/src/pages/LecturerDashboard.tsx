@@ -1,0 +1,447 @@
+import { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { 
+  MapPin, BookOpen, Calendar, 
+  LogOut, Users, Monitor, Snowflake, CheckCircle,
+  Bell, PlayCircle, PlusCircle, AlertTriangle,
+  MessageSquare, BarChart3, User, Building
+} from "lucide-react";
+import type { TimetableItem } from "../components/TimetableManager";
+
+type TodaySession = {
+  id: number;
+  moduleCode: string;
+  moduleName: string;
+  venueType: string;
+  venueName: string;
+  lecturer: string;
+  day: string;
+  startTime: string;
+  endTime: string;
+};
+
+type RoomInfo = {
+  name: string;
+  capacity: number;
+  hasProjector: boolean;
+  hasAC: boolean;
+};
+
+const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function getCurrentTime(): string {
+  const now = new Date();
+  return now.toTimeString().slice(0, 5);
+}
+
+function getCurrentDay(): string {
+  const now = new Date();
+  return dayNames[now.getDay()];
+}
+
+function convertTo24Hour(timeStr: string): number {
+  const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return 0;
+  let hours = parseInt(match[1]);
+  const minutes = parseInt(match[2]);
+  const period = match[3].toUpperCase();
+  if (period === "PM" && hours !== 12) hours += 12;
+  if (period === "AM" && hours === 12) hours = 0;
+  return hours * 60 + minutes;
+}
+
+function getSessionStatus(startTime: string, endTime: string): "Upcoming" | "Ongoing" | "Finished" {
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  
+  const startMinutes = convertTo24Hour(startTime);
+  const endMinutes = convertTo24Hour(endTime);
+  
+  if (currentMinutes < startMinutes) return "Upcoming";
+  if (currentMinutes >= startMinutes && currentMinutes < endMinutes) return "Ongoing";
+  return "Finished";
+}
+
+type Notification = {
+  id: number;
+  type: string;
+  moduleCode: string;
+  moduleName: string;
+  lecturer: string;
+  day: string;
+  message: string;
+  createdAt: string;
+  readBy: string[];
+};
+
+export default function LecturerDashboard() {
+  const navigate = useNavigate();
+  const lecturerId = localStorage.getItem('unifiedUserId');
+  const lecturerName = localStorage.getItem('unifiedName');
+  
+  const [timetableData, setTimetableData] = useState<TimetableItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [currentTime, setCurrentTime] = useState(getCurrentTime());
+  const [reminders, setReminders] = useState<number[]>([]);
+  const [currentRoom, setCurrentRoom] = useState<RoomInfo | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  useEffect(() => {
+    if (!lecturerId) {
+      navigate('/login');
+      return;
+    }
+    fetchData();
+    fetchNotifications();
+    
+    const timer = setInterval(() => {
+      setCurrentTime(getCurrentTime());
+    }, 60000);
+    
+    return () => clearInterval(timer);
+  }, [lecturerId]);
+
+  const fetchNotifications = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const lecturerParam = encodeURIComponent(String(lecturerName || lecturerId || ''));
+      const notifs = await fetch(`${API_BASE}/api/timetable/notifications/lecturer?lecturer=${lecturerParam}`).then(r => r.json());
+      setNotifications(Array.isArray(notifs) ? notifs : []);
+    } catch (e) {
+      console.log("Failed to fetch notifications");
+    }
+  };
+
+  const fetchData = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const lecturerParam = encodeURIComponent(String(lecturerName || lecturerId || ''));
+      const tt = await fetch(`${API_BASE}/api/timetable/lecturer?lecturer=${lecturerParam}`).then(r => r.json());
+      
+      setTimetableData(Array.isArray(tt) ? tt : []);
+    } catch (e: any) {
+      setLoadError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const todaySessions: TodaySession[] = timetableData
+    .filter((item: any) => item.day === getCurrentDay())
+    .sort((a: any, b: any) => {
+      return convertTo24Hour(a.startTime) - convertTo24Hour(b.startTime);
+    })
+    .map((item: any): TodaySession => ({
+      id: item.id,
+      moduleCode: item.moduleCode,
+      moduleName: item.moduleName,
+      venueType: item.venueType || "Lecture Hall",
+      venueName: item.venueName,
+      lecturer: item.lecturer,
+      day: item.day,
+      startTime: item.startTime,
+      endTime: item.endTime
+    }));
+
+  const getRoomInfo = (venueName: string): RoomInfo => {
+    const rooms: Record<string, RoomInfo> = {
+      "Lab 1": { name: "Lab 1", capacity: 40, hasProjector: true, hasAC: true },
+      "Lab 2": { name: "Lab 2", capacity: 40, hasProjector: true, hasAC: true },
+      "Lab 3": { name: "Lab 3", capacity: 30, hasProjector: true, hasAC: true },
+      "Lecture Hall 1": { name: "Lecture Hall 1", capacity: 100, hasProjector: true, hasAC: true },
+      "Lecture Hall 2": { name: "Lecture Hall 2", capacity: 80, hasProjector: true, hasAC: true },
+    };
+    return rooms[venueName] || { name: venueName, capacity: 30, hasProjector: false, hasAC: false };
+  };
+
+  const handleRemind = (sessionId: number) => {
+    setReminders(prev => [...prev, sessionId]);
+    setTimeout(() => {
+      setReminders(prev => prev.filter(id => id !== sessionId));
+    }, 5000);
+  };
+
+  const handleStartClass = (session: TodaySession) => {
+    const roomInfo = getRoomInfo(session.venueName);
+    setCurrentRoom(roomInfo);
+  };
+
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate('/login');
+  };
+
+  const ongoingSession = todaySessions.find(s => getSessionStatus(s.startTime, s.endTime) === "Ongoing");
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
+      <div className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white p-6 shadow-lg">
+        <div className="max-w-4xl mx-auto flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <BookOpen className="w-8 h-8" />
+              Lecturer Dashboard
+            </h1>
+            <div className="flex items-center gap-4 mt-3">
+              <div className="flex items-center gap-2 text-sm">
+                <User className="w-4 h-4" />
+                {lecturerName || lecturerId}
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Building className="w-4 h-4" />
+                Department of Computing
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-sm text-teal-100">{getCurrentDay()}</p>
+              <p className="font-mono text-lg">{currentTime}</p>
+            </div>
+            {notifications.length > 0 && (
+              <div className="flex items-center">
+                <Bell className="w-5 h-5 text-teal-200" />
+                <span className="ml-1 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                  {notifications.length}
+                </span>
+              </div>
+            )}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto p-6">
+        {loadError && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
+            {loadError}
+          </div>
+        )}
+
+        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            Today's Schedule
+          </h2>
+          
+          {todaySessions.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>No classes scheduled for today</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {todaySessions.map((session) => {
+                const status = getSessionStatus(session.startTime, session.endTime);
+                const isOngoing = status === "Ongoing";
+                const isFinished = status === "Finished";
+                
+                return (
+                  <div
+                    key={session.id}
+                    className={`p-4 rounded-xl border-2 transition ${
+                      isOngoing
+                        ? "border-green-500 bg-green-50"
+                        : isFinished
+                        ? "border-gray-300 bg-gray-50 opacity-60"
+                        : "border-teal-200 bg-teal-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="font-mono text-lg font-bold text-gray-700">
+                          {session.startTime}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            {session.moduleCode} - {session.moduleName}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <MapPin className="w-3 h-3" />
+                            {session.venueName}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          isOngoing
+                            ? "bg-green-500 text-white"
+                            : isFinished
+                            ? "bg-gray-400 text-white"
+                            : "bg-teal-500 text-white"
+                        }`}>
+                          {isOngoing ? "🟢 Ongoing" : isFinished ? "⚪ Finished" : "🔵 Upcoming"}
+                        </span>
+                        {!isFinished && (
+                          <button
+                            onClick={() => handleRemind(session.id)}
+                            disabled={reminders.includes(session.id)}
+                            className={`flex items-center gap-1 px-3 py-1 rounded-lg text-sm ${
+                              reminders.includes(session.id)
+                                ? "bg-gray-300 text-gray-600 cursor-default"
+                                : "bg-blue-500 text-white hover:bg-blue-600"
+                            }`}
+                          >
+                            <Bell className="w-3 h-3" />
+                            {reminders.includes(session.id) ? "Reminded!" : "Remind me"}
+                          </button>
+                        )}
+                        {status === "Upcoming" && (
+                          <button
+                            onClick={() => handleStartClass(session)}
+                            className="flex items-center gap-1 px-3 py-1 rounded-lg text-sm bg-green-500 text-white hover:bg-green-600"
+                          >
+                            <PlayCircle className="w-3 h-3" />
+                            Start class
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {currentRoom && (
+          <div className="bg-white rounded-2xl shadow-xl p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              Room Information
+            </h2>
+            
+            <div className="p-4 rounded-xl border-2 border-teal-500 bg-teal-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-gray-800">
+                    {currentRoom.name}
+                  </div>
+                  <div className="flex items-center gap-4 mt-2 text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <Users className="w-4 h-4" />
+                      Capacity: {currentRoom.capacity}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                    currentRoom.hasProjector ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                  }`}>
+                    {currentRoom.hasProjector ? <CheckCircle className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
+                    Projector {currentRoom.hasProjector ? "✅" : "❌"}
+                  </div>
+                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                    currentRoom.hasAC ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                  }`}>
+                    {currentRoom.hasAC ? <CheckCircle className="w-4 h-4" /> : <Snowflake className="w-4 h-4" />}
+                    AC {currentRoom.hasAC ? "✅" : "❌"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {ongoingSession && !currentRoom && (
+          <div className="bg-white rounded-2xl shadow-xl p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              Current Room
+            </h2>
+            
+            <div className="p-4 rounded-xl border-2 border-green-500 bg-green-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-gray-800">
+                    {ongoingSession.venueName}
+                  </div>
+                  <div className="flex items-center gap-4 mt-2 text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <Users className="w-4 h-4" />
+                      Capacity: {getRoomInfo(ongoingSession.venueName).capacity}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                    getRoomInfo(ongoingSession.venueName).hasProjector ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                  }`}>
+                    <Monitor className="w-4 h-4" />
+                    Projector {getRoomInfo(ongoingSession.venueName).hasProjector ? "✅" : "❌"}
+                  </div>
+                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                    getRoomInfo(ongoingSession.venueName).hasAC ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                  }`}>
+                    <Snowflake className="w-4 h-4" />
+                    AC {getRoomInfo(ongoingSession.venueName).hasAC ? "✅" : "❌"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 text-center text-sm text-gray-500">
+          {todaySessions.length} session{todaySessions.length !== 1 ? 's' : ''} scheduled for today
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-xl p-6 mt-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <BookOpen className="w-5 h-5" />
+            Quick Actions
+          </h2>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Link
+              to="/lab-booking"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-purple-50 hover:bg-purple-100 border-2 border-purple-200 transition"
+            >
+              <PlusCircle className="w-8 h-8 text-purple-600" />
+              <span className="font-medium text-gray-700">Book Extra Room</span>
+            </Link>
+            <Link
+              to="/report-issue"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-red-50 hover:bg-red-100 border-2 border-red-200 transition"
+            >
+              <AlertTriangle className="w-8 h-8 text-red-600" />
+              <span className="font-medium text-gray-700">Report Issue</span>
+            </Link>
+            <Link
+              to="/announcements"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 transition"
+            >
+              <MessageSquare className="w-8 h-8 text-blue-600" />
+              <span className="font-medium text-gray-700">Send Announcement</span>
+            </Link>
+            <Link
+              to="/reports"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-green-50 hover:bg-green-100 border-2 border-green-200 transition"
+            >
+              <BarChart3 className="w-8 h-8 text-green-600" />
+              <span className="font-medium text-gray-700">View Reports</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

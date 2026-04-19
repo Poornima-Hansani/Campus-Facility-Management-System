@@ -7,13 +7,15 @@ import {
   type ReactNode,
 } from "react";
 
-export type UserRole = "student" | "admin";
+export type UserRole = "student" | "admin" | "staff" | "management" | "lecturer";
 
-const STORAGE_KEY = "unimanage_role";
+const STORAGE_KEY = "unifiedRole";
 
 type AuthContextValue = {
   role: UserRole;
   isAdmin: boolean;
+  isStaff: boolean;
+  isManagement: boolean;
   loginAsStudent: () => void;
   loginAsAdmin: (password: string) => boolean;
   logoutToStudent: () => void;
@@ -24,7 +26,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function readStoredRole(): UserRole {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "admin" || v === "student") return v;
+    if (v === "admin" || v === "student" || v === "staff" || v === "management" || v === "lecturer") return v as UserRole;
   } catch {
     /* ignore */
   }
@@ -68,6 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       role,
       isAdmin: role === "admin",
+      isStaff: role === "staff",
+      isManagement: role === "management",
       loginAsStudent,
       loginAsAdmin,
       logoutToStudent,
@@ -80,6 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Consumer hook for `AuthProvider`. */
+// eslint-disable-next-line react-refresh/only-export-components -- hook must live next to context
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) {

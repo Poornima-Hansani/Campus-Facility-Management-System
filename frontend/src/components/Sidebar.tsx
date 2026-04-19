@@ -15,6 +15,8 @@ import { useAuth } from "../context/AuthContext";
 const Sidebar = () => {
   const { isAdmin } = useAuth();
 
+  const isManagement = localStorage.getItem('unifiedRole') === 'management' || localStorage.getItem('managementLoggedIn') === 'true';
+
   const menuItems = isAdmin
     ? [
         {
@@ -26,6 +28,39 @@ const Sidebar = () => {
           path: "/management-dashboard",
           label: "Management Dashboard",
           icon: <FaChartBar />,
+        },
+      ]
+    : isManagement
+    ? [
+        {
+          path: "/management-dashboard",
+          label: "Management Dashboard",
+          icon: <FaChartBar />,
+        },
+        {
+          path: "/management/issues",
+          label: "Issues List",
+          icon: <FaFileAlt />,
+        },
+        {
+          path: "/management/facility",
+          label: "Facility",
+          icon: <FaFileAlt />,
+        },
+        {
+          path: "/management/timetable",
+          label: "Timetable",
+          icon: <FaChalkboardTeacher />,
+        },
+        {
+          path: "/management/staff",
+          label: "Staff",
+          icon: <FaUserShield />,
+        },
+        {
+          path: "/management/emails",
+          label: "Emails",
+          icon: <FaHandsHelping />,
         },
       ]
     : [
@@ -57,7 +92,7 @@ const Sidebar = () => {
     <aside className="sidebar">
       <div className="sidebar-brand">
         <h2>UNIMANAGE</h2>
-        <p>{isAdmin ? "Administrator" : "Student Portal"}</p>
+        <p>{isAdmin ? "Administrator" : isManagement ? "Management Portal" : "Student Portal"}</p>
       </div>
 
       <nav className="sidebar-nav">
@@ -75,19 +110,21 @@ const Sidebar = () => {
         ))}
       </nav>
 
-      <div className="sidebar-footer">
-        <NavLink
-          to="/login"
-          className={({ isActive }) =>
-            isActive ? "sidebar-link sidebar-link-muted active" : "sidebar-link sidebar-link-muted"
-          }
-        >
-          <span className="sidebar-icon">
-            <FaUserShield />
-          </span>
-          <span>{isAdmin ? "Switch account" : "Staff login"}</span>
-        </NavLink>
-      </div>
+      {!isManagement && (
+        <div className="sidebar-footer">
+          <NavLink
+            to="/login"
+            className={({ isActive }) =>
+              isActive ? "sidebar-link sidebar-link-muted active" : "sidebar-link sidebar-link-muted"
+            }
+          >
+            <span className="sidebar-icon">
+              <FaUserShield />
+            </span>
+            <span>{isAdmin ? "Switch account" : "Login as Staff"}</span>
+          </NavLink>
+        </div>
+      )}
     </aside>
   );
 };

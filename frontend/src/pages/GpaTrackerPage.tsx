@@ -86,18 +86,11 @@ function computeGpa(rows: GpaCourseRow[]): { gpa: number | null; totalCredits: n
 }
 
 const GpaTrackerPage = () => {
-  const [rows, setRows] = useState<GpaCourseRow[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const [rows, setRows] = useState<GpaCourseRow[]>(() => loadCourses());
 
   useEffect(() => {
-    setRows(loadCourses());
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
     saveCourses(rows);
-  }, [rows, hydrated]);
+  }, [rows]);
 
   const { gpa, totalCredits } = useMemo(() => computeGpa(rows), [rows]);
 

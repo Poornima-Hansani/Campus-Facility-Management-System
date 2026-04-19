@@ -6,7 +6,8 @@
     "dev": "nodemon index.js",
     "start": "node index.js",
     "mongo:up": "docker compose up -d",
-    "mongo:down": "docker compose down"
+    "mongo:down": "docker compose down",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
@@ -17,7 +18,8 @@
     "dotenv": "^17.0.0",
     "express": "^5.1.0",
     "mongodb": "^7.1.1",
-    "mongoose": "^8.0.0"
+    "mongoose": "^8.0.0",
+    "multer": "^2.1.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.0"
