@@ -18,6 +18,14 @@ const managementEmailRoutes = require("./routes/managementEmailRoutes");
 const authRoutes = require("./routes/authRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const energyRoutes = require("./routes/energyRoutes");
+const studentTimetableRoutes = require("./routes/studentTimeTableRoutes");
+const lecturerRoutes = require("./routes/lecturerRoutes");
+const locationRoutes = require("./routes/locationRoutes");
+const labTimetableRoutes = require("./routes/labTimetableRoutes");
+const labStudentCommonFreeRoutes = require("./routes/labStudentCommonFreeRoutes");
+const labBookingRoutes = require("./routes/labBookingRoutes");
+const labFreeGapRoutes = require("./routes/labFreeGapRoutes");
+const studyAreaRoutes = require("./routes/studyAreaRoutes");
 const Reminder = require("./models/Reminder");
 const AcademicTask = require("./models/AcademicTask");
 const User = require("./models/User");
@@ -58,6 +66,27 @@ const upload = multer({
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
+
+// Mount API routes
+app.use('/api/academic-tasks', academicTaskRoutes);
+app.use('/api/lectures', lectureRoutes);
+app.use('/api/lecture-reminders', lectureReminderRoutes);
+app.use('/api/timetable', timetableRoutes);
+app.use('/api/assignments-exams', assignmentExamRoutes);
+app.use('/api/study-goals', studyGoalRoutes);
+app.use('/api/help-requests', helpRequestRoutes);
+app.use('/api/management/emails', managementEmailRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/energy', energyRoutes);
+app.use('/api/studenttimetables', studentTimetableRoutes);
+app.use('/api/lecturers', lecturerRoutes);
+app.use('/api/locations', locationRoutes);
+app.use('/api/labtimetable', labTimetableRoutes);
+app.use('/api/lab-student-common-free', labStudentCommonFreeRoutes);
+app.use('/api/lab-booking', labBookingRoutes);
+app.use('/api/lab-gap', labFreeGapRoutes);
+app.use('/api/study-areas', studyAreaRoutes);
 
 const staffMembers = [
   { id: 'STF001', name: 'Kamal Perera', role: 'Electrician', specialty: 'A/C & Electronics', phone: '+94 71 234 5678', email: 'kamal@university.edu' },
@@ -140,6 +169,9 @@ app.use("/api/management/emails", managementEmailRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/energy", energyRoutes);
+app.use("/api/student-timetable", studentTimetableRoutes);
+app.use("/api/lecturers", lecturerRoutes);
+app.use("/api/locations", locationRoutes);
 app.post('/api/reports', upload.single('image'), async (req, res) => {
   try {
     const { location, issueType, comment, studentId } = req.body;
@@ -1143,6 +1175,7 @@ function startEnergyCheckJob() {
   }, 3600000);
 }
 
+
 let mongoWasConnected = false;
 mongoose.connection.on("connected", () => {
   mongoWasConnected = true;
@@ -1176,13 +1209,13 @@ if (
 }
 
 mongoose
-  .connect(MONGO_URI, {
-    serverSelectionTimeoutMS: 10_000,
-  })
+  .connect(MONGO_URI)
   .then(async () => {
-    console.log("MongoDB connected:", MONGO_URI.replace(/:[^:@]+@/, ":****@"));
+    console.log("MongoDB connected: " + process.env.MONGO_URI);
+    
+    // Seed database
     await seedDatabase();
-
+    
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on http://127.0.0.1:${PORT}`);
     });

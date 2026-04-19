@@ -4,9 +4,10 @@ import {
   MapPin, BookOpen, Calendar, 
   LogOut, Users, Monitor, Snowflake, CheckCircle,
   Bell, PlayCircle, PlusCircle, AlertTriangle,
-  MessageSquare, BarChart3, User, Building
+  MessageSquare, BarChart3, User, Building,
+  Award, Clock, TrendingUp
 } from "lucide-react";
-import type { TimetableItem } from "../components/TimetableManager";
+import { getLecturerLabAlerts, confirmLabAlert, type LabAlert } from "../api/labGapApi";
 
 type TodaySession = {
   id: number;
@@ -79,13 +80,14 @@ export default function LecturerDashboard() {
   const lecturerId = localStorage.getItem('unifiedUserId');
   const lecturerName = localStorage.getItem('unifiedName');
   
-  const [timetableData, setTimetableData] = useState<TimetableItem[]>([]);
+  const [timetableData, setTimetableData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [currentTime, setCurrentTime] = useState(getCurrentTime());
   const [reminders, setReminders] = useState<number[]>([]);
   const [currentRoom, setCurrentRoom] = useState<RoomInfo | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [labAlerts, setLabAlerts] = useState<LabAlert[]>([]);
 
   useEffect(() => {
     if (!lecturerId) {
@@ -94,6 +96,7 @@ export default function LecturerDashboard() {
     }
     fetchData();
     fetchNotifications();
+    fetchAlerts();
     
     const timer = setInterval(() => {
       setCurrentTime(getCurrentTime());
@@ -124,6 +127,24 @@ export default function LecturerDashboard() {
       setLoadError(e.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAlerts = async () => {
+    try {
+      const res = await getLecturerLabAlerts(lecturerId || '');
+      setLabAlerts(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleConfirmAlert = async (alertId: string) => {
+    try {
+      await confirmLabAlert(alertId);
+      fetchAlerts();
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -186,262 +207,305 @@ export default function LecturerDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
-      <div className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white p-6 shadow-lg">
-        <div className="max-w-4xl mx-auto flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-3">
-              <BookOpen className="w-8 h-8" />
-              Lecturer Dashboard
-            </h1>
-            <div className="flex items-center gap-4 mt-3">
-              <div className="flex items-center gap-2 text-sm">
-                <User className="w-4 h-4" />
-                {lecturerName || lecturerId}
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Building className="w-4 h-4" />
-                Department of Computing
-              </div>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+          <BookOpen className="w-8 h-8 text-teal-600" />
+          Lecturer Dashboard
+        </h1>
+        <div className="text-sm text-gray-500 flex items-center gap-3">
+          <User className="w-4 h-4" />
+          Welcome back, {lecturerName || lecturerId || 'Lecturer'}
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Today's Sessions</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{todaySessions.length}</p>
+            </div>
+            <div className="bg-blue-100 p-3 rounded-lg">
+              <Calendar className="h-6 w-6 text-blue-600" />
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm text-teal-100">{getCurrentDay()}</p>
-              <p className="font-mono text-lg">{currentTime}</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Students</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">156</p>
             </div>
-            {notifications.length > 0 && (
-              <div className="flex items-center">
-                <Bell className="w-5 h-5 text-teal-200" />
-                <span className="ml-1 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
-                  {notifications.length}
-                </span>
-              </div>
-            )}
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
+            <div className="bg-green-100 p-3 rounded-lg">
+              <Users className="h-6 w-6 text-green-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Courses</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">4</p>
+            </div>
+            <div className="bg-purple-100 p-3 rounded-lg">
+              <BookOpen className="h-6 w-6 text-purple-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Office Hours</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">8</p>
+            </div>
+            <div className="bg-orange-100 p-3 rounded-lg">
+              <Clock className="h-6 w-6 text-orange-600" />
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto p-6">
-        {loadError && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
-            {loadError}
+      {/* Today's Schedule - Detailed View */}
+      <div className="bg-white rounded-2xl shadow-xl p-6">
+        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <Calendar className="w-5 h-5" />
+          Today's Schedule ({getCurrentDay()})
+        </h2>
+        
+        {todaySessions.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <p>No classes scheduled for today</p>
           </div>
-        )}
-
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
-            Today's Schedule
-          </h2>
-          
-          {todaySessions.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>No classes scheduled for today</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {todaySessions.map((session) => {
-                const status = getSessionStatus(session.startTime, session.endTime);
-                const isOngoing = status === "Ongoing";
-                const isFinished = status === "Finished";
-                
-                return (
-                  <div
-                    key={session.id}
-                    className={`p-4 rounded-xl border-2 transition ${
-                      isOngoing
-                        ? "border-green-500 bg-green-50"
-                        : isFinished
-                        ? "border-gray-300 bg-gray-50 opacity-60"
-                        : "border-teal-200 bg-teal-50"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="font-mono text-lg font-bold text-gray-700">
-                          {session.startTime}
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900">
-                            {session.moduleCode} - {session.moduleName}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <MapPin className="w-3 h-3" />
-                            {session.venueName}
-                          </div>
-                        </div>
+        ) : (
+          <div className="space-y-3">
+            {todaySessions.map((session) => {
+              const status = getSessionStatus(session.startTime, session.endTime);
+              const isOngoing = status === "Ongoing";
+              const isFinished = status === "Finished";
+              
+              return (
+                <div
+                  key={session.id}
+                  className={`p-4 rounded-xl border-2 transition ${
+                    isOngoing
+                      ? "border-green-500 bg-green-50"
+                      : isFinished
+                      ? "border-gray-300 bg-gray-50 opacity-60"
+                      : "border-teal-200 bg-teal-50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="font-mono text-lg font-bold text-gray-700">
+                        {session.startTime}
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          isOngoing
-                            ? "bg-green-500 text-white"
-                            : isFinished
-                            ? "bg-gray-400 text-white"
-                            : "bg-teal-500 text-white"
-                        }`}>
-                          {isOngoing ? "🟢 Ongoing" : isFinished ? "⚪ Finished" : "🔵 Upcoming"}
-                        </span>
-                        {!isFinished && (
-                          <button
-                            onClick={() => handleRemind(session.id)}
-                            disabled={reminders.includes(session.id)}
-                            className={`flex items-center gap-1 px-3 py-1 rounded-lg text-sm ${
-                              reminders.includes(session.id)
-                                ? "bg-gray-300 text-gray-600 cursor-default"
-                                : "bg-blue-500 text-white hover:bg-blue-600"
-                            }`}
-                          >
-                            <Bell className="w-3 h-3" />
-                            {reminders.includes(session.id) ? "Reminded!" : "Remind me"}
-                          </button>
-                        )}
-                        {status === "Upcoming" && (
-                          <button
-                            onClick={() => handleStartClass(session)}
-                            className="flex items-center gap-1 px-3 py-1 rounded-lg text-sm bg-green-500 text-white hover:bg-green-600"
-                          >
-                            <PlayCircle className="w-3 h-3" />
-                            Start class
-                          </button>
-                        )}
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {session.moduleCode} - {session.moduleName}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <MapPin className="w-3 h-3" />
+                          {session.venueName}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {currentRoom && (
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              Room Information
-            </h2>
-            
-            <div className="p-4 rounded-xl border-2 border-teal-500 bg-teal-50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-gray-800">
-                    {currentRoom.name}
-                  </div>
-                  <div className="flex items-center gap-4 mt-2 text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      Capacity: {currentRoom.capacity}
+                    <div className="flex items-center gap-3">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        isOngoing
+                          ? "bg-green-500 text-white"
+                          : isFinished
+                          ? "bg-gray-400 text-white"
+                          : "bg-teal-500 text-white"
+                      }`}>
+                        {isOngoing ? "Ongoing" : isFinished ? "Finished" : "Upcoming"}
+                      </span>
+                      {!isFinished && (
+                        <button
+                          onClick={() => handleRemind(session.id)}
+                          disabled={reminders.includes(session.id)}
+                          className={`flex items-center gap-1 px-3 py-1 rounded-lg text-sm ${
+                            reminders.includes(session.id)
+                              ? "bg-gray-300 text-gray-600 cursor-default"
+                              : "bg-blue-500 text-white hover:bg-blue-600"
+                          }`}
+                        >
+                          <Bell className="w-3 h-3" />
+                          {reminders.includes(session.id) ? "Reminded!" : "Remind me"}
+                        </button>
+                      )}
+                      {status === "Upcoming" && (
+                        <button
+                          onClick={() => handleStartClass(session)}
+                          className="flex items-center gap-1 px-3 py-1 rounded-lg text-sm bg-green-500 text-white hover:bg-green-600"
+                        >
+                          <PlayCircle className="w-3 h-3" />
+                          Start class
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-4">
-                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                    currentRoom.hasProjector ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                  }`}>
-                    {currentRoom.hasProjector ? <CheckCircle className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
-                    Projector {currentRoom.hasProjector ? "✅" : "❌"}
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Room Information */}
+      {currentRoom && (
+        <div className="bg-white rounded-2xl shadow-xl p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <MapPin className="w-5 h-5" />
+            Room Information
+          </h2>
+          
+          <div className="p-4 rounded-xl border-2 border-teal-500 bg-teal-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-gray-800">
+                  {currentRoom.name}
+                </div>
+                <div className="flex items-center gap-4 mt-2 text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <Users className="w-4 h-4" />
+                    Capacity: {currentRoom.capacity}
                   </div>
-                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                    currentRoom.hasAC ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                  }`}>
-                    {currentRoom.hasAC ? <CheckCircle className="w-4 h-4" /> : <Snowflake className="w-4 h-4" />}
-                    AC {currentRoom.hasAC ? "✅" : "❌"}
-                  </div>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                  currentRoom.hasProjector ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                }`}>
+                  {currentRoom.hasProjector ? <CheckCircle className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
+                  Projector {currentRoom.hasProjector ? "Yes" : "No"}
+                </div>
+                <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                  currentRoom.hasAC ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                }`}>
+                  {currentRoom.hasAC ? <CheckCircle className="w-4 h-4" /> : <Snowflake className="w-4 h-4" />}
+                  AC {currentRoom.hasAC ? "Yes" : "No"}
                 </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {ongoingSession && !currentRoom && (
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              Current Room
-            </h2>
-            
-            <div className="p-4 rounded-xl border-2 border-green-500 bg-green-50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-gray-800">
-                    {ongoingSession.venueName}
-                  </div>
-                  <div className="flex items-center gap-4 mt-2 text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      Capacity: {getRoomInfo(ongoingSession.venueName).capacity}
-                    </div>
-                  </div>
+      {/* Lab Free Time Alerts */}
+      {labAlerts.length > 0 && (
+        <div className="bg-yellow-50 border border-yellow-300 p-6 rounded-xl">
+          <h2 className="text-lg font-semibold text-yellow-800 mb-4">
+            Lab Free Time Alerts (Turn off AC & Lights)
+          </h2>
+
+          {labAlerts.map((a, i) => (
+            <div key={i} className="mb-3 p-3 bg-white rounded border">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">
+                    {a.labName} - {a.day}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    Free from {a.start}:00 to {a.end}:00 ({a.duration} hours)
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Week {a.weekNumber} - {a.year}
+                  </p>
                 </div>
-                <div className="flex gap-4">
-                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                    getRoomInfo(ongoingSession.venueName).hasProjector ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                  }`}>
-                    <Monitor className="w-4 h-4" />
-                    Projector {getRoomInfo(ongoingSession.venueName).hasProjector ? "✅" : "❌"}
-                  </div>
-                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                    getRoomInfo(ongoingSession.venueName).hasAC ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                  }`}>
-                    <Snowflake className="w-4 h-4" />
-                    AC {getRoomInfo(ongoingSession.venueName).hasAC ? "✅" : "❌"}
-                  </div>
+                <div className="ml-4">
+                  {!a.confirmed ? (
+                    <button
+                      onClick={() => handleConfirmAlert(a._id)}
+                      className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-sm">Confirm Turn Off</span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-600 rounded-lg">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-sm">Confirmed</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          ))}
+        </div>
+      )}
 
-        <div className="mt-4 text-center text-sm text-gray-500">
-          {todaySessions.length} session{todaySessions.length !== 1 ? 's' : ''} scheduled for today
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+          <div className="space-y-3">
+            <button 
+              onClick={() => navigate('/timetable-builder')}
+              className="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-3"
+            >
+              <Calendar className="h-5 w-5 text-gray-600" />
+              <span className="text-gray-900">Manage Schedule</span>
+            </button>
+            <Link to="/lab-booking" className="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-3">
+              <PlusCircle className="h-5 w-5 text-gray-600" />
+              <span className="text-gray-900">Book Extra Room</span>
+            </Link>
+            <Link to="/report-issue" className="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-gray-600" />
+              <span className="text-gray-900">Report Issue</span>
+            </Link>
+            <Link to="/reports" className="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-3">
+              <BarChart3 className="h-5 w-5 text-gray-600" />
+              <span className="text-gray-900">View Reports</span>
+            </Link>
+          </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-6 mt-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <BookOpen className="w-5 h-5" />
-            Quick Actions
-          </h2>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Link
-              to="/lab-booking"
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-purple-50 hover:bg-purple-100 border-2 border-purple-200 transition"
-            >
-              <PlusCircle className="w-8 h-8 text-purple-600" />
-              <span className="font-medium text-gray-700">Book Extra Room</span>
-            </Link>
-            <Link
-              to="/report-issue"
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-red-50 hover:bg-red-100 border-2 border-red-200 transition"
-            >
-              <AlertTriangle className="w-8 h-8 text-red-600" />
-              <span className="font-medium text-gray-700">Report Issue</span>
-            </Link>
-            <Link
-              to="/announcements"
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 transition"
-            >
-              <MessageSquare className="w-8 h-8 text-blue-600" />
-              <span className="font-medium text-gray-700">Send Announcement</span>
-            </Link>
-            <Link
-              to="/reports"
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-green-50 hover:bg-green-100 border-2 border-green-200 transition"
-            >
-              <BarChart3 className="w-8 h-8 text-green-600" />
-              <span className="font-medium text-gray-700">View Reports</span>
-            </Link>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="bg-blue-100 p-2 rounded-lg">
+                <TrendingUp className="h-4 w-4 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">New assignment submitted</p>
+                <p className="text-xs text-gray-500">CS101 - 2 hours ago</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="bg-green-100 p-2 rounded-lg">
+                <Users className="h-4 w-4 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">Student meeting scheduled</p>
+                <p className="text-xs text-gray-500">Tomorrow at 2:00 PM</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="bg-purple-100 p-2 rounded-lg">
+                <BookOpen className="h-4 w-4 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">Course material updated</p>
+                <p className="text-xs text-gray-500">MATH201 - Yesterday</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
+}
+          </div>
+        </div>
+      </div>
+    </div>
+);
 }

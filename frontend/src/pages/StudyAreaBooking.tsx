@@ -1,52 +1,27 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Calendar, Clock, Users, MapPin, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
-
-type StudyArea = {
-  _id: string;
-  name: string;
-  location: string;
-  capacity: number;
-  description: string;
-  amenities: string[];
-  bookings?: number;
-  availableSeats?: number;
-};
-
-type Booking = {
-  _id: string;
-  areaName: string;
-  day: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  purpose: string;
-  status: string;
-};
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const TIME_SLOTS = [
-  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
-];
+import { studyAreaApi } from '../api/studyAreaApi';
+import type { StudyArea, StudyAreaBooking, FreeTimeSlot } from '../api/studyAreaApi';
 
 export default function StudyAreaBooking() {
   const [areas, setAreas] = useState<StudyArea[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<StudyAreaBooking[]>([]);
   const [selectedArea, setSelectedArea] = useState<StudyArea | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
-  const [selectedDay, setSelectedDay] = useState('Monday');
-  const [selectedTime, setSelectedTime] = useState('');
-  const [duration, setDuration] = useState(2);
+  const [freeTimeSlots, setFreeTimeSlots] = useState<FreeTimeSlot[]>([]);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<FreeTimeSlot | null>(null);
   const [purpose, setPurpose] = useState('');
+  const [numberOfStudents, setNumberOfStudents] = useState(1);
+  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [freeSlotsLoading, setFreeSlotsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'book' | 'my'>('book');
 
-  const studentId = localStorage.getItem('studentId') || 'ST' + Math.random().toString(36).substr(2, 8).toUpperCase();
-  const studentName = localStorage.getItem('unifiedName') || '';
+  // Get current user info from localStorage
+  const userId = localStorage.getItem('userId') || '';
 
   useEffect(() => {
     fetchAreas();
@@ -54,48 +29,61 @@ export default function StudyAreaBooking() {
   }, []);
 
   useEffect(() => {
-    if (selectedArea && selectedDate) {
-      fetchAreaDetails(selectedArea._id);
+    if (selectedDate && userId) {
+      fetchFreeTimeSlots();
     }
-  }, [selectedArea, selectedDate]);
+  }, [selectedDate, userId]);
 
   const fetchAreas = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/booking/study-areas`);
-      const data = await res.json();
-      setAreas(data);
-      if (data.length > 0) setSelectedArea(data[0]);
+      const response = await studyAreaApi.getStudyAreas();
+      if (response.success) {
+        setAreas(response.data.studyAreas || []);
+        if (response.data.studyAreas && response.data.studyAreas.length > 0) {
+          setSelectedArea(response.data.studyAreas[0]);
+        }
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching study areas:', err);
+      setMessage({ type: 'error', text: 'Failed to load study areas' });
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchAreaDetails = async (areaId: string) => {
+  const fetchFreeTimeSlots = async () => {
+    if (!userId || !selectedDate) return;
+    
+    setFreeSlotsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/booking/study-areas/${areaId}?date=${selectedDate}`);
-      const data = await res.json();
-      setAreas(prev => prev.map(a => a._id === areaId ? data : a));
+      const response = await studyAreaApi.getFreeTimeSlots(userId, selectedDate);
+      if (response.success && response.data.freeSlots) {
+        setFreeTimeSlots(response.data.freeSlots);
+        setSelectedTimeSlot(null); // Reset selected time slot when date changes
+      } else {
+        setFreeTimeSlots([]);
+        setMessage({ type: 'error', text: 'No free time slots available for this date' });
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching free time slots:', err);
+      setFreeTimeSlots([]);
+      setMessage({ type: 'error', text: 'Failed to load free time slots' });
+    } finally {
+      setFreeSlotsLoading(false);
     }
   };
 
   const fetchMyBookings = async () => {
+    if (!userId) return;
+    
     try {
-      const res = await fetch(`${API_BASE}/api/booking/study-bookings?studentId=${studentId}`);
-      const data = await res.json();
-      setBookings(data.filter((b: Booking) => b.status === 'Confirmed'));
+      const response = await studyAreaApi.getUserBookings(userId, { status: 'confirmed' });
+      if (response.success) {
+        setBookings(response.data.bookings || []);
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching bookings:', err);
     }
-  };
-
-  const handleDateChange = (date: string) => {
-    setSelectedDate(date);
-    const d = new Date(date);
-    setSelectedDay(DAYS[d.getDay() === 0 ? 6 : d.getDay() - 1]);
   };
 
   const getMinDate = () => {
@@ -104,8 +92,8 @@ export default function StudyAreaBooking() {
   };
 
   const handleBook = async () => {
-    if (!selectedArea || !selectedDate || !selectedTime) {
-      setMessage({ type: 'error', text: 'Please select date and time' });
+    if (!selectedArea || !selectedDate || !selectedTimeSlot || !userId) {
+      setMessage({ type: 'error', text: 'Please select study area, date, and time slot' });
       return;
     }
 
@@ -113,39 +101,31 @@ export default function StudyAreaBooking() {
     setMessage(null);
 
     try {
-      const startTime = selectedTime;
-      const endHour = parseInt(selectedTime.split(':')[0]) + duration;
-      const endTime = `${String(endHour).padStart(2, '0')}:00`;
-
-      const res = await fetch(`${API_BASE}/api/booking/study-bookings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          studentId,
-          studentName,
-          areaId: selectedArea._id,
-          areaName: selectedArea.name,
-          day: selectedDay,
-          date: selectedDate,
-          startTime,
-          endTime,
-          purpose: purpose || 'Study'
-        })
+      const response = await studyAreaApi.createBooking({
+        userId,
+        studyAreaId: selectedArea._id,
+        date: selectedDate,
+        startTime: selectedTimeSlot.startTime,
+        endTime: selectedTimeSlot.endTime,
+        purpose: purpose.trim() || undefined,
+        numberOfStudents,
+        notes: notes.trim() || undefined
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setMessage({ type: 'error', text: data.message || 'Booking failed' });
-      } else {
+      if (response.success) {
         setMessage({ type: 'success', text: 'Study area booked successfully!' });
         fetchMyBookings();
-        fetchAreaDetails(selectedArea._id);
-        setSelectedTime('');
+        // Reset form
+        setSelectedTimeSlot(null);
         setPurpose('');
+        setNumberOfStudents(1);
+        setNotes('');
+      } else {
+        setMessage({ type: 'error', text: 'Failed to create booking' });
       }
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Failed to book. Please try again.' });
+    } catch (err: any) {
+      console.error('Booking error:', err);
+      setMessage({ type: 'error', text: err.message || 'Failed to book. Please try again.' });
     } finally {
       setBookingLoading(false);
     }
@@ -153,11 +133,12 @@ export default function StudyAreaBooking() {
 
   const cancelBooking = async (bookingId: string) => {
     try {
-      await fetch(`${API_BASE}/api/booking/study-bookings/${bookingId}`, { method: 'DELETE' });
+      await studyAreaApi.cancelBooking(bookingId);
+      setMessage({ type: 'success', text: 'Booking cancelled successfully' });
       fetchMyBookings();
-      setMessage({ type: 'success', text: 'Booking cancelled' });
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Failed to cancel booking' });
+    } catch (err: any) {
+      console.error('Cancel booking error:', err);
+      setMessage({ type: 'error', text: err.message || 'Failed to cancel booking' });
     }
   };
 
@@ -165,10 +146,10 @@ export default function StudyAreaBooking() {
     return date === new Date().toISOString().slice(0, 10);
   };
 
-  const getEndTime = (start: string) => {
-    const [h, m] = start.split(':').map(Number);
-    const endH = h + duration;
-    return `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  const formatDuration = (duration: number) => {
+    const hours = Math.floor(duration);
+    const minutes = (duration % 1) * 60;
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
   };
 
   return (
@@ -180,7 +161,7 @@ export default function StudyAreaBooking() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Study Area Booking</h1>
-            <p className="text-gray-600">Book quiet study spaces on campus</p>
+            <p className="text-gray-600">Book study areas during your free time slots</p>
           </div>
         </div>
 
@@ -222,82 +203,122 @@ export default function StudyAreaBooking() {
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Select Date</h3>
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Calendar size={20} />
+                  Select Date
+                </h3>
                 <input
                   type="date"
                   value={selectedDate}
-                  onChange={(e) => handleDateChange(e.target.value)}
+                  onChange={(e) => setSelectedDate(e.target.value)}
                   min={getMinDate()}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                 />
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Select Time</h3>
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                  {TIME_SLOTS.map(time => {
-                    const isPast = selectedDate === getMinDate() && parseInt(time.split(':')[0]) <= new Date().getHours();
-                    return (
-                      <button
-                        key={time}
-                        disabled={isPast}
-                        onClick={() => setSelectedTime(time)}
-                        className={`p-2 rounded-lg text-sm font-medium transition-colors ${
-                          selectedTime === time
-                            ? 'bg-teal-600 text-white'
-                            : isPast
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-gray-50 text-gray-700 hover:bg-teal-50'
-                        }`}
-                      >
-                        {time}
-                        {selectedTime !== time && (
-                          <span className="block text-xs opacity-60">-{duration}h</span>
-                        )}
-                      </button>
-                    );
-                  })}
+              {selectedDate && (
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Clock size={20} />
+                    Your Free Time Slots
+                  </h3>
+                  {freeSlotsLoading ? (
+                    <div className="text-center py-8 text-gray-500">Loading your free time slots...</div>
+                  ) : freeTimeSlots.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Clock size={48} className="mx-auto text-gray-300 mb-3" />
+                      <p>No free time slots available on this date</p>
+                      <p className="text-sm text-gray-400 mt-1">You have classes during all available times</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {freeTimeSlots.map((slot, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setSelectedTimeSlot(slot)}
+                          className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                            selectedTimeSlot?.startTime === slot.startTime
+                              ? 'border-teal-500 bg-teal-50'
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="text-lg font-medium text-gray-900">
+                                {slot.startTime} - {slot.endTime}
+                              </div>
+                              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                                {formatDuration(slot.duration)}
+                              </span>
+                            </div>
+                            {selectedTimeSlot?.startTime === slot.startTime && (
+                              <CheckCircle size={20} className="text-teal-600" />
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            {slot.day}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="mt-4">
-                  <label className="block text-sm text-gray-600 mb-2">Duration</label>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4].map(h => (
-                      <button
-                        key={h}
-                        onClick={() => setDuration(h)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          duration === h
-                            ? 'bg-teal-600 text-white'
-                            : 'bg-gray-50 text-gray-700 hover:bg-teal-50'
-                        }`}
-                      >
-                        {h} hour{h > 1 ? 's' : ''}
-                      </button>
-                    ))}
+              )}
+
+              {selectedTimeSlot && (
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <h3 className="font-semibold text-gray-900 mb-4">Booking Details</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Number of Students
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="50"
+                        value={numberOfStudents}
+                        onChange={(e) => setNumberOfStudents(parseInt(e.target.value) || 1)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Purpose (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={purpose}
+                        onChange={(e) => setPurpose(e.target.value)}
+                        placeholder="e.g., Group study, Exam prep..."
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Notes (Optional)
+                      </label>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Additional notes..."
+                        rows={3}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      />
+                    </div>
                   </div>
                 </div>
-                {selectedTime && (
-                  <p className="mt-3 text-sm text-gray-600">
-                    Booking: {selectedTime} - {getEndTime(selectedTime)} ({selectedDay})
-                  </p>
-                )}
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Purpose (Optional)</h3>
-                <input
-                  type="text"
-                  value={purpose}
-                  onChange={(e) => setPurpose(e.target.value)}
-                  placeholder="e.g., Group study, Exam prep..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                />
-              </div>
+              )}
             </div>
 
             <div>
               <div className="bg-white rounded-xl shadow-sm p-6 sticky top-4">
-                <h3 className="font-semibold text-gray-900 mb-4">Study Areas</h3>
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <MapPin size={20} />
+                  Study Areas
+                </h3>
                 <div className="space-y-3">
                   {areas.map(area => (
                     <button
@@ -317,11 +338,6 @@ export default function StudyAreaBooking() {
                         <span className="flex items-center gap-1 text-gray-600">
                           <Users size={14} /> {area.capacity}
                         </span>
-                        {area.availableSeats !== undefined && (
-                          <span className={`font-medium ${area.availableSeats > 10 ? 'text-green-600' : area.availableSeats > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
-                            {area.availableSeats} available
-                          </span>
-                        )}
                       </div>
                     </button>
                   ))}
@@ -332,9 +348,9 @@ export default function StudyAreaBooking() {
                     <h4 className="font-semibold text-gray-900">{selectedArea.name}</h4>
                     <p className="text-sm text-gray-600 mt-1">{selectedArea.description}</p>
                     <div className="flex flex-wrap gap-2 mt-3">
-                      {selectedArea.amenities.map((a, i) => (
+                      {selectedArea.amenities.map((amenity, i) => (
                         <span key={i} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                          {a}
+                          {amenity}
                         </span>
                       ))}
                     </div>
@@ -343,7 +359,7 @@ export default function StudyAreaBooking() {
 
                 <button
                   onClick={handleBook}
-                  disabled={!selectedArea || !selectedDate || !selectedTime || bookingLoading}
+                  disabled={!selectedArea || !selectedDate || !selectedTimeSlot || bookingLoading}
                   className="w-full mt-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-lg font-medium hover:from-teal-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {bookingLoading ? 'Booking...' : 'Book Study Area'}
@@ -367,33 +383,69 @@ export default function StudyAreaBooking() {
               </div>
             ) : (
               bookings.map(booking => (
-                <div key={booking._id} className="bg-white rounded-xl shadow-sm p-6 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-semibold text-gray-900">{booking.areaName}</h4>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                      <span className="flex items-center gap-1">
-                        <Calendar size={14} /> {booking.date}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock size={14} /> {booking.startTime} - {booking.endTime}
-                      </span>
+                <div key={booking._id} className="bg-white rounded-xl shadow-sm p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-3">
+                        <h4 className="font-semibold text-gray-900">{booking.studyArea.name}</h4>
+                        <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                          booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                          booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-600">
+                        <div className="flex items-center gap-2">
+                          <Calendar size={14} />
+                          <span>{new Date(booking.date).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Clock size={14} />
+                          <span>{booking.startTime} - {booking.endTime}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <MapPin size={14} />
+                          <span>{booking.studyArea.location}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Users size={14} />
+                          <span>{booking.numberOfStudents} student{booking.numberOfStudents > 1 ? 's' : ''}</span>
+                        </div>
+                      </div>
+                      
+                      {booking.purpose && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                          <p className="text-sm font-medium text-gray-700">Purpose:</p>
+                          <p className="text-sm text-gray-600">{booking.purpose}</p>
+                        </div>
+                      )}
+                      
+                      {booking.notes && (
+                        <div className="mt-2 p-3 bg-blue-50 rounded-lg">
+                          <p className="text-sm font-medium text-blue-700">Notes:</p>
+                          <p className="text-sm text-blue-600">{booking.notes}</p>
+                        </div>
+                      )}
                     </div>
-                    {booking.purpose && (
-                      <p className="text-sm text-gray-500 mt-1">Purpose: {booking.purpose}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {isToday(booking.date) && (
-                      <span className="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full font-medium">
-                        Today
-                      </span>
-                    )}
-                    <button
-                      onClick={() => cancelBooking(booking._id)}
-                      className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      Cancel
-                    </button>
+                    
+                    <div className="ml-4">
+                      {isToday(booking.date) && (
+                        <span className="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full font-medium mb-2 inline-block">
+                          Today
+                        </span>
+                      )}
+                      {booking.status === 'confirmed' && (
+                        <button
+                          onClick={() => cancelBooking(booking._id)}
+                          className="w-full px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
+                        >
+                          Cancel Booking
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))

@@ -22,8 +22,14 @@ import ReportIssue from './pages/ReportIssue';
 import ReportHistory from './pages/ReportHistory';
 import AllIssues from './pages/AllIssues';
 import StaffDashboard from './pages/StaffDashboard';
+import LecturerDashboard from './pages/LecturerDashboard';
+import TimetableBuilderPage from './pages/TimetableBuilderPage';
+import TimetablePrintPage from './pages/TimetablePrintPage';
 import StudyAreaBooking from './pages/StudyAreaBooking';
-import LabBooking from './pages/LabBooking';
+import LabBooking from "./pages/LabBooking";
+import LabTimetableList from "./pages/LabTimetableList";
+import LabTimetableView from "./pages/LabTimetableView";
+import EnergyAlertsPage from "./pages/EnergyAlertsPage";
 
 // Management pages
 import ManagementDashboard from "./pages/management/ManagementDashboard";
@@ -63,6 +69,7 @@ function Navigation() {
   const getDashboardRoute = () => {
     switch (role) {
       case 'student': return '/student';
+      case 'lecturer': return '/lecturer-dashboard';
       case 'management': return '/management-dashboard';
       case 'staff': return '/staff/dashboard';
       case 'admin': return '/admin-dashboard';
@@ -178,6 +185,24 @@ function AppRoutes() {
           </StaffRoute>
         } />
         
+        <Route path="/lecturer-dashboard" element={
+          <ProtectedRoute role="lecturer">
+            <LecturerDashboard />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/timetable-builder" element={
+          <ProtectedRoute role={["lecturer", "management"]}>
+            <TimetableBuilderPage />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/timetable-print/:year/:semester/:batch/:specialization/:group" element={
+          <ProtectedRoute role="lecturer">
+            <TimetablePrintPage />
+          </ProtectedRoute>
+        } />
+        
         <Route path="/dashboard" element={
           <StudentRoute>
             <TaskDashboardPage />
@@ -194,6 +219,21 @@ function AppRoutes() {
         <Route path="/admin-dashboard" element={
           <ProtectedRoute role="admin">
             <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/energy-alerts" element={
+          <ProtectedRoute role="admin">
+            <EnergyAlertsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/labtimetables" element={
+          <ProtectedRoute role="admin">
+            <LabTimetableList />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/labtimetables/:lab" element={
+          <ProtectedRoute role="admin">
+            <LabTimetableView />
           </ProtectedRoute>
         } />
         <Route path="/timetable" element={

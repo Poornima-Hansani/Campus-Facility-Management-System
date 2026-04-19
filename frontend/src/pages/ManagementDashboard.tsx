@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { apiDelete, apiGet, apiPost } from "../lib/api";
-import { Bell, AlertTriangle, Clock, Users, BarChart3, PieChart, UserPlus, Activity, Zap, HardHat, ThumbsUp, MapPin } from "lucide-react";
+import { Bell, AlertTriangle, Clock, CheckCircle, Wrench, Users, BarChart3, PieChart, UserPlus, Calendar, Activity, Zap, HardHat, ThumbsUp, MapPin } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Legend } from "recharts";
 
 type EmailItem = {
@@ -160,6 +160,7 @@ function catalogSlotsForRow(
 }
 
 const ManagementDashboard = () => {
+  const navigate = useNavigate();
   const [emails, setEmails] = useState<EmailItem[]>([]);
   const [loadError, setLoadError] = useState("");
 
@@ -635,7 +636,7 @@ const ManagementDashboard = () => {
                   {unreadCount}
                 </span>
               )}
-            </button>
+</button>
             {showNotifications && (
               <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
                 <div className="p-4 border-b border-gray-200">
@@ -654,6 +655,196 @@ const ManagementDashboard = () => {
                         <p className="text-sm text-gray-900">{notif.message}</p>
                         <p className="text-xs text-gray-500 mt-1">
                           {new Date(notif.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="content-card">
+        <div className="section-head">
+          <div>
+            <h3>Issue Management Overview</h3>
+            <p>Track escalated, pending, and assigned facility issues</p>
+          </div>
+        </div>
+
+        <div className="stats-grid availability-stats">
+          <div className="stat-card">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-red-100 rounded-lg">
+                <AlertTriangle className="text-red-600" size={24} />
+              </div>
+              <div>
+                <h4>Escalated</h4>
+                <h2>{escalated.length}</h2>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Requires immediate attention</p>
+          </div>
+
+          <div className="stat-card">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-yellow-100 rounded-lg">
+                <Clock className="text-yellow-600" size={24} />
+              </div>
+              <div>
+                <h4>Pending</h4>
+                <h2>{pending.length}</h2>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Awaiting assignment</p>
+          </div>
+
+          <div className="stat-card">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <Wrench className="text-blue-600" size={24} />
+              </div>
+              <div>
+                <h4>Assigned</h4>
+                <h2>{assigned.length}</h2>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">In progress</p>
+          </div>
+
+          <div className="stat-card">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-red-100 rounded-lg">
+                <AlertTriangle className="text-red-600" size={24} />
+              </div>
+              <div>
+                <h4>Escalated</h4>
+                <h2>{escalated.length}</h2>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Requires immediate attention</p>
+          </div>
+
+          <div className="stat-card">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-yellow-100 rounded-lg">
+                <Clock className="text-yellow-600" size={24} />
+              </div>
+              <div>
+                <h4>Pending</h4>
+                <h2>{pending.length}</h2>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Awaiting assignment</p>
+          </div>
+
+          <div className="stat-card">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <Wrench className="text-blue-600" size={24} />
+              </div>
+              <div>
+                <h4>Assigned</h4>
+                <h2>{assigned.length}</h2>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">In progress</p>
+          </div>
+
+          <div className="stat-card">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <CheckCircle className="text-green-600" size={24} />
+              </div>
+              <div>
+                <h4>Resolved</h4>
+                <h2>{stats.fixedReports}</h2>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Issues fixed</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="content-card">
+        <div className="section-head">
+          <div>
+            <h3>Weekly Performance Summary</h3>
+            <p>Last 7 days performance metrics</p>
+          </div>
+        </div>
+
+        <div className="stats-grid availability-stats">
+          <div className="stat-card">
+            <h4>Reports This Week</h4>
+            <h2>{weeklySummary.totalReports}</h2>
+            <p>New issues reported</p>
+          </div>
+
+          <div className="stat-card">
+            <h4>Fixed This Week</h4>
+            <h2>{weeklySummary.fixedReports}</h2>
+            <p>Issues resolved</p>
+          </div>
+
+          <div className="stat-card">
+            <h4>Avg Response Time</h4>
+            <h2>{weeklySummary.avgResponseTime} min</h2>
+            <p>Average fix time</p>
+          </div>
+
+          <div className="stat-card">
+            <h4>Resolution Rate</h4>
+            <h2>{weeklySummary.resolutionRate}%</h2>
+            <p>Success rate</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="content-card">
+        <div className="section-head">
+          <div>
+            <h3>Quick Actions</h3>
+            <p>Manage timetable and scheduling</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <button 
+            onClick={() => navigate('/timetable-builder')}
+            className="w-full text-left px-4 py-3 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors flex items-center gap-3"
+          >
+            <Calendar className="h-5 w-5 text-purple-600" />
+            <span className="text-purple-900 font-medium">Add Time Table</span>
+          </button>
+        </div>
+      </div>
+
+      {(escalated.length > 0 || assigned.length > 0) && (
+        <div className="content-card">
+          <div className="section-head">
+            <div>
+              <h3>Issue Management</h3>
+              <p>Manage escalated and assigned issues</p>
+            </div>
+          </div>
+
+          {escalated.length > 0 && (
+            <div className="mb-6">
+              <h4 className="font-semibold text-red-600 mb-3 flex items-center gap-2">
+                <AlertTriangle size={18} />
+                Escalated Issues ({escalated.length})
+              </h4>
+              <div className="space-y-3">
+                {escalated.map((item, idx) => (
+                  <div key={idx} className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {item.location} - {item.issueType}
+>>>>>>> origin/warani
                         </p>
                       </div>
                     ))}

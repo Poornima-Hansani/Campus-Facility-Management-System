@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, BookOpen, Monitor, GraduationCap, Calendar, Clock, TrendingUp, MapPin, Bell } from 'lucide-react';
+import { Plus, BookOpen, Monitor, GraduationCap, Calendar, Clock, TrendingUp, Users, MapPin, Bell } from 'lucide-react';
+import { studyAreaApi } from '../api/studyAreaApi';
 
 type TimetableRow = {
   id: number;
@@ -39,7 +40,8 @@ function convertTo24Hour(timeStr: string): number {
 export default function StudentDashboard() {
   const studentId = localStorage.getItem('studentId') || 'Student';
   const studentName = localStorage.getItem('unifiedName') || 'Student';
-  
+  const userId = localStorage.getItem('userId') || '';
+   
   const studentYear = localStorage.getItem('year') || '1';
   const studentFaculty = localStorage.getItem('faculty') || 'Computing';
   const studentSpec = localStorage.getItem('specialization') || 'SE';
@@ -50,10 +52,14 @@ export default function StudentDashboard() {
   const [scheduleTypeFilter, setScheduleTypeFilter] = useState(studentType);
   const [dayFilter, setDayFilter] = useState('');
   const [notifications, setNotifications] = useState<any[]>([]);
+const [todayBookings, setTodayBookings] = useState<any[]>([]);
 
   useEffect(() => {
     fetchTimetable();
     fetchNotifications();
+    if (userId) {
+      fetchTodayBookings();
+    }
     const interval = setInterval(() => {
       fetchTimetable();
       fetchNotifications();
@@ -91,6 +97,24 @@ export default function StudentDashboard() {
     }
   };
 
+  const fetchTodayBookings = async () => {
+    if (!userId) return;
+    
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const response = await studyAreaApi.getUserBookings(userId, { 
+        startDate: today,
+        endDate: today,
+        status: 'confirmed' 
+      });
+      if (response.success && response.data.bookings) {
+        setTodayBookings(response.data.bookings);
+      }
+    } catch (err) {
+      console.error('Error fetching today bookings:', err);
+    }
+  };
+
   const filteredTimetable = timetable.filter(item => {
     if (dayFilter && item.day !== dayFilter) return false;
     return true;
@@ -98,7 +122,6 @@ export default function StudentDashboard() {
 
   const todaySessions = filteredTimetable.filter(item => item.day === getCurrentDay());
   const unreadCount = notifications.filter(n => !n.readBy?.includes(studentId)).length;
-
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-green-700 via-teal-800 to-blue-900">
       <div className="absolute inset-0 bg-black/20"></div>
@@ -123,6 +146,44 @@ export default function StudentDashboard() {
             </div>
           )}
         </div>
+
+        
+        {/* Today's Bookings Section */}
+        {todayBookings.length > 0 && (
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-sm p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Users size={20} className="text-blue-600" />
+              <h2 className="font-bold text-gray-900">Today's Bookings</h2>
+            </div>
+            <div className="space-y-3">
+              {todayBookings.map((booking) => (
+                <div key={booking._id} className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-medium text-blue-900">{booking.studyArea.name}</h4>
+                      <div className="flex items-center gap-3 mt-1 text-sm text-blue-700">
+                        <span className="flex items-center gap-1">
+                          <Clock size={14} />
+                          {booking.startTime} - {booking.endTime}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin size={14} />
+                          {booking.studyArea.location}
+                        </span>
+                      </div>
+                      {booking.purpose && (
+                        <p className="text-sm text-blue-600 mt-2">Purpose: {booking.purpose}</p>
+                      )}
+                    </div>
+                    <span className="px-2 py-1 bg-blue-200 text-blue-700 text-xs rounded-full font-medium">
+                      {booking.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Link 

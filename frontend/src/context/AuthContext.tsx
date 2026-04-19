@@ -25,6 +25,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 function readStoredRole(): UserRole {
   try {
+    // First check if user is logged in via unified login
+    const unifiedRole = localStorage.getItem('unifiedRole');
+    if (unifiedRole && (unifiedRole === "admin" || unifiedRole === "student" || unifiedRole === "staff" || unifiedRole === "management" || unifiedRole === "lecturer")) {
+      return unifiedRole as UserRole;
+    }
+    
+    // Fallback to old storage method
     const v = localStorage.getItem(STORAGE_KEY);
     if (v === "admin" || v === "student" || v === "staff" || v === "management" || v === "lecturer") return v as UserRole;
   } catch {
@@ -62,6 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [persist]
   );
 
+  const loginAsLecturer = useCallback(() => {
+    persist("lecturer");
+  }, [persist]);
+
   const logoutToStudent = useCallback(() => {
     persist("student");
   }, [persist]);
@@ -74,9 +85,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isManagement: role === "management",
       loginAsStudent,
       loginAsAdmin,
+      loginAsLecturer,
       logoutToStudent,
     }),
-    [role, loginAsStudent, loginAsAdmin, logoutToStudent]
+    [role, loginAsStudent, loginAsAdmin, loginAsLecturer, logoutToStudent]
   );
 
   return (

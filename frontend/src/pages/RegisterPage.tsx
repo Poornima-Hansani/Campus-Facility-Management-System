@@ -58,6 +58,8 @@ export default function RegisterPage() {
     year: '',
     semester: '',
     scheduleType: 'Weekday',
+    group: '',
+    specialization: '',
     moduleCode: '',
     moduleName: '',
     department: '',
@@ -86,6 +88,25 @@ export default function RegisterPage() {
         email: formData.email,
         password: formData.password
       };
+
+      // Add role-specific fields
+      if (role === 'student') {
+        if (formData.phone) payload.phone = formData.phone;
+        if (formData.faculty) payload.faculty = formData.faculty;
+        if (formData.year) payload.year = formData.year;
+        if (formData.semester) payload.semester = formData.semester;
+        if (formData.scheduleType) payload.scheduleType = formData.scheduleType;
+        if (formData.group) payload.group = formData.group;
+        if (formData.specialization) payload.specialization = formData.specialization;
+      } else if (role === 'lecturer') {
+        if (formData.moduleCode) payload.moduleCode = formData.moduleCode;
+        if (formData.moduleName) payload.moduleName = formData.moduleName;
+        if (formData.department) payload.department = formData.department;
+      } else if (role === 'management') {
+        if (formData.department) payload.department = formData.department;
+      } else if (role === 'staff') {
+        if (formData.jobType) payload.jobType = formData.jobType;
+      }
 
       const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: 'POST',
@@ -249,6 +270,13 @@ export default function RegisterPage() {
                         <option value="2">Semester 2</option>
                       </select>
                     </div>
+                    <input 
+                      name="specialization" 
+                      value={formData.specialization} 
+                      onChange={handleInputChange} 
+                      placeholder="Specialization (e.g. Software Engineering, Computer Science, IT, Data Science)" 
+                      className="w-full appearance-none border border-gray-300 rounded-lg py-2 px-4 text-sm text-gray-900 bg-white/90 focus:ring-teal-500 focus:border-transparent" 
+                    />
                     <select 
                       name="scheduleType" 
                       value={formData.scheduleType} 
@@ -258,6 +286,13 @@ export default function RegisterPage() {
                       <option value="Weekday">Weekday</option>
                       <option value="Weekend">Weekend</option>
                     </select>
+                    <input 
+                      name="group" 
+                      value={formData.group} 
+                      onChange={handleInputChange} 
+                      placeholder="Group (e.g. 1.1, 2.1, 2.2, 3.1)" 
+                      className="w-full appearance-none border border-gray-300 rounded-lg py-2 px-4 text-sm text-gray-900 bg-white/90 focus:ring-teal-500 focus:border-transparent" 
+                    />
                   </div>
                 )}
 

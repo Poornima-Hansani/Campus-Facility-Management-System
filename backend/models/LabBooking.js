@@ -1,19 +1,27 @@
 const mongoose = require('mongoose');
 
 const labBookingSchema = new mongoose.Schema({
-  studentId: { type: String, required: true },
-  studentName: { type: String, default: '' },
-  labId: { type: String, required: true },
+  studentId: { type: String, required: true, ref: 'User' },
+  studentName: { type: String, required: true },
   labName: { type: String, required: true },
-  moduleCode: { type: String, default: '' },
-  moduleName: { type: String, default: '' },
-  day: { type: String, required: true },
-  date: { type: String, required: true },
-  startTime: { type: String, required: true },
-  endTime: { type: String, required: true },
-  status: { type: String, enum: ['Pending', 'Confirmed', 'Cancelled', 'Completed'], default: 'Pending' },
-  purpose: { type: String, default: 'Lab Work' },
-  seatsNeeded: { type: Number, default: 1 }
-}, { timestamps: true });
+  day: { type: String, required: true, enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] },
+  date: { type: String, required: true }, // Format: YYYY-MM-DD
+  startTime: { type: Number, required: true }, // Hour in 24h format
+  endTime: { type: Number, required: true }, // Hour in 24h format
+  status: { type: String, required: true, enum: ['Confirmed', 'Pending', 'Cancelled'], default: 'Confirmed' },
+  createdAt: { type: Date, default: Date.now },
+  cancelledAt: { type: Date }
+});
+
+// Compound indexes for efficient queries
+labBookingSchema.index({ studentId: 1, date: 1, startTime: 1 });
+labBookingSchema.index({ labName: 1, date: 1, startTime: 1 });
+labBookingSchema.index({ date: 1, labName: 1 });
+
+// Prevent duplicate bookings for same student, lab, date, and time
+labBookingSchema.index(
+  { studentId: 1, labName: 1, date: 1, startTime: 1 },
+  { unique: true }
+);
 
 module.exports = mongoose.model('LabBooking', labBookingSchema);
