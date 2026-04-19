@@ -90,19 +90,21 @@ const Sidebar = () => {
         ))}
       </nav>
 
-      <div className="sidebar-footer">
-        <NavLink
-          to="/login"
-          className={({ isActive }) =>
-            isActive ? "sidebar-link sidebar-link-muted active" : "sidebar-link sidebar-link-muted"
-          }
-        >
-          <span className="sidebar-icon">
-            <FaUserShield />
-          </span>
-          <span>{isAdmin ? "Switch account" : "Login as Staff"}</span>
-        </NavLink>
-      </div>
+      {!isManagement && (
+        <div className="sidebar-footer">
+          <NavLink
+            to="/login"
+            className={({ isActive }) =>
+              isActive ? "sidebar-link sidebar-link-muted active" : "sidebar-link sidebar-link-muted"
+            }
+          >
+            <span className="sidebar-icon">
+              <FaUserShield />
+            </span>
+            <span>{isAdmin ? "Switch account" : "Login as Staff"}</span>
+          </NavLink>
+        </div>
+      )}
     </aside>
   );
 };
