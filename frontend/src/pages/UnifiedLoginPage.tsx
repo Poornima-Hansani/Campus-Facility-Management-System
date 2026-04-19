@@ -81,6 +81,9 @@ export default function UnifiedLoginPage() {
       localStorage.setItem('unifiedUserId', data.userId);
       localStorage.setItem('unifiedName', data.name);
       
+      // Debug: Verify role was stored correctly
+      console.log('Stored role in localStorage:', localStorage.getItem('unifiedRole'));
+      
       if (data.role === 'student') {
         localStorage.setItem('studentLoggedIn', 'true');
         localStorage.setItem('studentId', data.userId);
@@ -103,7 +106,10 @@ export default function UnifiedLoginPage() {
       };
 
       const destination = routes[data.role] || '/';
-      console.log('Navigating to:', destination);
+      console.log('Available routes:', routes);
+      console.log('User role from response:', data.role);
+      console.log('Selected destination:', destination);
+      console.log('About to navigate to:', destination);
       navigate(destination);
 
     } catch (err: any) {

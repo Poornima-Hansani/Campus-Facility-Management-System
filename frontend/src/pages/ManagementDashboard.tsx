@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { apiDelete, apiGet, apiPost } from "../lib/api";
-import { Bell, AlertTriangle, Clock, CheckCircle, Wrench, Users, BarChart3, PieChart, UserPlus, Calendar, BookOpen, Award } from "lucide-react";
+import { Bell, AlertTriangle, Clock, CheckCircle, Wrench, Users, BarChart3, PieChart, UserPlus, Calendar } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Legend } from "recharts";
 
 type EmailItem = {
@@ -680,7 +680,7 @@ const ManagementDashboard = () => {
         <div className="section-head">
           <div>
             <h3>Quick Actions</h3>
-            <p>Manage escalated and assigned issues</p>
+            <p>Manage timetable and scheduling</p>
           </div>
         </div>
 
@@ -690,26 +690,7 @@ const ManagementDashboard = () => {
             className="w-full text-left px-4 py-3 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors flex items-center gap-3"
           >
             <Calendar className="h-5 w-5 text-purple-600" />
-            <span className="text-purple-900 font-medium">Time Table Add</span>
-          </button>
-          <button 
-            onClick={() => navigate('/timetable-builder')}
-            className="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-3"
-          >
-            <Calendar className="h-5 w-5 text-gray-600" />
-            <span className="text-gray-900">Manage Schedule</span>
-          </button>
-          <button className="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-3">
-            <BookOpen className="h-5 w-5 text-gray-600" />
-            <span className="text-gray-900">Course Materials</span>
-          </button>
-          <button className="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-3">
-            <Users className="h-5 w-5 text-gray-600" />
-            <span className="text-gray-900">Student Attendance</span>
-          </button>
-          <button className="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-3">
-            <Award className="h-5 w-5 text-gray-600" />
-            <span className="text-gray-900">Grade Assignments</span>
+            <span className="text-purple-900 font-medium">Add Time Table</span>
           </button>
         </div>
       </div>
