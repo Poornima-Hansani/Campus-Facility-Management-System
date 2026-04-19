@@ -7,6 +7,7 @@ import StaffRoute from "./components/StaffRoute";
 import { Home, LogIn, UserPlus } from 'lucide-react';
 import TaskDashboardPage from "./pages/TaskDashboardPage";
 import LectureAvailabilityPage from "./pages/LectureAvailabilityPage";
+import LecturerDashboard from "./pages/LecturerDashboard";
 import TimetablePage from "./pages/TimetablePage";
 import AssignmentExamPage from "./pages/AssignmentExamPage";
 import StudyGoalsPage from "./pages/StudyGoalsPage";
@@ -160,9 +161,9 @@ function AppRoutes() {
             <LectureAvailabilityPage />
           </StudentRoute>
         } />
-        <Route path="/lecture-availability" element={
+        <Route path="/lecturer-dashboard" element={
           <ProtectedRoute role="lecturer">
-            <LectureAvailabilityPage />
+            <LecturerDashboard />
           </ProtectedRoute>
         } />
         <Route path="/admin-dashboard" element={
