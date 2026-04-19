@@ -62,6 +62,18 @@ function getSessionStatus(startTime: string, endTime: string): "Upcoming" | "Ong
   return "Finished";
 }
 
+type Notification = {
+  id: number;
+  type: string;
+  moduleCode: string;
+  moduleName: string;
+  lecturer: string;
+  day: string;
+  message: string;
+  createdAt: string;
+  readBy: string[];
+};
+
 export default function LecturerDashboard() {
   const navigate = useNavigate();
   const lecturerId = localStorage.getItem('unifiedUserId');
@@ -73,6 +85,7 @@ export default function LecturerDashboard() {
   const [currentTime, setCurrentTime] = useState(getCurrentTime());
   const [reminders, setReminders] = useState<number[]>([]);
   const [currentRoom, setCurrentRoom] = useState<RoomInfo | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
     if (!lecturerId) {
@@ -80,6 +93,7 @@ export default function LecturerDashboard() {
       return;
     }
     fetchData();
+    fetchNotifications();
     
     const timer = setInterval(() => {
       setCurrentTime(getCurrentTime());
@@ -87,6 +101,17 @@ export default function LecturerDashboard() {
     
     return () => clearInterval(timer);
   }, [lecturerId]);
+
+  const fetchNotifications = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const lecturerParam = encodeURIComponent(String(lecturerName || lecturerId || ''));
+      const notifs = await fetch(`${API_BASE}/api/timetable/notifications/lecturer?lecturer=${lecturerParam}`).then(r => r.json());
+      setNotifications(Array.isArray(notifs) ? notifs : []);
+    } catch (e) {
+      console.log("Failed to fetch notifications");
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -185,6 +210,14 @@ export default function LecturerDashboard() {
               <p className="text-sm text-teal-100">{getCurrentDay()}</p>
               <p className="font-mono text-lg">{currentTime}</p>
             </div>
+            {notifications.length > 0 && (
+              <div className="flex items-center">
+                <Bell className="w-5 h-5 text-teal-200" />
+                <span className="ml-1 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                  {notifications.length}
+                </span>
+              </div>
+            )}
             <button
               onClick={handleLogout}
               className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition"

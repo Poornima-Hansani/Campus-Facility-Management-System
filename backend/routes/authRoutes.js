@@ -75,7 +75,9 @@ router.post('/login', async (req, res) => {
       year: user.year,
       semester: user.semester,
       scheduleType: user.scheduleType,
-      specialization: user.specialization
+      specialization: user.specialization,
+      moduleCode: user.moduleCode,
+      moduleName: user.moduleName
     });
   } catch (error) {
     console.error("Login error:", error);

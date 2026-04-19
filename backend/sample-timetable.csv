@@ -1,0 +1,22 @@
+moduleCode,moduleName,sessionType,venue,lecturerTitle,lecturerName,day,startTime,endTime,faculty,year,specialization,scheduleType
+IT2030,DSD,Lecture,Lab 2,Mr.,John Doe,Monday,09:00,11:00,Computing,1,SE,Weekday
+IT3050,Software Engineering,Lab,Lab 1,Ms.,Jane Silva,Monday,11:30,13:30,Computing,1,SE,Weekday
+IT1010,Programming,Lecture,Hall A,Mr.,Nimal Perera,Monday,14:00,16:00,Computing,1,SE,Weekday
+IT2030,DSD,Tutorial,Room 202,Mr.,John Doe,Tuesday,09:00,10:30,Computing,1,SE,Weekday
+IT1020,Database Systems,Lecture,Hall B,Ms.,Kamalini Fernando,Tuesday,11:00,13:00,Computing,1,SE,Weekday
+IT3050,Software Engineering,Lecture,Hall C,Dr.,Saman Silva,Tuesday,14:00,16:00,Computing,1,SE,Weekday
+IT1010,Programming,Lab,Lab 3,Mr.,Nimal Perera,Wednesday,09:00,11:00,Computing,1,SE,Weekday
+IT1020,Database Systems,Tutorial,Room 105,Ms.,Kamalini Fernando,Wednesday,11:30,13:00,Computing,1,SE,Weekday
+IT2030,DSD,Lecture,Hall A,Mr.,John Doe,Wednesday,14:00,16:00,Computing,1,SE,Weekday
+IT3050,Software Engineering,Lecture,Hall C,Dr.,Saman Silva,Thursday,09:00,11:00,Computing,1,SE,Weekday
+IT1010,Programming,Tutorial,Room 101,Mr.,Nimal Perera,Thursday,11:30,13:00,Computing,1,SE,Weekday
+IT1020,Database Systems,Lab,Lab 2,Ms.,Kamalini Fernando,Thursday,14:00,16:00,Computing,1,SE,Weekday
+IT2030,DSD,Lab,Lab 1,Mr.,John Doe,Friday,09:00,11:00,Computing,1,SE,Weekday
+IT3050,Software Engineering,Tutorial,Room 203,Dr.,Saman Silva,Friday,11:30,13:00,Computing,1,SE,Weekday
+IT1010,Programming,Lecture,Hall A,Mr.,Nimal Perera,Friday,14:00,16:00,Computing,1,SE,Weekday
+IT1020,Database Systems,Revision,Hall B,Ms.,Kamalini Fernando,Saturday,09:00,11:00,Computing,1,SE,Weekend
+IT2030,DSD,Extra Class,Room 201,Mr.,John Doe,Saturday,11:30,13:00,Computing,1,SE,Weekend
+IT3050,Software Engineering,Workshop,Lab 2,Dr.,Saman Silva,Saturday,14:00,16:00,Computing,1,SE,Weekend
+IT1010,Programming,Revision,Online,Mr.,Nimal Perera,Sunday,09:00,10:30,Computing,1,SE,Weekend
+IT1020,Database Systems,Discussion,Online,Ms.,Kamalini Fernando,Sunday,11:00,12:30,Computing,1,SE,Weekend
+IT2030,DSD,Assignment Help,Online,Mr.,John Doe,Sunday,13:00,15:00,Computing,1,SE,Weekend

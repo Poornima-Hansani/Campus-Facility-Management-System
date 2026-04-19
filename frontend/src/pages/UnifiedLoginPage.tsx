@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Shield, Lock, User } from 'lucide-react';
+import { Lock, User } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -92,9 +92,11 @@ export default function UnifiedLoginPage() {
          localStorage.setItem('managementLoggedIn', 'true');
       } else if (data.role === 'admin') {
          localStorage.setItem('adminLoggedIn', 'true');
-      } else if (data.role === 'lecturer') {
-         localStorage.setItem('lecturerLoggedIn', 'true');
-      }
+} else if (data.role === 'lecturer') {
+          localStorage.setItem('lecturerLoggedIn', 'true');
+          if (data.moduleCode) localStorage.setItem('moduleCode', data.moduleCode);
+          if (data.moduleName) localStorage.setItem('moduleName', data.moduleName);
+       }
 
       const routes: Record<string, string> = {
         student: '/student',

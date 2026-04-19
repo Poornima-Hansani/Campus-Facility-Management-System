@@ -8,12 +8,10 @@ import { Home, LogIn, UserPlus } from 'lucide-react';
 import TaskDashboardPage from "./pages/TaskDashboardPage";
 import LectureAvailabilityPage from "./pages/LectureAvailabilityPage";
 import LecturerDashboard from "./pages/LecturerDashboard";
-import TimetablePage from "./pages/TimetablePage";
 import AssignmentExamPage from "./pages/AssignmentExamPage";
 import StudyGoalsPage from "./pages/StudyGoalsPage";
 import HelpRequestPage from "./pages/HelpRequestPage";
 import GpaTrackerPage from "./pages/GpaTrackerPage";
-import ManagementDashboard from "./pages/ManagementDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import UnifiedLoginPage from './pages/UnifiedLoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -26,6 +24,13 @@ import AllIssues from './pages/AllIssues';
 import StaffDashboard from './pages/StaffDashboard';
 import StudyAreaBooking from './pages/StudyAreaBooking';
 import LabBooking from './pages/LabBooking';
+
+// Management pages
+import ManagementDashboard from "./pages/management/ManagementDashboard";
+import FacilityPage from "./pages/management/FacilityPage";
+import TimetablePage from "./pages/management/TimetablePage";
+import StaffPage from "./pages/management/StaffPage";
+import EmailsPage from "./pages/management/EmailsPage";
 
 function Navigation() {
   const location = useLocation();
@@ -135,16 +140,38 @@ function AppRoutes() {
         <Route path="/lab-booking" element={
           <StudentRoute>
             <LabBooking />
-          </StudentRoute>
-        } />
+</StudentRoute>
+        }
+        />
         
+        <Route path="/management/facility" element={
+          <ProtectedRoute role="management">
+            <FacilityPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/management/timetable" element={
+          <ProtectedRoute role="management">
+            <TimetablePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/management/staff" element={
+          <ProtectedRoute role="management">
+            <StaffPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/management/emails" element={
+          <ProtectedRoute role="management">
+            <EmailsPage />
+          </ProtectedRoute>
+        } />
         <Route path="/management/issues" element={
           <AllIssues />
         } />
         <Route path="/management-dashboard" element={
-          <ManagementDashboard />
+          <ProtectedRoute role="management">
+            <ManagementDashboard />
+          </ProtectedRoute>
         } />
-        
         <Route path="/staff/dashboard" element={
           <StaffRoute>
             <StaffDashboard />

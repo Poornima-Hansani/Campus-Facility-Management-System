@@ -7,7 +7,7 @@ const timetableSessionSchema = new mongoose.Schema(
     moduleName: { type: String, required: true, trim: true },
     sessionType: {
       type: String,
-      enum: ["Lecture", "Practical", "Lab", "Tutorial"],
+      enum: ["Lecture", "Practical", "Lab", "Tutorial", "Revision", "Extra Class", "Workshop", "Discussion", "Assignment Help"],
       required: false,
     },
     venueType: { type: String, required: false },
@@ -17,7 +17,7 @@ const timetableSessionSchema = new mongoose.Schema(
     startTime: { type: String, required: true, trim: true },
     endTime: { type: String, required: true, trim: true },
     faculty: { type: String, default: "Computing", trim: true },
-    year: { type: Number, required: true },
+    year: { type: Number, default: 1 },
     specialization: { type: String, default: "SE", trim: true },
     scheduleType: { type: String, enum: ["Weekday", "Weekend"], default: "Weekday" },
   },

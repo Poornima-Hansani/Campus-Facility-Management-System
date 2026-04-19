@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import { apiDelete, apiGet, apiPost } from "../lib/api";
-import { Bell, AlertTriangle, Clock, CheckCircle, Wrench, Users, BarChart3, PieChart, UserPlus, Activity, Zap, HardHat, ThumbsUp, MapPin } from "lucide-react";
+import { Bell, AlertTriangle, Clock, Users, BarChart3, PieChart, UserPlus, Activity, Zap, HardHat, ThumbsUp, MapPin } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Legend } from "recharts";
 
 type EmailItem = {
