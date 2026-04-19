@@ -162,9 +162,7 @@ function AppRoutes() {
           </StudentRoute>
         } />
         <Route path="/lecturer-dashboard" element={
-          <ProtectedRoute role="lecturer">
-            <LecturerDashboard />
-          </ProtectedRoute>
+          <LecturerDashboard />
         } />
         <Route path="/admin-dashboard" element={
           <ProtectedRoute role="admin">
