@@ -100,7 +100,7 @@ const Sidebar = () => {
           <span className="sidebar-icon">
             <FaUserShield />
           </span>
-          <span>{isAdmin ? "Switch account" : "Staff login"}</span>
+          <span>{isAdmin ? "Switch account" : "Login as Staff"}</span>
         </NavLink>
       </div>
     </aside>
