@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { 
   MapPin, BookOpen, Calendar, 
   LogOut, Users, Monitor, Snowflake, CheckCircle,
-  Bell, PlayCircle
+  Bell, PlayCircle, PlusCircle, AlertTriangle,
+  MessageSquare, BarChart3, User, Building
 } from "lucide-react";
 import type { TimetableItem } from "../components/TimetableManager";
 
@@ -161,13 +162,22 @@ export default function LecturerDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
       <div className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white p-6 shadow-lg">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
+        <div className="max-w-4xl mx-auto flex justify-between items-start">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-3">
               <BookOpen className="w-8 h-8" />
               Lecturer Dashboard
             </h1>
-            <p className="text-teal-100 mt-1">Welcome, {lecturerName || lecturerId}</p>
+            <div className="flex items-center gap-4 mt-3">
+              <div className="flex items-center gap-2 text-sm">
+                <User className="w-4 h-4" />
+                {lecturerName || lecturerId}
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Building className="w-4 h-4" />
+                Department of Computing
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
@@ -358,6 +368,44 @@ export default function LecturerDashboard() {
 
         <div className="mt-4 text-center text-sm text-gray-500">
           {todaySessions.length} session{todaySessions.length !== 1 ? 's' : ''} scheduled for today
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-xl p-6 mt-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <BookOpen className="w-5 h-5" />
+            Quick Actions
+          </h2>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Link
+              to="/lab-booking"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-purple-50 hover:bg-purple-100 border-2 border-purple-200 transition"
+            >
+              <PlusCircle className="w-8 h-8 text-purple-600" />
+              <span className="font-medium text-gray-700">Book Extra Room</span>
+            </Link>
+            <Link
+              to="/report-issue"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-red-50 hover:bg-red-100 border-2 border-red-200 transition"
+            >
+              <AlertTriangle className="w-8 h-8 text-red-600" />
+              <span className="font-medium text-gray-700">Report Issue</span>
+            </Link>
+            <Link
+              to="/announcements"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 transition"
+            >
+              <MessageSquare className="w-8 h-8 text-blue-600" />
+              <span className="font-medium text-gray-700">Send Announcement</span>
+            </Link>
+            <Link
+              to="/reports"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-green-50 hover:bg-green-100 border-2 border-green-200 transition"
+            >
+              <BarChart3 className="w-8 h-8 text-green-600" />
+              <span className="font-medium text-gray-700">View Reports</span>
+            </Link>
+          </div>
         </div>
       </div>
     </div>
