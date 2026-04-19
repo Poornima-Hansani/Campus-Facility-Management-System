@@ -178,6 +178,9 @@ const ManagementDashboard = () => {
   const [staffSearch, setStaffSearch] = useState("");
   const [assignError, setAssignError] = useState("");
 
+  type TabType = "dashboard" | "timetable" | "emails";
+  const [activeTab, setActiveTab] = useState<TabType>("dashboard");
+
   const [timetable, setTimetable] = useState<TimetableRow[]>([]);
   const [lectures, setLectures] = useState<LectureRow[]>([]);
   const [overviewError, setOverviewError] = useState("");
@@ -578,43 +581,71 @@ const ManagementDashboard = () => {
           </h2>
           <p className="text-gray-500 text-sm mt-1">Real-time campus issue monitoring</p>
         </div>
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="bg-white border border-gray-200 p-2.5 shadow-sm text-orange-500 hover:bg-orange-50 rounded-xl transition-colors relative"
-          >
-            <Bell size={24} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center ring-2 ring-white">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
-              <div className="p-4 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-900">Notifications</h3>
-              </div>
-              {notifications.length === 0 ? (
-                <div className="p-4 text-gray-500 text-center">No notifications</div>
-              ) : (
-                <div className="divide-y divide-gray-100">
-                  {notifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      onClick={() => markNotificationRead(notif.id)}
-                      className={`p-4 hover:bg-gray-50 cursor-pointer ${!notif.read ? "bg-blue-50" : ""}`}
-                    >
-                      <p className="text-sm text-gray-900">{notif.message}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(notif.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+        <div className="flex items-center gap-3">
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === "dashboard" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => setActiveTab("timetable")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === "timetable" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Timetable
+            </button>
+            <button
+              onClick={() => setActiveTab("emails")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === "emails" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Emails
+            </button>
+          </div>
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="bg-white border border-gray-200 p-2.5 shadow-sm text-orange-500 hover:bg-orange-50 rounded-xl transition-colors relative"
+            >
+              <Bell size={24} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center ring-2 ring-white">
+                  {unreadCount}
+                </span>
               )}
-            </div>
-          )}
+            </button>
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
+                <div className="p-4 border-b border-gray-200">
+                  <h3 className="font-semibold text-gray-900">Notifications</h3>
+                </div>
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-gray-500 text-center">No notifications</div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        onClick={() => markNotificationRead(notif.id)}
+                        className={`p-4 hover:bg-gray-50 cursor-pointer ${!notif.read ? "bg-blue-50" : ""}`}
+                      >
+                        <p className="text-sm text-gray-900">{notif.message}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(notif.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
