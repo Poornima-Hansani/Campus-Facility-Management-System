@@ -26,6 +26,7 @@ const labStudentCommonFreeRoutes = require("./routes/labStudentCommonFreeRoutes"
 const labBookingRoutes = require("./routes/labBookingRoutes");
 const labFreeGapRoutes = require("./routes/labFreeGapRoutes");
 const studyAreaRoutes = require("./routes/studyAreaRoutes");
+const managementRoutes = require("./routes/managementRoutes");
 const Reminder = require("./models/Reminder");
 const AcademicTask = require("./models/AcademicTask");
 const User = require("./models/User");
@@ -87,6 +88,7 @@ app.use('/api/lab-student-common-free', labStudentCommonFreeRoutes);
 app.use('/api/lab-booking', labBookingRoutes);
 app.use('/api/lab-gap', labFreeGapRoutes);
 app.use('/api/study-areas', studyAreaRoutes);
+app.use('/api/management', managementRoutes);
 
 const staffMembers = [
   { id: 'STF001', name: 'Kamal Perera', role: 'Electrician', specialty: 'A/C & Electronics', phone: '+94 71 234 5678', email: 'kamal@university.edu' },
