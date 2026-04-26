@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import Sidebar from "./Sidebar";
+import SidebarNew from "./SidebarNew";
 import Topbar from "./Topbar";
 
 type LayoutProps = {
@@ -9,7 +9,7 @@ type LayoutProps = {
 const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="app-layout">
-      <Sidebar />
+      <SidebarNew />
       <div className="main-area">
         <Topbar />
         <main className="page-content">{children}</main>
