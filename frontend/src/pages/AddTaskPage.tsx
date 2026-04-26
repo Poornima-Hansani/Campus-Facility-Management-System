@@ -410,8 +410,8 @@ heroSubtitle: {
   color: "#6b7280",
 },
   formCard: {
-    background: "#ffffff",
-    border: "1px solid #e8efe9",
+    background: "#f0fdf4",
+    border: "1px solid #ccfbf1",
     borderRadius: 20,
     padding: 24,
     boxShadow: "0 8px 22px rgba(0,0,0,0.04)",
