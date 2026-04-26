@@ -190,7 +190,7 @@ const GpaTrackerPage = () => {
         </div>
       </div>
 
-      <div className="content-card gpa-card">
+      <div className="content-card gpa-card" style={{ backgroundColor: '#f0fdf4', borderColor: '#ccfbf1' }}>
         <div className="section-head">
           <div>
             <h3>Add a module</h3>
@@ -274,7 +274,7 @@ const GpaTrackerPage = () => {
         </form>
       </div>
 
-      <div className="content-card gpa-card">
+      <div className="content-card gpa-card" style={{ backgroundColor: '#f0fdf4', borderColor: '#ccfbf1' }}>
         <div className="section-head gpa-table-head">
           <div>
             <h3>Your modules</h3>
@@ -335,7 +335,7 @@ const GpaTrackerPage = () => {
         )}
       </div>
 
-      <div className="content-card gpa-legend">
+      <div className="content-card gpa-legend" style={{ backgroundColor: '#f0fdf4', borderColor: '#ccfbf1' }}>
         <h3 className="gpa-legend-title">Grade scale (4.0)</h3>
         <ul className="gpa-legend-list">
           {GRADE_OPTIONS.map((g) => (
