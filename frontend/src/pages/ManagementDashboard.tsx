@@ -844,17 +844,16 @@ const ManagementDashboard = () => {
                       <div>
                         <p className="font-medium text-gray-900">
                           {item.location} - {item.issueType}
->>>>>>> origin/warani
                         </p>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* 4 Columns */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
