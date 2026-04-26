@@ -83,6 +83,7 @@ export default function UnifiedLoginPage() {
       
       // Debug: Verify role was stored correctly
       console.log('Stored role in localStorage:', localStorage.getItem('unifiedRole'));
+      console.log('Full data object:', JSON.stringify(data));
       
       if (data.role === 'student') {
         localStorage.setItem('studentLoggedIn', 'true');
@@ -114,11 +115,21 @@ export default function UnifiedLoginPage() {
         admin: '/admin-dashboard'
       };
 
-      const destination = routes[data.role] || '/';
-      console.log('Available routes:', routes);
-      console.log('User role from response:', data.role);
-      console.log('Selected destination:', destination);
-      console.log('About to navigate to:', destination);
+      // Force use the exact role from response
+      let destination;
+      if (data.role === 'admin') {
+        destination = '/admin-dashboard';
+      } else if (data.role === 'student') {
+        destination = '/student';
+      } else {
+        destination = routes[data.role] || '/';
+      }
+      
+      console.log('=== NAVIGATION DEBUG ===');
+      console.log('User role being used:', data.role);
+      console.log('Destination path:', destination);
+      console.log('Calling navigate now...');
+      
       navigate(destination);
 
     } catch (err: any) {
