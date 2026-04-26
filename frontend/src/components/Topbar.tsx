@@ -52,6 +52,14 @@ const routeCopy: Record<string, RouteCopy> = {
     detail:
       "Catalog comparison and encouragement emails. Edit timetables on Admin Dashboard.",
   },
+  "/my-results": {
+    title: "My Results",
+    detail: "View your academic performance and transcript.",
+  },
+  "/smart-booking": {
+    title: "Smart Booking",
+    detail: "Reserve study areas and computer labs across campus.",
+  },
 };
 
 const defaultCopy: RouteCopy = {
@@ -68,10 +76,6 @@ const Topbar = () => {
     () => routeCopy[pathname] ?? defaultCopy,
     [pathname]
   );
-
-  const badge = isAdmin ? "AD" : "ST";
-  const name = isAdmin ? "Administrator" : "Student";
-  const roleLine = isAdmin ? "Admin access" : "Campus account";
 
   return (
     <header className="topbar">
@@ -90,15 +94,6 @@ const Topbar = () => {
           >
             {theme === "dark" ? <FaSun size={18} /> : <FaMoon size={18} />}
           </button>
-        </div>
-        <div className="topbar-user" aria-label="Account">
-          <div className="user-badge" aria-hidden>
-            {badge}
-          </div>
-          <div className="topbar-user-text">
-            <span className="user-name">{name}</span>
-            <span className="user-role">{roleLine}</span>
-          </div>
         </div>
       </div>
     </header>
