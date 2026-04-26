@@ -255,7 +255,7 @@ const LectureAvailabilityPage = () => {
         </p>
       )}
 
-      <div className="content-card">
+      <div className="content-card" style={{ backgroundColor: '#f0fdf4', borderColor: '#ccfbf1' }}>
         <div className="section-head">
           <div>
             <h3>Search Lecture Availability &amp; Module Timetable</h3>
@@ -354,7 +354,7 @@ const LectureAvailabilityPage = () => {
         </div>
       </div>
 
-      <div className="content-card">
+      <div className="content-card" style={{ backgroundColor: '#f0fdf4', borderColor: '#ccfbf1' }}>
         <div className="section-head">
           <div>
             <h3>Results</h3>
