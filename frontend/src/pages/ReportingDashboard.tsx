@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, Star, Award, Users, Search, Eye, ChevronUp, ChevronDown, FileText, TrendingUp, History } from 'lucide-react';
+import { CheckCircle, Star, Award, Users, Search, Eye, FileText, TrendingUp, History } from 'lucide-react';
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
 import '../styles/professionalTables.css';
 
@@ -200,6 +200,33 @@ export default function ReportingDashboard() {
           </div>
         </div>
 
+        {/* Best Faculty of the Week */}
+        <div className="bg-white p-6 rounded-xl shadow-sm mb-6 transition-all duration-300 hover:shadow-md">
+          <h3 className="text-gray-700 font-semibold mb-4 flex items-center gap-2">
+            <Award className="text-amber-500" size={20} />
+            Best Staff of the Week
+          </h3>
+          {topStaff.length === 0 ? (
+            <div className="text-center py-6 text-gray-400">
+              <Users size={32} className="mx-auto mb-2 opacity-50" />
+              <p>No staff data yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-4">
+              {topStaff.slice(0, 3).map((staff, index) => (
+                <div key={staff.id} className="border rounded-lg p-4 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1">
+                  <div className={`text-2xl mb-2 ${index === 0 ? '' : 'opacity-50'}`}>
+                    {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                  </div>
+                  <p className="font-semibold text-gray-800">{staff.name}</p>
+                  <p className="text-gray-500 text-sm">{staff.role}</p>
+                  <p className="text-green-600 font-medium mt-2">{staff.fixedCount} fixed</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Rating Notifications */}
         {fixedWithoutRating.length > 0 && (
           <div className="mb-6 space-y-3">
@@ -264,113 +291,8 @@ export default function ReportingDashboard() {
           </div>
         )}
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          {/* Status Distribution */}
-          <div className="bg-white p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
-            <h3 className="text-gray-700 font-semibold mb-4">Status Distribution</h3>
-            {loading ? (
-              <div className="h-64 flex items-center justify-center text-gray-400">Loading...</div>
-            ) : submitted === 0 ? (
-              <div className="h-64 flex flex-col items-center justify-center text-gray-400">
-                <FileText size={40} className="mb-2 opacity-50" />
-                <p>No reports yet</p>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={2}
-                    dataKey="value"
-                    startAngle={90}
-                    endAngle={-270}
-                  >
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-          {/* Resolution Rate */}
-          <div className="bg-white p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
-            <h3 className="text-gray-700 font-semibold mb-4">Resolution Rate</h3>
-            {submitted === 0 ? (
-              <div className="h-64 flex flex-col items-center justify-center text-gray-400">
-                <TrendingUp size={40} className="mb-2 opacity-50" />
-                <p>No data yet</p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-[200px]">
-                <div className="relative w-32 h-32">
-                  <svg className="w-full h-full transform -rotate-90">
-                    <circle
-                      cx="64"
-                      cy="64"
-                      r="56"
-                      stroke="#e5e7eb"
-                      strokeWidth="10"
-                      fill="none"
-                    />
-                    <circle
-                      cx="64"
-                      cy="64"
-                      r="56"
-                      stroke="#10B981"
-                      strokeWidth="10"
-                      fill="none"
-                      strokeDasharray={`${(fixed / submitted) * 352} 352`}
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-3xl font-bold text-gray-800">{Math.round((fixed / submitted) * 100)}%</span>
-                    <span className="text-gray-500 text-sm">Resolved</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Best Faculty of the Week */}
-        <div className="bg-white p-6 rounded-xl shadow-sm mb-6 transition-all duration-300 hover:shadow-md">
-          <h3 className="text-gray-700 font-semibold mb-4 flex items-center gap-2">
-            <Award className="text-amber-500" size={20} />
-            Best Staff of the Week
-          </h3>
-          {topStaff.length === 0 ? (
-            <div className="text-center py-6 text-gray-400">
-              <Users size={32} className="mx-auto mb-2 opacity-50" />
-              <p>No staff data yet</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 gap-4">
-              {topStaff.slice(0, 3).map((staff, index) => (
-                <div key={staff.id} className="border rounded-lg p-4 text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1">
-                  <div className={`text-2xl mb-2 ${index === 0 ? '' : 'opacity-50'}`}>
-                    {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
-                  </div>
-                  <p className="font-semibold text-gray-800">{staff.name}</p>
-                  <p className="text-gray-500 text-sm">{staff.role}</p>
-                  <p className="text-green-600 font-medium mt-2">{staff.fixedCount} fixed</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* Professional Reports Table */}
-        <div className="bg-white rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
+        <div className="bg-white rounded-xl shadow-sm mb-6 transition-all duration-300 hover:shadow-md">
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-gray-700 font-semibold text-lg">Reports Management</h3>
@@ -565,6 +487,84 @@ export default function ReportingDashboard() {
                   </div>
                 )}
               </>
+            )}
+          </div>
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Status Distribution */}
+          <div className="bg-white p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
+            <h3 className="text-gray-700 font-semibold mb-4">Status Distribution</h3>
+            {loading ? (
+              <div className="h-64 flex items-center justify-center text-gray-400">Loading...</div>
+            ) : submitted === 0 ? (
+              <div className="h-64 flex flex-col items-center justify-center text-gray-400">
+                <FileText size={40} className="mb-2 opacity-50" />
+                <p>No reports yet</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                    startAngle={90}
+                    endAngle={-270}
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Resolution Rate */}
+          <div className="bg-white p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
+            <h3 className="text-gray-700 font-semibold mb-4">Resolution Rate</h3>
+            {submitted === 0 ? (
+              <div className="h-64 flex flex-col items-center justify-center text-gray-400">
+                <TrendingUp size={40} className="mb-2 opacity-50" />
+                <p>No data yet</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[200px]">
+                <div className="relative w-32 h-32">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="56"
+                      stroke="#e5e7eb"
+                      strokeWidth="10"
+                      fill="none"
+                    />
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="56"
+                      stroke="#10B981"
+                      strokeWidth="10"
+                      fill="none"
+                      strokeDasharray={`${(fixed / submitted) * 352} 352`}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-bold text-gray-800">{Math.round((fixed / submitted) * 100)}%</span>
+                    <span className="text-gray-500 text-sm">Resolved</span>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
