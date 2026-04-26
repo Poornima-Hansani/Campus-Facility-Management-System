@@ -213,7 +213,7 @@ const HelpRequestPage = () => {
     <Layout>
       {loadError && <p className="form-error">{loadError}</p>}
 
-      <div className="content-card">
+      <div className="content-card" style={{ backgroundColor: '#f0fdf4', borderColor: '#ccfbf1' }}>
         <div className="section-head">
           <div>
             <h3>Submit Help Request</h3>
@@ -348,7 +348,7 @@ const HelpRequestPage = () => {
         </div>
       </div>
 
-      <div className="content-card">
+      <div className="content-card" style={{ backgroundColor: '#f0fdf4', borderColor: '#ccfbf1' }}>
         <div className="section-head">
           <div>
             <h3>Help Request List</h3>
