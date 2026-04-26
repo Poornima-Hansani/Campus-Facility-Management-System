@@ -669,101 +669,34 @@ const ManagementDashboard = () => {
       <div className="content-card">
         <div className="section-head">
           <div>
-            <h3>Issue Management Overview</h3>
-            <p>Track escalated, pending, and assigned facility issues</p>
+            <h3>Facility Management Overview</h3>
+            <p>Real-time campus issue monitoring</p>
           </div>
         </div>
 
         <div className="stats-grid availability-stats">
           <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-red-100 rounded-lg">
-                <AlertTriangle className="text-red-600" size={24} />
-              </div>
-              <div>
-                <h4>Escalated</h4>
-                <h2>{escalated.length}</h2>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">Requires immediate attention</p>
+            <h4>Total Reports</h4>
+            <h2>{stats.totalReports}</h2>
+            <p>All reported issues</p>
           </div>
 
           <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-yellow-100 rounded-lg">
-                <Clock className="text-yellow-600" size={24} />
-              </div>
-              <div>
-                <h4>Pending</h4>
-                <h2>{pending.length}</h2>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">Awaiting assignment</p>
+            <h4>Fixed Issues</h4>
+            <h2>{stats.fixedReports}</h2>
+            <p>Issues resolved</p>
           </div>
 
           <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Wrench className="text-blue-600" size={24} />
-              </div>
-              <div>
-                <h4>Assigned</h4>
-                <h2>{assigned.length}</h2>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">In progress</p>
+            <h4>Avg Rating</h4>
+            <h2>{stats.avgRating}</h2>
+            <p>User satisfaction</p>
           </div>
 
           <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-red-100 rounded-lg">
-                <AlertTriangle className="text-red-600" size={24} />
-              </div>
-              <div>
-                <h4>Escalated</h4>
-                <h2>{escalated.length}</h2>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">Requires immediate attention</p>
-          </div>
-
-          <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-yellow-100 rounded-lg">
-                <Clock className="text-yellow-600" size={24} />
-              </div>
-              <div>
-                <h4>Pending</h4>
-                <h2>{pending.length}</h2>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">Awaiting assignment</p>
-          </div>
-
-          <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Wrench className="text-blue-600" size={24} />
-              </div>
-              <div>
-                <h4>Assigned</h4>
-                <h2>{assigned.length}</h2>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">In progress</p>
-          </div>
-
-          <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <CheckCircle className="text-green-600" size={24} />
-              </div>
-              <div>
-                <h4>Resolved</h4>
-                <h2>{stats.fixedReports}</h2>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">Issues fixed</p>
+            <h4>Response Time</h4>
+            <h2>{stats.avgResponseTime < 60 ? `${stats.avgResponseTime} min` : `${Math.round(stats.avgResponseTime / 60)} day`}</h2>
+            <p>Average resolution</p>
           </div>
         </div>
       </div>
