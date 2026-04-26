@@ -1,819 +1,374 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useState } from "react";
 import Layout from "../components/Layout";
-import { apiDelete, apiGet, apiPost } from "../lib/api";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
-import "../styles/study-goals.css";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Plus, CheckCircle2, Circle, X } from "lucide-react";
 
-type GoalType = "Daily" | "Weekly" | "Monthly";
-
-type GoalItem = {
-  id: number;
-  title: string;
-  goalType: GoalType;
-  targetHours: number;
-  completedHours: number;
-  status: "Active" | "Completed";
-  dueDate: string | null;
-};
-
-function toISODate(y: number, month0: number, d: number): string {
-  return `${y}-${String(month0 + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-}
-
-function todayISO(): string {
-  const n = new Date();
-  return toISODate(n.getFullYear(), n.getMonth(), n.getDate());
-}
-
-type CalCell = {
-  dateStr: string;
-  dayNum: number;
-  inMonth: boolean;
-};
-
-function buildCalendarMatrix(viewYear: number, viewMonth: number): CalCell[] {
-  const first = new Date(viewYear, viewMonth, 1);
-  const last = new Date(viewYear, viewMonth + 1, 0);
-  const daysInMonth = last.getDate();
-  const mondayStart = (first.getDay() + 6) % 7;
-  const cells: CalCell[] = [];
-
-  const prevLast = new Date(viewYear, viewMonth, 0).getDate();
-  for (let i = 0; i < mondayStart; i++) {
-    const day = prevLast - mondayStart + i + 1;
-    let y = viewYear;
-    let m = viewMonth - 1;
-    if (m < 0) {
-      m = 11;
-      y -= 1;
-    }
-    cells.push({ dateStr: toISODate(y, m, day), dayNum: day, inMonth: false });
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push({
-      dateStr: toISODate(viewYear, viewMonth, d),
-      dayNum: d,
-      inMonth: true,
-    });
-  }
-  let nextDay = 1;
-  let y = viewYear;
-  let m = viewMonth + 1;
-  if (m > 11) {
-    m = 0;
-    y += 1;
-  }
-  while (cells.length % 7 !== 0) {
-    cells.push({
-      dateStr: toISODate(y, m, nextDay),
-      dayNum: nextDay,
-      inMonth: false,
-    });
-    nextDay++;
-  }
-  return cells;
-}
-
-function parseISODateLocal(iso: string): Date {
-  const [yy, mm, dd] = iso.split("-").map(Number);
-  return new Date(yy, mm - 1, dd);
-}
-
-function daysUntil(iso: string | null): number | null {
-  if (!iso) return null;
-  const target = parseISODateLocal(iso);
-  const t = todayISO();
-  const [ty, tm, td] = t.split("-").map(Number);
-  const start = new Date(ty, tm - 1, td);
-  return Math.ceil((target.getTime() - start.getTime()) / 86400000);
-}
-
-const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-const weeklyHoursData = [
-  { day: "Mon", hours: 2.4 },
-  { day: "Tue", hours: 1.5 },
-  { day: "Wed", hours: 3.0 },
-  { day: "Thu", hours: 2.0 },
-  { day: "Fri", hours: 1.0 },
-  { day: "Sat", hours: 4.0 },
-  { day: "Sun", hours: 0.5 },
+// Dummy Data
+const chartData = [
+  { name: 'Jan', completed: 22 },
+  { name: 'Feb', completed: 28 },
+  { name: 'Mar', completed: 5 },
+  { name: 'Apr', completed: 18 },
+  { name: 'May', completed: 23 },
+  { name: 'Jun', completed: 20 },
+  { name: 'Jul', completed: 10 },
+  { name: 'Aug', completed: 8 },
+  { name: 'Sep', completed: 22 },
+  { name: 'Oct', completed: 35 },
+  { name: 'Nov', completed: 12 },
+  { name: 'Dec', completed: 25 },
 ];
 
-const badgeClass = (t: GoalType) =>
-  t === "Daily"
-    ? "sg-badge sg-badge-daily"
-    : t === "Weekly"
-      ? "sg-badge sg-badge-weekly"
-      : "sg-badge sg-badge-monthly";
+const initialHistoryData = [
+  { name: "Book Reading", date: "Aug. 7, 2022", period: "Short Term", status: "Completed" },
+  { name: "Savings", date: "Jan. 7, 2023", period: "Long Term", status: "Ongoing" },
+  { name: "Workout", date: "Feb. 12, 2023", period: "Short Term", status: "Completed" },
+  { name: "Learn a Skill", date: "Mar. 1, 2023", period: "Long Term", status: "Ongoing" },
+];
+
+const initialProgressData = [
+  { name: "Book Reading", current: 10, total: 10, label: "Days" },
+  { name: "Workout", current: 20, total: 30, label: "Days" },
+  { name: "Learn a Skill", current: 10, total: 60, label: "Days" },
+  { name: "Savings ($2,000)", current: 15, total: 60, label: "Days" },
+];
 
 const StudyGoalsPage = () => {
-  const [goals, setGoals] = useState<GoalItem[]>([]);
-  const [loadError, setLoadError] = useState("");
-
-  const refreshGoals = useCallback(async () => {
-    const list = await apiGet<GoalItem[]>("/api/study-goals");
-    setGoals(list);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const list = await apiGet<GoalItem[]>("/api/study-goals");
-        if (!cancelled) setGoals(list);
-      } catch (e) {
-        if (!cancelled) {
-          setLoadError(
-            e instanceof Error ? e.message : "Could not load goals."
-          );
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const [historyList, setHistoryList] = useState(initialHistoryData);
+  const [progressList, setProgressList] = useState(initialProgressData);
+  const [showModal, setShowModal] = useState(false);
+  const [totalGoals, setTotalGoals] = useState(30);
+  const [activeGoals, setActiveGoals] = useState(8);
+  
   const [formData, setFormData] = useState({
-    title: "",
-    goalType: "Daily" as GoalType,
-    targetHours: "",
-    dueDate: "",
+    name: "",
+    total: 30,
+    period: "Short Term",
+    date: "",
+    time: ""
   });
-  const [logHours, setLogHours] = useState<Record<number, string>>({});
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [showGoalForm, setShowGoalForm] = useState(false);
-  const [workspaceView, setWorkspaceView] = useState<"list" | "calendar">(
-    "list"
-  );
 
-  const now = new Date();
-  const [calYear, setCalYear] = useState(now.getFullYear());
-  const [calMonth, setCalMonth] = useState(now.getMonth());
-  const [selectedDate, setSelectedDate] = useState(todayISO);
-
-  const maxHoursByType: Record<GoalType, number> = {
-    Daily: 24,
-    Weekly: 168,
-    Monthly: 720,
-  };
-
-  const activeGoals = useMemo(
-    () => goals.filter((goal) => goal.status === "Active"),
-    [goals]
-  );
-
-  const completedGoals = useMemo(
-    () => goals.filter((goal) => goal.status === "Completed"),
-    [goals]
-  );
-
-  const totalTargetHours = useMemo(
-    () => goals.reduce((sum, goal) => sum + goal.targetHours, 0),
-    [goals]
-  );
-
-  const totalCompletedHours = useMemo(
-    () => goals.reduce((sum, goal) => sum + goal.completedHours, 0),
-    [goals]
-  );
-
-  const donutData = [
-    { name: "Completed", value: totalCompletedHours },
-    {
-      name: "Remaining",
-      value: Math.max(totalTargetHours - totalCompletedHours, 0),
-    },
-  ];
-
-  const goalsByDueDate = useMemo(() => {
-    const map: Record<string, GoalItem[]> = {};
-    for (const g of goals) {
-      if (!g.dueDate) continue;
-      if (!map[g.dueDate]) map[g.dueDate] = [];
-      map[g.dueDate].push(g);
-    }
-    return map;
-  }, [goals]);
-
-  const calCells = useMemo(
-    () => buildCalendarMatrix(calYear, calMonth),
-    [calYear, calMonth]
-  );
-
-  const monthTitle = useMemo(
-    () =>
-      new Date(calYear, calMonth).toLocaleString("en", {
-        month: "long",
-        year: "numeric",
-      }),
-    [calYear, calMonth]
-  );
-
-  const goalsOnSelectedDate = useMemo(
-    () => goals.filter((g) => g.dueDate === selectedDate),
-    [goals, selectedDate]
-  );
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    setError("");
-    setSuccess("");
-  };
-
-  const validateGoal = () => {
-    const title = formData.title.trim();
-    if (title.length < 2) {
-      return "Goal name must be at least 2 characters.";
-    }
-    if (!formData.goalType || !formData.targetHours) {
-      return "Goal type and target hours are required.";
-    }
-
-    const target = Number(formData.targetHours);
-
-    if (Number.isNaN(target) || target <= 0) {
-      return "Target hours must be greater than 0.";
-    }
-
-    if (target > maxHoursByType[formData.goalType]) {
-      return `${formData.goalType} goal cannot exceed ${maxHoursByType[formData.goalType]} hours.`;
-    }
-
-    if (formData.dueDate) {
-      const d = parseISODateLocal(formData.dueDate);
-      if (Number.isNaN(d.getTime())) {
-        return "Choose a valid target date.";
-      }
-    }
-
-    return "";
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCreateGoal = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim() || !formData.date || !formData.time) return;
 
-    const validationMessage = validateGoal();
+    // Add to Progress List
+    const newProgress = {
+      name: formData.name,
+      current: 0,
+      total: formData.total,
+      label: "Days"
+    };
+    
+    // Add to History List
+    const goalDate = new Date(formData.date);
+    const newHistory = {
+      name: formData.name,
+      date: goalDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      period: formData.period,
+      status: "Ongoing"
+    };
 
-    if (validationMessage) {
-      setError(validationMessage);
-      setSuccess("");
-      return;
-    }
+    // Save to localStorage for TaskDashboardPage
+    const savedEvents = JSON.parse(localStorage.getItem('customAcademicEvents') || '[]');
+    const newEvent = {
+      date: goalDate.getDate(),
+      month: goalDate.getMonth(),
+      year: goalDate.getFullYear(),
+      title: formData.name,
+      type: "Study Goal",
+      time: formData.time,
+      color: "bg-teal-50 text-teal-600"
+    };
+    localStorage.setItem('customAcademicEvents', JSON.stringify([...savedEvents, newEvent]));
 
-    try {
-      await apiPost("/api/study-goals", {
-        title: formData.title.trim(),
-        goalType: formData.goalType,
-        targetHours: Number(formData.targetHours),
-        dueDate: formData.dueDate.trim() || undefined,
-      });
-      await refreshGoals();
-      setFormData({
-        title: "",
-        goalType: "Daily",
-        targetHours: "",
-        dueDate: "",
-      });
-      setError("");
-      setSuccess("Study goal added successfully.");
-      setShowGoalForm(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save goal.");
-      setSuccess("");
-    }
-  };
-
-  const handleClear = () => {
-    setFormData({
-      title: "",
-      goalType: "Daily",
-      targetHours: "",
-      dueDate: "",
-    });
-    setError("");
-    setSuccess("");
-  };
-
-  const handleDelete = async (id: number) => {
-    try {
-      await apiDelete(`/api/study-goals/${id}`);
-      await refreshGoals();
-      setError("");
-      setSuccess("Goal removed successfully.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete goal.");
-      setSuccess("");
-    }
-  };
-
-  const handleLogChange = (id: number, value: string) => {
-    setLogHours((prev) => ({
-      ...prev,
-      [id]: value,
-    }));
-    setError("");
-    setSuccess("");
-  };
-
-  const handleLogHours = async (goal: GoalItem) => {
-    const rawValue = logHours[goal.id] ?? "";
-    const value = Number(rawValue);
-
-    if (!rawValue) {
-      setError("Enter completed hours before logging progress.");
-      setSuccess("");
-      return;
-    }
-
-    if (Number.isNaN(value) || value <= 0) {
-      setError("Logged hours must be greater than 0.");
-      setSuccess("");
-      return;
-    }
-
-    try {
-      await apiPost(`/api/study-goals/${goal.id}/log`, { hours: value });
-      const list = await apiGet<GoalItem[]>("/api/study-goals");
-      setGoals(list);
-      const updated = list.find((g) => g.id === goal.id);
-      setLogHours((prev) => ({
-        ...prev,
-        [goal.id]: "",
-      }));
-      setError("");
-      setSuccess(
-        updated?.status === "Completed"
-          ? `"${goal.title}" completed.`
-          : "Progress logged successfully."
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not log hours.");
-      setSuccess("");
-    }
-  };
-
-  const getProgressPercentage = (goal: GoalItem) => {
-    return Math.min(
-      100,
-      Math.round((goal.completedHours / goal.targetHours) * 100)
-    );
-  };
-
-  const calPrevMonth = () => {
-    if (calMonth === 0) {
-      setCalMonth(11);
-      setCalYear((y) => y - 1);
-    } else {
-      setCalMonth((m) => m - 1);
-    }
-  };
-
-  const calNextMonth = () => {
-    if (calMonth === 11) {
-      setCalMonth(0);
-      setCalYear((y) => y + 1);
-    } else {
-      setCalMonth((m) => m + 1);
-    }
-  };
-
-  const renderGoalCard = (goal: GoalItem) => {
-    const percentage = getProgressPercentage(goal);
-    const du = daysUntil(goal.dueDate);
-    let hint: string | null = null;
-    if (goal.dueDate !== null && du !== null) {
-      if (du < 0) hint = `Due ${goal.dueDate} (overdue)`;
-      else if (du === 0) hint = "Due today";
-      else if (du === 1) hint = "Due tomorrow";
-      else hint = `Due ${goal.dueDate} (${du} days left)`;
-    }
-    const soon = du !== null && du <= 3 && du >= 0;
-
-    return (
-      <div key={goal.id} className="sg-goal-card">
-        <div className="sg-goal-top">
-          <div>
-            <span className={badgeClass(goal.goalType)}>{goal.goalType}</span>
-            <div className="sg-goal-title">{goal.title}</div>
-            {hint && (
-              <p
-                className={
-                  soon ? "sg-due-line sg-due-soon" : "sg-due-line"
-                }
-              >
-                {hint}
-              </p>
-            )}
-            <p className="sg-due-line" style={{ marginTop: 6 }}>
-              {goal.completedHours} / {goal.targetHours} hours ·{" "}
-              {goal.targetHours - goal.completedHours}h remaining
-            </p>
-          </div>
-          <div className="sg-percent">{percentage}%</div>
-        </div>
-
-        <div className="sg-progress-track">
-          <div
-            className="sg-progress-fill"
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-
-        <div className="sg-log-row">
-          <input
-            type="number"
-            min={1}
-            placeholder="Hours studied"
-            value={logHours[goal.id] ?? ""}
-            onChange={(e) => handleLogChange(goal.id, e.target.value)}
-          />
-          <button
-            type="button"
-            className="primary-form-btn"
-            onClick={() => handleLogHours(goal)}
-          >
-            Log hours
-          </button>
-          <button
-            type="button"
-            className="danger-form-btn"
-            onClick={() => handleDelete(goal.id)}
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    );
+    setProgressList([newProgress, ...progressList]);
+    setHistoryList([newHistory, ...historyList]);
+    setTotalGoals(prev => prev + 1);
+    setActiveGoals(prev => prev + 1);
+    
+    // Reset and close
+    setFormData({ name: "", total: 30, period: "Short Term", date: "", time: "" });
+    setShowModal(false);
   };
 
   return (
     <Layout>
-      <div className="study-goals-workspace">
-        {loadError && (
-          <p className="form-error" style={{ marginBottom: 12 }}>
-            {loadError}
-          </p>
-        )}
-        <header className="sg-hero">
-          <div className="sg-hero-inner">
-            <div>
-              <p className="sg-hero-lead">
-                Create unlimited goals with optional target dates, use the
-                calendar for due dates, and log hours as you go.
-              </p>
-            </div>
-            <div className="sg-hero-actions">
-              <button
-                type="button"
-                className="sg-btn-primary"
-                onClick={() => setShowGoalForm((prev) => !prev)}
-              >
-                {showGoalForm ? "Close form" : "Add goal"}
-              </button>
-            </div>
-          </div>
-        </header>
+      {/* Modal overlay */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative border border-teal-100">
+            <button 
+              onClick={() => setShowModal(false)}
+              className="absolute top-6 right-6 text-gray-400 hover:text-teal-600 transition-colors"
+            >
+              <X size={24} />
+            </button>
+            <h2 className="text-2xl font-bold text-teal-950 mb-2">Create New Goal</h2>
+            <p className="text-teal-700 text-sm mb-6">Set a new target and track your consistency.</p>
+            
+            <form onSubmit={handleCreateGoal} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-teal-900 mb-1">Goal Name</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. Learn Python"
+                  className="w-full bg-teal-50 border border-teal-200 text-teal-900 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 placeholder-teal-300"
+                  value={formData.name}
+                  onChange={e => setFormData({...formData, name: e.target.value})}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-teal-900 mb-1">Target Days</label>
+                  <input 
+                    type="number" 
+                    required
+                    min={1}
+                    className="w-full bg-teal-50 border border-teal-200 text-teal-900 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    value={formData.total}
+                    onChange={e => setFormData({...formData, total: Number(e.target.value)})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-teal-900 mb-1">Period</label>
+                  <select 
+                    className="w-full bg-teal-50 border border-teal-200 text-teal-900 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    value={formData.period}
+                    onChange={e => setFormData({...formData, period: e.target.value})}
+                  >
+                    <option value="Short Term">Short Term</option>
+                    <option value="Long Term">Long Term</option>
+                  </select>
+                </div>
+              </div>
 
-        <div className="sg-toolbar">
-          <div className="sg-stats-row">
-            <span className="sg-stat-pill">
-              Active <strong>{activeGoals.length}</strong>
-            </span>
-            <span className="sg-stat-pill">
-              Completed <strong>{completedGoals.length}</strong>
-            </span>
-            <span className="sg-stat-pill">
-              Total targets <strong>{totalTargetHours}h</strong>
-            </span>
-            <span className="sg-stat-pill">
-              Logged <strong>{totalCompletedHours}h</strong>
-            </span>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-teal-900 mb-1">Date</label>
+                  <input 
+                    type="date" 
+                    required
+                    className="w-full bg-teal-50 border border-teal-200 text-teal-900 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    value={formData.date}
+                    onChange={e => setFormData({...formData, date: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-teal-900 mb-1">Time</label>
+                  <input 
+                    type="time" 
+                    required
+                    className="w-full bg-teal-50 border border-teal-200 text-teal-900 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    value={formData.time}
+                    onChange={e => setFormData({...formData, time: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                className="w-full bg-gradient-to-r from-teal-500 to-green-500 text-white font-bold py-4 rounded-xl mt-4 shadow-lg hover:shadow-teal-500/30 transform hover:-translate-y-0.5 transition-all"
+              >
+                Start Tracking Goal
+              </button>
+            </form>
           </div>
-          <div className="sg-toolbar-actions">
-            <div className="sg-segmented" role="tablist" aria-label="View mode">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={workspaceView === "list"}
-                className={
-                  workspaceView === "list" ? "sg-segmented-active" : ""
-                }
-                onClick={() => setWorkspaceView("list")}
-              >
-                List &amp; charts
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={workspaceView === "calendar"}
-                className={
-                  workspaceView === "calendar" ? "sg-segmented-active" : ""
-                }
-                onClick={() => setWorkspaceView("calendar")}
-              >
-                Calendar
-              </button>
+        </div>
+      )}
+
+      {/* Light Theme Container */}
+      <div className="min-h-[calc(100vh-80px)] bg-slate-50 p-6 text-gray-800 font-sans mt-4 rounded-3xl shadow-xl overflow-hidden border border-gray-100">
+        
+        {/* Top Cards Row */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+          
+          {/* Highlighted Total Goals Card */}
+          <div className="bg-gradient-to-br from-teal-400 to-green-500 rounded-xl p-6 flex flex-col justify-center items-center shadow-lg relative overflow-hidden group">
+             <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-20 rounded-full blur-2xl transform translate-x-1/2 -translate-y-1/2"></div>
+            <p className="text-teal-900 font-semibold text-sm mb-1 relative z-10">Total Goals</p>
+            <h2 className="text-5xl font-bold text-teal-950 tracking-tight relative z-10">{totalGoals}</h2>
+          </div>
+
+          <div className="bg-teal-50 border border-teal-100 rounded-xl p-6 flex flex-col justify-center items-center shadow-sm hover:border-teal-200 transition-colors">
+            <p className="text-teal-700 text-sm mb-1">Active Goals</p>
+            <h2 className="text-4xl font-bold text-teal-950 tracking-tight">{activeGoals}</h2>
+          </div>
+
+          <div className="bg-teal-50 border border-teal-100 rounded-xl p-6 flex flex-col justify-center items-center shadow-sm hover:border-teal-200 transition-colors">
+            <p className="text-teal-700 text-sm mb-1">Goal in progress</p>
+            <h2 className="text-4xl font-bold text-teal-950 tracking-tight">13</h2>
+          </div>
+
+          <div className="bg-teal-50 border border-teal-100 rounded-xl p-6 flex flex-col justify-center items-center shadow-sm hover:border-teal-200 transition-colors">
+            <p className="text-teal-700 text-sm mb-1">Completed</p>
+            <h2 className="text-4xl font-bold text-teal-950 tracking-tight">11</h2>
+          </div>
+
+          <div className="bg-teal-50 border border-teal-100 rounded-xl p-6 flex flex-col justify-center items-center shadow-sm hover:border-teal-200 transition-colors">
+            <p className="text-teal-700 text-sm mb-1">Canceled</p>
+            <h2 className="text-4xl font-bold text-teal-950 tracking-tight">02</h2>
+          </div>
+
+          {/* Create Goal Card */}
+          <button 
+            onClick={() => setShowModal(true)}
+            className="bg-teal-50 border border-teal-100 rounded-xl p-6 flex flex-col justify-center items-center hover:bg-teal-100 shadow-sm transition-all cursor-pointer group"
+          >
+            <p className="text-teal-700 text-sm mb-2 group-hover:text-teal-900 transition-colors">Create New Goal</p>
+            <Plus size={40} strokeWidth={2} className="text-teal-500 group-hover:text-teal-700 transition-colors" />
+          </button>
+        </div>
+
+        {/* Middle Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          
+          {/* Chart Container (Takes up 2 columns) */}
+          <div className="lg:col-span-2 bg-teal-50 border border-teal-100 rounded-xl p-6 flex flex-col shadow-sm">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-lg font-bold text-teal-950">Overview</h3>
+              <div className="flex items-center gap-4">
+                 <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-teal-400"></span>
+                    <span className="text-xs text-teal-700 font-medium">Task Completed</span>
+                 </div>
+                 <select className="bg-white border border-teal-200 text-teal-800 font-medium text-sm rounded-lg px-3 py-1 outline-none focus:border-teal-500 shadow-sm">
+                   <option>Monthly</option>
+                   <option>Weekly</option>
+                 </select>
+              </div>
+            </div>
+            
+            <div className="flex-1 w-full min-h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ccfbf1" />
+                  <XAxis dataKey="name" stroke="#0f766e" tick={{ fill: '#0f766e', fontSize: 12, fontWeight: 500 }} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#0f766e" tick={{ fill: '#0f766e', fontSize: 12, fontWeight: 500 }} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#2dd4bf', borderRadius: '8px', border: 'none', color: '#134e4a', fontWeight: 'bold' }}
+                    itemStyle={{ color: '#134e4a' }}
+                    cursor={{ stroke: '#0f766e', strokeWidth: 1, strokeDasharray: '5 5' }}
+                  />
+                  <Line type="monotone" dataKey="completed" stroke="#2dd4bf" strokeWidth={4} dot={false} activeDot={{ r: 6, fill: '#2dd4bf', stroke: '#134e4a', strokeWidth: 2 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* This Month's Goal */}
+          <div className="bg-teal-50 border border-teal-100 rounded-xl p-6 flex flex-col shadow-sm">
+            <h3 className="text-lg font-bold text-teal-950 mb-2">This Month's Goal</h3>
+            <p className="text-xs text-teal-700 font-medium mb-8 leading-relaxed">
+              A percentage of goals successfully accomplished for this current month.
+            </p>
+            
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <div className="relative w-40 h-40">
+                {/* Custom SVG Circular Progress */}
+                <svg className="w-full h-full transform -rotate-90 drop-shadow-md" viewBox="0 0 100 100">
+                  {/* Background Circle */}
+                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="#ccfbf1" strokeWidth="8" />
+                  {/* Progress Circle (44%) - Circumference is ~251 */}
+                  <circle 
+                    cx="50" cy="50" r="40" 
+                    fill="transparent" 
+                    stroke="#2dd4bf" 
+                    strokeWidth="8" 
+                    strokeDasharray="251.2" 
+                    strokeDashoffset={251.2 - (251.2 * 0.44)} 
+                    strokeLinecap="round" 
+                  />
+                </svg>
+                {/* Center Text */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-3xl font-bold text-teal-950">44%</span>
+                </div>
+              </div>
+            </div>
+
+            <button className="text-xs text-teal-600 hover:text-teal-800 text-left mt-4 font-bold transition-colors">
+              Want to view?
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* History Table */}
+          <div className="bg-teal-50 border border-teal-100 rounded-xl p-6 shadow-sm">
+            <h3 className="text-lg font-bold text-teal-950 mb-6">History</h3>
+            
+            <div className="w-full overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="text-teal-700 text-xs font-bold border-b border-teal-200">
+                    <th className="pb-3">Name</th>
+                    <th className="pb-3">Date</th>
+                    <th className="pb-3">Period</th>
+                    <th className="pb-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm">
+                  {historyList.map((item, idx) => (
+                    <tr key={idx} className="border-b border-teal-100 hover:bg-white/60 transition-colors">
+                      <td className="py-4 font-bold text-teal-950">{item.name}</td>
+                      <td className="py-4 text-teal-700 font-medium">{item.date}</td>
+                      <td className="py-4 text-teal-700 font-medium">{item.period}</td>
+                      <td className="py-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                          item.status === 'Completed' ? 'text-green-700 border-green-200 bg-green-100' : 'text-teal-700 border-teal-200 bg-teal-100'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Goal Progress List */}
+          <div className="bg-teal-50 border border-teal-100 rounded-xl p-6 shadow-sm">
+            <h3 className="text-lg font-bold text-teal-950 mb-6">Goal Progress</h3>
+            
+            <div className="space-y-6">
+              {progressList.map((item, idx) => {
+                const percentage = (item.current / item.total) * 100;
+                
+                return (
+                  <div key={idx} className="group cursor-pointer">
+                    <div className="flex items-center gap-4 mb-2">
+                       <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-teal-500 border border-teal-200 group-hover:border-teal-400 group-hover:shadow-sm transition-all">
+                          {percentage === 100 ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                       </div>
+                       <div className="flex-1 flex justify-between items-center">
+                          <span className="text-sm font-bold text-teal-950 group-hover:text-teal-700 transition-colors">{item.name}</span>
+                          <span className="text-xs font-bold text-teal-600">
+                             {item.current}/{item.total} <span className="font-medium text-teal-500">{item.label}</span>
+                          </span>
+                       </div>
+                    </div>
+                    {/* Progress Bar Container */}
+                    <div className="pl-12">
+                       <div className="w-full bg-teal-100/50 rounded-full h-2 overflow-hidden shadow-inner">
+                         <div 
+                           className="bg-gradient-to-r from-teal-400 to-green-400 h-2 rounded-full" 
+                           style={{ width: `${percentage}%` }}
+                         ></div>
+                       </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
 
-        {showGoalForm && (
-          <div className="sg-card">
-            <div className="sg-card-head">
-              <h3>New study goal</h3>
-              <p>
-                Add as many goals as you need. Optional target date appears on
-                the calendar.
-              </p>
-            </div>
-
-            <form className="availability-form" onSubmit={handleSubmit}>
-              <div className="form-grid sg-form-grid">
-                <div className="form-group form-group-full">
-                  <label htmlFor="sg-title">Goal name</label>
-                  <input
-                    id="sg-title"
-                    type="text"
-                    name="title"
-                    placeholder="e.g. Database revision — Week 6"
-                    value={formData.title}
-                    onChange={handleChange}
-                    maxLength={120}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="sg-type">Goal type</label>
-                  <select
-                    id="sg-type"
-                    name="goalType"
-                    value={formData.goalType}
-                    onChange={handleChange}
-                  >
-                    <option value="Daily">Daily</option>
-                    <option value="Weekly">Weekly</option>
-                    <option value="Monthly">Monthly</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="sg-hours">Target hours</label>
-                  <input
-                    id="sg-hours"
-                    type="number"
-                    name="targetHours"
-                    placeholder="Hours"
-                    value={formData.targetHours}
-                    onChange={handleChange}
-                    min={1}
-                  />
-                </div>
-
-                <div className="form-group form-group-full">
-                  <label htmlFor="sg-due">Target date (optional)</label>
-                  <input
-                    id="sg-due"
-                    type="date"
-                    name="dueDate"
-                    value={formData.dueDate}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-
-              {error && <p className="form-error">{error}</p>}
-              {success && <p className="form-success">{success}</p>}
-
-              <div className="form-actions">
-                <button type="submit" className="primary-form-btn">
-                  Save goal
-                </button>
-                <button
-                  type="button"
-                  className="secondary-form-btn"
-                  onClick={handleClear}
-                >
-                  Clear
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {workspaceView === "calendar" ? (
-          <div className="sg-calendar-layout">
-            <div className="sg-calendar-panel">
-              <div className="sg-cal-nav">
-                <button
-                  type="button"
-                  onClick={calPrevMonth}
-                  aria-label="Previous month"
-                >
-                  ‹
-                </button>
-                <h2>{monthTitle}</h2>
-                <button
-                  type="button"
-                  onClick={calNextMonth}
-                  aria-label="Next month"
-                >
-                  ›
-                </button>
-              </div>
-              <div className="sg-cal-weekdays">
-                {WEEKDAY_LABELS.map((w) => (
-                  <span key={w}>{w}</span>
-                ))}
-              </div>
-              <div className="sg-cal-cells">
-                {calCells.map((cell, idx) => {
-                  const count = goalsByDueDate[cell.dateStr]?.length ?? 0;
-                  const isToday = cell.dateStr === todayISO();
-                  const isSelected = cell.dateStr === selectedDate;
-                  return (
-                    <button
-                      key={`${cell.dateStr}-${idx}`}
-                      type="button"
-                      className={[
-                        "sg-cal-cell",
-                        !cell.inMonth ? "sg-cal-other" : "",
-                        isToday ? "sg-cal-today" : "",
-                        isSelected ? "sg-cal-selected" : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      onClick={() => setSelectedDate(cell.dateStr)}
-                    >
-                      <span className="sg-cal-day-num">{cell.dayNum}</span>
-                      {count > 0 && (
-                        <div className="sg-cal-dots" aria-hidden>
-                          {Array.from({
-                            length: Math.min(count, 3),
-                          }).map((_, i) => (
-                            <span key={i} />
-                          ))}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <aside className="sg-day-panel">
-              <h3>
-                {parseISODateLocal(selectedDate).toLocaleDateString("en", {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </h3>
-              <p>
-                Goals with this target date. Goals without a date only appear in
-                the list view.
-              </p>
-              {goalsOnSelectedDate.length === 0 ? (
-                <p className="sg-due-line">No goals due on this date.</p>
-              ) : (
-                goalsOnSelectedDate.map((g) => (
-                  <div key={g.id} className="sg-day-goal-item">
-                    <strong>{g.title}</strong>
-                    <span className="sg-due-line">
-                      {g.goalType} · {g.completedHours}/{g.targetHours}h ·{" "}
-                      {g.status}
-                    </span>
-                  </div>
-                ))
-              )}
-            </aside>
-          </div>
-        ) : (
-          <>
-            <div className="sg-chart-grid">
-              <div className="sg-card">
-                <div className="sg-card-head">
-                  <h3>Hours logged this week</h3>
-                  <p>Sample weekly pattern for your study rhythm.</p>
-                </div>
-                <div className="sg-chart-box">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={weeklyHoursData}>
-                      <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip />
-                      <Bar
-                        dataKey="hours"
-                        radius={[8, 8, 0, 0]}
-                        fill="#6366f1"
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              <div className="sg-card">
-                <div className="sg-card-head">
-                  <h3>Overall progress</h3>
-                  <p>Completed hours vs remaining across all goals.</p>
-                </div>
-                <div className="sg-chart-box">
-                  {totalTargetHours === 0 ? (
-                    <div className="sg-chart-hint">
-                      Add goals to see progress distribution.
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={donutData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={70}
-                          outerRadius={100}
-                          paddingAngle={3}
-                          dataKey="value"
-                        >
-                          <Cell fill="#28c76f" />
-                          <Cell fill="#d9dee7" />
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="sg-section-label">
-              Active goals ({activeGoals.length})
-            </div>
-
-            {activeGoals.length === 0 ? (
-              <div className="sg-empty">
-                <h3>No active goals</h3>
-                <p>Add a goal to start tracking hours and deadlines.</p>
-              </div>
-            ) : (
-              <div className="sg-goals-grid">
-                {activeGoals.map((goal) => renderGoalCard(goal))}
-              </div>
-            )}
-
-            <div className="sg-section-label">
-              Completed goals ({completedGoals.length})
-            </div>
-
-            {completedGoals.length === 0 ? (
-              <div className="sg-empty">
-                <h3>No completed goals yet</h3>
-                <p>Log hours until you hit each target.</p>
-              </div>
-            ) : (
-              <div className="sg-completed-list">
-                {completedGoals.map((goal) => (
-                  <div key={goal.id} className="sg-completed-row">
-                    <div>
-                      <h4>{goal.title}</h4>
-                      <p className="sg-completed-meta">
-                        {goal.goalType} · {goal.targetHours}h target
-                        {goal.dueDate ? ` · due ${goal.dueDate}` : ""}
-                      </p>
-                    </div>
-                    <div className="sg-completed-actions">
-                      <span className="sg-done-badge">Done</span>
-                      <button
-                        type="button"
-                        className="danger-form-btn"
-                        onClick={() => handleDelete(goal.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
       </div>
     </Layout>
   );
