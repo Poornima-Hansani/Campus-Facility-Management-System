@@ -21,7 +21,7 @@ export default function StudyAreaBooking() {
   const [activeTab, setActiveTab] = useState<'book' | 'my'>('book');
 
   // Get current user info from localStorage
-  const userId = localStorage.getItem('userId') || '';
+  const userId = localStorage.getItem('unifiedUserId') || localStorage.getItem('studentId') || '';
 
   useEffect(() => {
     fetchAreas();
@@ -156,7 +156,7 @@ export default function StudyAreaBooking() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-6">
-          <Link to="/dashboard" className="p-2 hover:bg-white/50 rounded-lg transition-colors">
+          <Link to="/smart-booking" className="p-2 hover:bg-white/50 rounded-lg transition-colors">
             <ArrowLeft size={24} className="text-gray-600" />
           </Link>
           <div>
