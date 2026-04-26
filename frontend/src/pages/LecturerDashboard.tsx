@@ -2,10 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { 
   MapPin, BookOpen, Calendar, 
-  LogOut, Users, Monitor, Snowflake, CheckCircle,
+  Users, Monitor, Snowflake, CheckCircle,
   Bell, PlayCircle, PlusCircle, AlertTriangle,
-  MessageSquare, BarChart3, User, Building,
-  Award, Clock, TrendingUp
+  BarChart3, User, Clock, TrendingUp
 } from "lucide-react";
 import { getLecturerLabAlerts, confirmLabAlert, type LabAlert } from "../api/labGapApi";
 
@@ -82,11 +81,11 @@ export default function LecturerDashboard() {
   
   const [timetableData, setTimetableData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [currentTime, setCurrentTime] = useState(getCurrentTime());
+  const [_loadError, setLoadError] = useState("");
+  const [_currentTime, setCurrentTime] = useState(getCurrentTime());
   const [reminders, setReminders] = useState<number[]>([]);
   const [currentRoom, setCurrentRoom] = useState<RoomInfo | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [_notifications, setNotifications] = useState<Notification[]>([]);
   const [labAlerts, setLabAlerts] = useState<LabAlert[]>([]);
 
   useEffect(() => {
@@ -188,12 +187,14 @@ export default function LecturerDashboard() {
     setCurrentRoom(roomInfo);
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate('/login');
-  };
+  // Logout functionality available for future use
+  // const handleLogout = () => {
+  //   localStorage.clear();
+  //   navigate('/login');
+  // };
 
-  const ongoingSession = todaySessions.find(s => getSessionStatus(s.startTime, s.endTime) === "Ongoing");
+  // Session status check available for future use
+  // const ongoingSession = todaySessions.find(s => getSessionStatus(s.startTime, s.endTime) === "Ongoing");
 
   if (loading) {
     return (
@@ -497,15 +498,9 @@ export default function LecturerDashboard() {
                 <p className="text-xs text-gray-500">MATH201 - Yesterday</p>
               </div>
             </div>
-          </div>
+</div>
         </div>
       </div>
     </div>
   );
-}
-          </div>
-        </div>
-      </div>
-    </div>
-);
 }
