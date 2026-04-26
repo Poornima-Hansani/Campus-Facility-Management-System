@@ -1,13 +1,12 @@
-import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import StudentRoute from "./components/StudentRoute";
 import StaffRoute from "./components/StaffRoute";
-import { Home, LogIn, UserPlus } from 'lucide-react';
+import Navigation from "./components/Navigation";
 import TaskDashboardPage from "./pages/TaskDashboardPage";
 import LectureAvailabilityPage from "./pages/LectureAvailabilityPage";
-import LecturerDashboard from "./pages/LecturerDashboard";
 import AssignmentExamPage from "./pages/AssignmentExamPage";
 import StudyGoalsPage from "./pages/StudyGoalsPage";
 import HelpRequestPage from "./pages/HelpRequestPage";
@@ -20,6 +19,7 @@ import StudentDashboard from './pages/StudentDashboard';
 import ReportingDashboard from './pages/ReportingDashboard';
 import ReportIssue from './pages/ReportIssue';
 import ReportHistory from './pages/ReportHistory';
+import MyResultsPage from "./pages/MyResultsPage";
 import AllIssues from './pages/AllIssues';
 import StaffDashboard from './pages/StaffDashboard';
 import LecturerDashboard from './pages/LecturerDashboard';
@@ -30,6 +30,7 @@ import LabBooking from "./pages/LabBooking";
 import LabTimetableList from "./pages/LabTimetableList";
 import LabTimetableView from "./pages/LabTimetableView";
 import EnergyAlertsPage from "./pages/EnergyAlertsPage";
+import SmartBookingHubPage from "./pages/SmartBookingHubPage";
 
 // Management pages
 import ManagementDashboard from "./pages/management/ManagementDashboard";
@@ -37,84 +38,6 @@ import FacilityPage from "./pages/management/FacilityPage";
 import TimetablePage from "./pages/management/TimetablePage";
 import StaffPage from "./pages/management/StaffPage";
 import EmailsPage from "./pages/management/EmailsPage";
-
-function Navigation() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  
-  if (location.pathname === '/') {
-    return null;
-  }
-  
-  const isLoggedIn = !!localStorage.getItem('unifiedUserId');
-  const role = localStorage.getItem('unifiedRole');
-  
-  const isActive = (path: string) => {
-    if (path === '/') return location.pathname === '/';
-    return location.pathname.startsWith(path);
-  };
-
-  const linkClass = (path: string) => 
-    `flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-      isActive(path) 
-        ? 'bg-[#004905] text-white shadow-md' 
-        : 'text-gray-600 hover:bg-[#004905]/10 hover:text-[#004905]'
-    }`;
-
-  const handleLogout = () => {
-    localStorage.clear(); // Clear all unified and legacy tokens
-    navigate('/');
-  };
-
-  const getDashboardRoute = () => {
-    switch (role) {
-      case 'student': return '/student';
-      case 'lecturer': return '/lecturer-dashboard';
-      case 'management': return '/management-dashboard';
-      case 'staff': return '/staff/dashboard';
-      case 'admin': return '/admin-dashboard';
-      default: return '/dashboard';
-    }
-  };
-
-  return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
-          <Link to="/" className="flex items-center py-2 hover:opacity-80 transition-opacity">
-            <img src="/logo.png" alt="UniManage Logo" className="h-20 w-auto" />
-            <span className="ml-3 text-xl font-bold text-gray-900">UNIMANAGE</span>
-          </Link>
-          <div className="flex gap-4">
-            {isLoggedIn ? (
-              <>
-                <Link to={getDashboardRoute()} className={linkClass(getDashboardRoute())}>
-                  <Home size={18} />
-                  <span className="hidden sm:inline">My Dashboard</span>
-                </Link>
-                <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-red-600 hover:bg-red-50 hover:text-red-700">
-                  <LogIn size={18} />
-                  <span className="hidden sm:inline">Logout</span>
-                </button>
-              </>
-            ) : (
-              <div className="flex gap-2">
-                <Link to="/login" className={linkClass('/login')}>
-                  <LogIn size={18} />
-                  <span className="hidden sm:inline">Login</span>
-                </Link>
-                <Link to="/register" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 text-white font-medium hover:bg-teal-700 shadow-sm transition-colors">
-                  <UserPlus size={18} className="sm:hidden" />
-                  <span className="hidden sm:inline">Register</span>
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </nav>
-  );
-}
 
 function AppRoutes() {
   return (
@@ -216,7 +139,15 @@ function AppRoutes() {
         <Route path="/lecturer-dashboard" element={
           <LecturerDashboard />
         } />
+        <Route path="/smart-booking" element={
+          <StudentRoute>
+            <SmartBookingHubPage />
+          </StudentRoute>
+        } />
         <Route path="/admin-dashboard" element={
+          <AdminDashboard />
+        } />
+        <Route path="/admin-dashboard-protected" element={
           <ProtectedRoute role="admin">
             <AdminDashboard />
           </ProtectedRoute>
@@ -244,6 +175,11 @@ function AppRoutes() {
         <Route path="/assignments-exams" element={
           <StudentRoute>
             <AssignmentExamPage />
+          </StudentRoute>
+        } />
+        <Route path="/my-results" element={
+          <StudentRoute>
+            <MyResultsPage />
           </StudentRoute>
         } />
         <Route path="/study-goals" element={
