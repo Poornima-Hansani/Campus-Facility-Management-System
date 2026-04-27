@@ -4,7 +4,7 @@ import Layout from "../components/Layout";
 import { 
   MapPin, BookOpen, Calendar, 
   CheckCircle, Bell, PlayCircle, AlertTriangle,
-  Clock, TrendingUp
+  Clock, TrendingUp, Users
 } from "lucide-react";
 import { getLecturerLabAlerts, confirmLabAlert, type LabAlert } from "../api/labGapApi";
 
@@ -92,6 +92,18 @@ type Notification = {
   readBy: string[];
 };
 
+type Meeting = {
+  _id: string;
+  meetingId: string;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  description: string;
+  conductor: string;
+};
+
 export default function LecturerDashboard() {
   const navigate = useNavigate();
   const lecturerId = localStorage.getItem('unifiedUserId');
@@ -105,6 +117,7 @@ export default function LecturerDashboard() {
 
   const [_notifications, setNotifications] = useState<Notification[]>([]);
   const [labAlerts, setLabAlerts] = useState<LabAlert[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
 
   useEffect(() => {
     if (!lecturerId) {
@@ -114,6 +127,7 @@ export default function LecturerDashboard() {
     fetchData();
     fetchNotifications();
     fetchAlerts();
+    fetchMeetings();
     
     const timer = setInterval(() => {
       setCurrentTime(getCurrentTime());
@@ -126,8 +140,20 @@ export default function LecturerDashboard() {
     try {
       const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
       const lecturerParam = encodeURIComponent(String(lecturerName || lecturerId || ''));
-      const notifs = await fetch(`${API_BASE}/api/timetable/notifications/lecturer?lecturer=${lecturerParam}`).then(r => r.json());
-      setNotifications(Array.isArray(notifs) ? notifs : []);
+      
+      // Fetch timetable notifications
+      const ttNotifs = await fetch(`${API_BASE}/api/timetable/notifications/lecturer?lecturer=${lecturerParam}`).then(r => r.json());
+      
+      // Fetch meeting notifications for this lecturer
+      const meetingNotifs = await fetch(`${API_BASE}/api/notifications/lecturer?lecturerId=${encodeURIComponent(lecturerId || '')}`).then(r => r.json()).catch(() => ({ notifications: [] }));
+      
+      // Combine notifications
+      const allNotifs = [
+        ...(Array.isArray(ttNotifs) ? ttNotifs : []),
+        ...(meetingNotifs.notifications || [])
+      ];
+      
+      setNotifications(allNotifs);
     } catch (e) {
       console.log("Failed to fetch notifications");
     }
@@ -162,6 +188,22 @@ export default function LecturerDashboard() {
       fetchAlerts();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchMeetings = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const res = await fetch(`${API_BASE}/api/meetings`);
+      const data = await res.json();
+      const allMeetings = Array.isArray(data) ? data : [];
+      // Filter meetings for this lecturer
+      const myMeetings = allMeetings.filter(
+        (m: Meeting) => m.conductor && (m.conductor === lecturerName || m.conductor === lecturerId)
+      );
+      setMeetings(myMeetings);
+    } catch (err) {
+      console.error('Failed to fetch meetings:', err);
     }
   };
 
@@ -418,6 +460,62 @@ export default function LecturerDashboard() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </div>
+          
+          {/* Meetings Panel */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <Users className="w-5 h-5 text-orange-600" />
+                Scheduled Meetings
+              </h2>
+            </div>
+            
+            {meetings.length === 0 ? (
+              <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="font-medium">No meetings scheduled</p>
+                <p className="text-sm mt-1">Management hasn't scheduled any meetings yet</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {meetings.slice(0, 5).map((meeting) => (
+                  <div
+                    key={meeting._id}
+                    className="p-4 rounded-xl border-l-4 border-l-orange-400 bg-orange-50/50 hover:bg-orange-50 transition-all"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-mono text-xs font-bold text-orange-700 bg-white px-2 py-1 rounded shadow-sm">
+                        {meeting.meetingId}
+                      </span>
+                      <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700">
+                        {meeting.date}
+                      </span>
+                    </div>
+                    
+                    <h3 className="font-bold text-gray-900 leading-tight">
+                      {meeting.title}
+                    </h3>
+                    <p className="text-sm text-gray-600 line-clamp-1 mb-3">
+                      {meeting.description}
+                    </p>
+                    
+                    <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-200/60">
+                      <div className="flex items-center gap-3 text-xs font-medium text-gray-500">
+                        <span className="flex items-center gap-1 bg-white px-2 py-1 rounded shadow-sm">
+                          <Clock className="w-3 h-3" />
+                          {meeting.startTime} - {meeting.endTime}
+                        </span>
+                        <span className="flex items-center gap-1 bg-white px-2 py-1 rounded shadow-sm">
+                          <MapPin className="w-3 h-3 text-red-500" />
+                          {meeting.location}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
