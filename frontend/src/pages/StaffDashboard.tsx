@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Wrench, User, Phone, Mail, MapPin, Clock,
   CheckCircle, AlertCircle, PlayCircle, Star,
-  FileText, LogOut, RefreshCw, Filter, X,
+  FileText, RefreshCw, Filter, X,
   Bell, BellRing
 } from 'lucide-react';
 
@@ -167,14 +167,6 @@ export default function StaffDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('staffLoggedIn');
-    localStorage.removeItem('staffId');
-    localStorage.removeItem('staffName');
-    localStorage.removeItem('staffRole');
-    navigate('/');
-  };
-
   const markNotificationRead = async (notificationId: string) => {
     try {
       await fetch(`http://localhost:3000/api/notifications/staff/${notificationId}/read?staffId=${staffId}`, {
@@ -333,13 +325,6 @@ export default function StaffDashboard() {
               title="Refresh"
             >
               <RefreshCw size={20} />
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            >
-              <LogOut size={18} />
-              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
