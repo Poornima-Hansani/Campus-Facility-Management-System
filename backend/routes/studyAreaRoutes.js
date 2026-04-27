@@ -4,6 +4,7 @@ const StudyArea = require('../models/StudyArea');
 const StudyAreaBooking = require('../models/StudyAreaBooking');
 const StudentTimeTable = require('../models/StudentTimeTable');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 
 // GET all study areas
 router.get('/', async (req, res) => {
@@ -406,6 +407,23 @@ router.post('/bookings', async (req, res) => {
     await booking.populate('user', 'name email');
     await booking.populate('studyArea', 'name location capacity');
     
+    // Create booking notification for the student
+    const bookingNotification = new Notification({
+      type: 'booking_confirmed',
+      recipientType: 'student',
+      recipientId: user.userId,
+      message: `Booking confirmed for ${studyArea.name} on ${bookingDate.toLocaleDateString()} (${startTime} - ${endTime})`,
+      bookingId: booking._id,
+      studyAreaName: studyArea.name,
+      studyAreaLocation: studyArea.location,
+      date: bookingDate.toISOString(),
+      startTime,
+      endTime,
+      createdAt: new Date().toISOString(),
+      read: false
+    });
+    await bookingNotification.save();
+    
     res.status(201).json({
       success: true,
       message: 'Study area booking created successfully',
@@ -540,7 +558,7 @@ router.put('/bookings/:bookingId/status', async (req, res) => {
 // DELETE booking (soft delete by setting status to cancelled)
 router.delete('/bookings/:bookingId', async (req, res) => {
   try {
-    const { bookingId } = req.params;
+    const bookingId = req.params.bookingId;
     
     const booking = await StudyAreaBooking.findById(bookingId);
     
@@ -551,8 +569,28 @@ router.delete('/bookings/:bookingId', async (req, res) => {
       });
     }
     
+    const userId = booking.user.toString();
+    await booking.populate('studyArea', 'name location');
+    
     booking.status = 'cancelled';
     await booking.save();
+    
+    // Create cancellation notification for the student
+    const cancelNotification = new Notification({
+      type: 'booking_cancelled',
+      recipientType: 'student',
+      recipientId: userId,
+      message: `Your booking for ${booking.studyArea?.name || 'Study Area'} on ${new Date(booking.date).toLocaleDateString()} has been cancelled`,
+      bookingId: booking._id,
+      studyAreaName: booking.studyArea?.name,
+      studyAreaLocation: booking.studyArea?.location,
+      date: booking.date,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      createdAt: new Date().toISOString(),
+      read: false
+    });
+    await cancelNotification.save();
     
     res.json({
       success: true,
