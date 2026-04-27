@@ -18,6 +18,7 @@ export default function MeetingsPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [lecturers, setLecturers] = useState<any[]>([]);
 
   // Form State
   const [meetingId, setMeetingId] = useState(`MTG-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`);
@@ -28,9 +29,11 @@ export default function MeetingsPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [conductor, setConductor] = useState("");
+  const [conductorId, setConductorId] = useState("");
 
   useEffect(() => {
     fetchMeetings();
+    fetchLecturers();
   }, []);
 
   const fetchMeetings = async () => {
@@ -45,6 +48,31 @@ export default function MeetingsPage() {
       console.error("Failed to fetch meetings:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLecturers = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const res = await fetch(`${API_BASE}/api/lecturers`);
+      if (res.ok) {
+        const data = await res.json();
+        setLecturers(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch lecturers:", err);
+    }
+  };
+
+  const handleConductorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const lecturerId = e.target.value;
+    const lecturer = lecturers.find(l => l.userId === lecturerId || l._id === lecturerId);
+    if (lecturer) {
+      setConductorId(lecturerId);
+      setConductor(lecturer.name);
+    } else {
+      setConductorId("");
+      setConductor("");
     }
   };
 
@@ -65,7 +93,8 @@ export default function MeetingsPage() {
           location,
           title,
           description,
-          conductor
+          conductor,
+          conductorId
         }),
       });
 
@@ -80,6 +109,7 @@ export default function MeetingsPage() {
         setTitle("");
         setDescription("");
         setConductor("");
+        setConductorId("");
       } else {
         console.error("Failed to schedule meeting");
       }
@@ -178,15 +208,23 @@ export default function MeetingsPage() {
 
               {/* Conductor */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-1.5"><Users size={16} className="text-gray-400"/> Conducting Person</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. Prof. Alan Smith"
-                  value={conductor}
-                  onChange={(e) => setConductor(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 transition-all outline-none"
+                <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-1.5"><Users size={16} className="text-gray-400"/> Conducting Person *</label>
+                <select
+                  value={conductorId}
+                  onChange={handleConductorChange}
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-all outline-none"
                   required
-                />
+                >
+                  <option value="">Select a lecturer...</option>
+                  {lecturers.map(lecturer => (
+                    <option key={lecturer.userId || lecturer._id} value={lecturer.userId || lecturer._id}>
+                      {lecturer.userId || lecturer._id} - {lecturer.name}
+                    </option>
+                  ))}
+                </select>
+                {conductor && (
+                  <p className="text-sm text-green-600 mt-1 font-medium">Selected: {conductor}</p>
+                )}
               </div>
 
               {/* Title */}
