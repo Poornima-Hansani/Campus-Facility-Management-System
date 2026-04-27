@@ -34,6 +34,9 @@ const meetingSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  conductorId: {
+    type: String
+  },
   createdAt: {
     type: Date,
     default: Date.now
