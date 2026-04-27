@@ -1,31 +1,33 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, LogIn, UserPlus } from 'lucide-react';
+import { Home, LogIn, UserPlus, Moon, Sun } from 'lucide-react';
+import { useTheme } from "../context/ThemeContext";
 
 export default function Navigation() {
   const location = useLocation();
   const navigate = useNavigate();
-  
+  const { theme, toggleTheme } = useTheme();
+
   if (location.pathname === '/') {
     return null;
   }
-  
+
   const isLoggedIn = !!localStorage.getItem('unifiedUserId');
   const role = localStorage.getItem('unifiedRole');
-  
+
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
   };
 
-  const linkClass = (path: string) => 
+  const linkClass = (path: string) =>
     `flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-      isActive(path) 
-        ? 'bg-[#004905] !text-white shadow-md' 
+      isActive(path)
+        ? 'bg-[#004905] !text-white shadow-md'
         : 'text-gray-600 hover:bg-[#004905]/10 hover:text-[#004905]'
     }`;
 
   const handleLogout = () => {
-    localStorage.clear(); // Clear all unified and legacy tokens
+    localStorage.clear();
     navigate('/');
   };
 
@@ -55,6 +57,14 @@ export default function Navigation() {
                   <Home size={18} />
                   <span className="hidden sm:inline">My Dashboard</span>
                 </Link>
+                <button
+                  onClick={toggleTheme}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-gray-600 hover:bg-gray-100"
+                  title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                >
+                  {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+                  <span className="hidden sm:inline">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+                </button>
                 <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-red-600 hover:bg-red-50 hover:text-red-700">
                   <LogIn size={18} />
                   <span className="hidden sm:inline">Logout</span>

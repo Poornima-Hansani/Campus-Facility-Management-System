@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { useLocation } from "react-router-dom";
+import { Sun, Moon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 type RouteCopy = { title: string; detail: string };
 
@@ -104,6 +106,7 @@ const defaultCopy: RouteCopy = {
 const Topbar = () => {
   const { pathname } = useLocation();
   const { isAdmin } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const { title, detail } = useMemo(
     () => routeCopy[pathname] ?? defaultCopy,
@@ -122,6 +125,15 @@ const Topbar = () => {
           <p className="topbar-detail">{detail}</p>
         </div>
         <div className="topbar-actions">
+          <button
+            type="button"
+            className="topbar-theme-toggle"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            title={theme === "dark" ? "Light mode" : "Dark mode"}
+          >
+            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
         </div>
       </div>
     </header>
