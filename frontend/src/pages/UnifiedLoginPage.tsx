@@ -128,9 +128,9 @@ export default function UnifiedLoginPage() {
       console.log('=== NAVIGATION DEBUG ===');
       console.log('User role being used:', data.role);
       console.log('Destination path:', destination);
-      console.log('Calling navigate now...');
+      console.log('Redirecting via window.location...');
       
-      navigate(destination);
+      window.location.href = destination;
 
     } catch (err: any) {
       setError(err.message);
@@ -140,7 +140,7 @@ export default function UnifiedLoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-green-700 via-teal-800 to-blue-900">
       <FloatingLeaves />
       
       <div className="relative z-10 flex flex-col justify-center min-h-screen py-12 px-4 sm:px-6 lg:px-8">
@@ -148,13 +148,13 @@ export default function UnifiedLoginPage() {
           <Link to="/" className="flex justify-center">
             <img src="/logo.png" alt="UniManage Logo" className="h-20 w-auto" />
           </Link>
-          <h2 className="mt-6 text-center text-3xl font-extrabold bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent">
-            Sign in to your account
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-white drop-shadow-md">
+            Welcome to UniManage
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-sm text-emerald-100">
              Or{' '}
-             <Link to="/register" className="font-medium text-teal-600 hover:text-teal-500 transition-colors">
-               register a new account
+             <Link to="/register" className="font-medium text-white hover:text-emerald-200 transition-colors underline decoration-emerald-400 underline-offset-4">
+               create a new account
              </Link>
           </p>
         </div>
