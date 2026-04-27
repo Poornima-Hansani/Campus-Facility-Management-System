@@ -49,7 +49,7 @@ function serialize(doc) {
     endTime: doc.endTime,
     faculty: doc.faculty || "Computing",
     year: doc.year,
-    specialization: doc.specialization || "SE",
+    specialization: doc.specialization || "Software Engineering",
     scheduleType: doc.scheduleType || "Weekday",
   };
 }
@@ -124,6 +124,48 @@ router.get("/export", async (req, res) => {
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", "attachment; filename=timetable.csv");
     res.send(csv);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+router.get("/pdf", async (req, res) => {
+  try {
+    const list = await TimetableSession.find({}).lean();
+    list.sort((a, b) => {
+      const d = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
+      if (d !== 0) return d;
+      return a.startTime.localeCompare(b.startTime);
+    });
+
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ margin: 30, size: 'A4' });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=timetable.pdf');
+    doc.pipe(res);
+
+    doc.fontSize(20).fillColor('black').text('Campus Timetable', { align: 'center' });
+    doc.moveDown();
+
+    let currentDay = '';
+    list.forEach(session => {
+      if (session.day !== currentDay) {
+        currentDay = session.day;
+        doc.moveDown();
+        doc.fontSize(16).fillColor('#0d9488').text(currentDay, { underline: true });
+        doc.moveDown(0.5);
+      }
+      doc.fontSize(12).fillColor('black').text(
+        `${session.startTime} - ${session.endTime} | ${session.moduleCode} - ${session.moduleName}`
+      );
+      doc.fontSize(10).fillColor('gray').text(
+        `Venue: ${session.venueName} | Lecturer: ${session.lecturer} | Type: ${session.sessionType || 'Lecture'}`
+      );
+      doc.moveDown(0.5);
+    });
+
+    doc.end();
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
@@ -207,7 +249,7 @@ router.post("/", async (req, res) => {
     
     const cleanFaculty = String(faculty || "Computing").trim();
     const cleanYear = Number(year) || 1;
-    const cleanSpec = String(specialization || "SE").trim();
+    const cleanSpec = String(specialization || "Software Engineering").trim();
     const cleanScheduleType = (scheduleType === "Weekend" ? "Weekend" : "Weekday");
 
     console.log("Creating with:", { cleanModuleCode, cleanModuleName, cleanVenueName, cleanLecturer, cleanSessionType, day, startTime, endTime });
@@ -231,6 +273,24 @@ router.post("/", async (req, res) => {
 
     console.log("Created doc:", doc);
 
+    // Auto-create notification
+    try {
+      const notifNumericId = await nextNumericId(TimetableNotification);
+      await TimetableNotification.create({
+        numericId: notifNumericId,
+        type: "Created",
+        moduleCode: cleanModuleCode,
+        moduleName: cleanModuleName,
+        lecturer: cleanLecturer,
+        day: day || "Monday",
+        specialization: cleanSpec,
+        message: `New session added for ${cleanModuleCode} (${cleanModuleName}) on ${day || "Monday"} at ${startTime || "09:00"}`,
+        targetAudience: "All",
+      });
+    } catch (notifErr) {
+      console.log("Failed to auto-create notification:", notifErr);
+    }
+
     res.status(201).json(serialize(doc.toObject()));
   } catch (e) {
     console.log("Error creating timetable:", e);
@@ -253,11 +313,25 @@ router.delete("/:id", async (req, res) => {
 
 router.get("/notifications", async (req, res) => {
   try {
-    const { userId } = req.query;
-    let filter = {};
-    if (userId) {
-      filter = { readBy: { $ne: userId } };
+    const { userId, specialization } = req.query;
+    
+    let baseFilter = {};
+    if (specialization) {
+      baseFilter = {
+        $or: [
+          { specialization: specialization },
+          { specialization: { $exists: false } },
+          { specialization: null },
+          { specialization: "" }
+        ]
+      };
     }
+    
+    let filter = { ...baseFilter };
+    if (userId) {
+      filter.readBy = { $ne: userId };
+    }
+    
     const notifications = await TimetableNotification.find(filter).sort({ createdAt: -1 }).limit(50).lean();
     res.json(notifications);
   } catch (e) {

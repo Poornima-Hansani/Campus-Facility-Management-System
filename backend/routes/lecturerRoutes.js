@@ -7,7 +7,7 @@ router.get('/', async (req, res) => {
   try {
     const lecturers = await User.find(
       { role: 'lecturer' },
-      { _id: 1, name: 1 } // only what frontend needs
+      { _id: 1, name: 1, moduleCode: 1, moduleName: 1 } // include module info
     );
 
     res.json(lecturers);

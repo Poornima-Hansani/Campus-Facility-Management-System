@@ -2,21 +2,7 @@ const express = require("express");
 const router = express.Router();
 const FacilityReport = require("../models/FacilityReport");
 
-const staffMembers = [
-  { id: 'STF001', name: 'Kamal Perera', role: 'Electrician', specialty: 'A/C & Electronics', phone: '+94 71 234 5678', email: 'kamal@university.edu', activeTasks: 2, workloadStatus: 'Medium' },
-  { id: 'STF002', name: 'Sunil Fernando', role: 'Plumber', specialty: 'Water & Drainage', phone: '+94 71 345 6789', email: 'sunil@university.edu', activeTasks: 0, workloadStatus: 'Free' },
-  { id: 'STF003', name: 'Nimal Silva', role: 'Cleaner', specialty: 'Hygiene & Sanitation', phone: '+94 71 456 7890', email: 'nimal@university.edu', activeTasks: 1, workloadStatus: 'Medium' },
-  { id: 'STF004', name: 'Ranjith Jayawardena', role: 'Technician', specialty: 'General Repairs', phone: '+94 71 567 8901', email: 'ranjith@university.edu', activeTasks: 3, workloadStatus: 'Busy' },
-  { id: 'STF005', name: 'Priya Kumari', role: 'Supervisor', specialty: 'All Rounder', phone: '+94 71 678 9012', email: 'priya@university.edu', activeTasks: 0, workloadStatus: 'Free' }
-];
-
-const staffNames = {
-  'STF001': 'Kamal Perera',
-  'STF002': 'Sunil Fernando',
-  'STF003': 'Nimal Silva',
-  'STF004': 'Ranjith Jayawardena',
-  'STF005': 'Priya Kumari'
-};
+const User = require('../models/User');
 
 router.get("/dashboard", async (req, res) => {
   try {
@@ -146,8 +132,30 @@ router.get("/weekly-summary", async (req, res) => {
   }
 });
 
-router.get("/staff", (req, res) => {
-  res.json({ staff: staffMembers });
+router.get("/students", async (req, res) => {
+  try {
+    const students = await User.find({ role: 'student' }, { userId: 1, email: 1, name: 1 });
+    res.json(students);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/staff", async (req, res) => {
+  try {
+    const staff = await User.find({ role: 'staff' });
+    const formattedStaff = staff.map(s => ({
+      id: s.userId,
+      name: s.name,
+      role: 'Staff',
+      specialty: s.specialization || 'General',
+      workloadStatus: 'Free',
+      activeTasks: 0
+    }));
+    res.json({ staff: formattedStaff });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.post("/assign", async (req, res) => {
@@ -157,7 +165,9 @@ router.post("/assign", async (req, res) => {
       return res.status(400).json({ error: "Missing ids or staffId" });
     }
 
-    const staffName = staffNames[staffId];
+    const user = await User.findOne({ userId: staffId, role: 'staff' });
+    const staffName = user ? user.name : staffId;
+    
     await FacilityReport.updateMany(
       { _id: { $in: ids } },
       { 
