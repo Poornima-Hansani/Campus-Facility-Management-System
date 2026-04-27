@@ -58,6 +58,7 @@ export default function FacilityPage() {
   const [escalated, setEscalated] = useState<EscalatedGroup[]>([]);
   const [pending, setPending] = useState<ReportItem[]>([]);
   const [assigned, setAssigned] = useState<ReportItem[]>([]);
+  const [fixed, setFixed] = useState<ReportItem[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -78,7 +79,7 @@ export default function FacilityPage() {
 
   const handleViewNow = async () => {
     try {
-      const res = await apiGet<{reports: any[]}>("/api/reports");
+      const res = await apiGet<{ reports: any[] }>("/api/reports");
       setAllReports(res.reports || []);
       setShowAllIssuesModal(true);
     } catch (err) {
@@ -105,16 +106,61 @@ export default function FacilityPage() {
 
   const fetchData = async () => {
     try {
-      const data = await apiGet<{
-        stats: DashboardStats;
-        escalated: EscalatedGroup[];
-        pending: ReportItem[];
-        assigned: ReportItem[];
-      }>("/api/management/dashboard");
-      setStats(data.stats);
-      setEscalated(data.escalated);
-      setPending(data.pending);
-      setAssigned(data.assigned);
+      // Use the same reports collection that ReportIssue.tsx uses
+      const res = await fetch('http://localhost:3000/api/reports');
+      const data = await res.json();
+      const allReports = data.reports || [];
+      
+      // Calculate stats and categorize
+      const totalReports = allReports.length;
+      const fixedReports = allReports.filter((r: any) => r.status === 'Fixed').length;
+      const escalated = allReports.filter((r: any) => r.status === 'Pending' && new Date(r.createdAt) < new Date(Date.now() - 24 * 60 * 60 * 1000));
+      const pending = allReports.filter((r: any) => r.status === 'Pending');
+      const assigned = allReports.filter((r: any) => r.status === 'Assigned' || r.status === 'In Progress');
+      const fixed = allReports.filter((r: any) => r.status === 'Fixed');
+      
+      // Group escalated by location|issueType
+      const grouped: Record<string, any> = {};
+      escalated.forEach((r: any) => {
+        const key = `${r.location}|${r.issueType}`;
+        if (!grouped[key]) {
+          grouped[key] = { location: r.location, issueType: r.issueType, count: 0, ids: [], missingStaff: true };
+        }
+        grouped[key].count++;
+        grouped[key].ids.push(r.id);
+      });
+      
+      setStats({ totalReports, fixedReports, avgRating: 0, avgResponseTime: 0 });
+      setEscalated(Object.values(grouped));
+      setPending(pending.map((r: any) => ({
+        id: r.id,
+        studentId: r.studentId,
+        location: r.location,
+        issueType: r.issueType,
+        comment: r.comment || '',
+        status: r.status,
+        createdAt: r.createdAt
+      })));
+      setAssigned(assigned.map((r: any) => ({
+        id: r.id,
+        studentId: r.studentId,
+        location: r.location,
+        issueType: r.issueType,
+        comment: r.comment || '',
+        status: r.status,
+        createdAt: r.createdAt,
+        assignedTo: r.assignedTo || 'Staff'
+      })));
+      setFixed(fixed.map((r: any) => ({
+        id: r.id,
+        studentId: r.studentId,
+        location: r.location,
+        issueType: r.issueType,
+        comment: r.comment || '',
+        status: r.status,
+        createdAt: r.createdAt,
+        fixedAt: r.fixedAt
+      })));
     } catch (err) {
       console.error("Failed to load facility data");
     }
@@ -348,24 +394,32 @@ export default function FacilityPage() {
         <div className="bg-green-50/50 border border-green-100 rounded-2xl p-4 flex flex-col h-[500px]">
           <div className="flex items-center gap-3 mb-5">
             <div className="bg-green-100 p-2 rounded-full">
-              <ThumbsUp className="text-green-600" size={20} />
+              <CheckCircle className="text-green-600" size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900">Resolution Rate</h3>
-              <p className="text-xs text-green-600 font-medium">Success</p>
+              <h3 className="font-bold text-gray-900">Fixed Issues</h3>
+              <p className="text-xs text-green-600 font-medium">{fixed.length} completed</p>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-green-50 p-5 mt-2">
-            <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-50">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-gray-900">{stats.fixedReports}</p>
-                <p className="text-xs text-gray-400 mt-1 uppercase font-semibold">Fixed</p>
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+            {fixed.map((item) => (
+              <div key={item.id} className="bg-white rounded-xl shadow-sm border border-green-50 p-4">
+                <div className="flex justify-between items-start mb-1">
+                  <span className="text-green-700 font-semibold text-sm flex-1">{item.issueType}</span>
+                  <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-medium">Fixed</span>
+                </div>
+                <p className="text-xs text-gray-500">{item.location}</p>
+                <div className="flex justify-between items-center mt-2">
+                  <p className="text-[10px] text-gray-400">
+                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
+                  </p>
+                  {item.studentId && (
+                    <p className="text-[10px] text-gray-400">By: {item.studentId}</p>
+                  )}
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-gray-900">{stats.totalReports - stats.fixedReports}</p>
-                <p className="text-xs text-gray-400 mt-1 uppercase font-semibold">Remaining</p>
-              </div>
-            </div>
+            ))}
+            {fixed.length === 0 && <p className="text-gray-400 text-sm text-center mt-10">No fixed issues yet.</p>}
           </div>
         </div>
       </div>
