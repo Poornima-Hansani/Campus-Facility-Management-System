@@ -40,8 +40,21 @@ type Notification = {
   read: boolean;
 };
 
+type Staff = {
+  id: string;
+  name: string;
+  role: string;
+  specialty: string;
+  workloadStatus: string;
+};
+
 export default function FacilityPage() {
   const [stats, setStats] = useState<DashboardStats>({ totalReports: 0, fixedReports: 0, avgRating: 0, avgResponseTime: 0 });
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assigningIds, setAssigningIds] = useState<string[]>([]);
+  const [showAllIssuesModal, setShowAllIssuesModal] = useState(false);
+  const [allReports, setAllReports] = useState<any[]>([]);
   const [escalated, setEscalated] = useState<EscalatedGroup[]>([]);
   const [pending, setPending] = useState<ReportItem[]>([]);
   const [assigned, setAssigned] = useState<ReportItem[]>([]);
@@ -51,7 +64,44 @@ export default function FacilityPage() {
 
   useEffect(() => {
     fetchData();
+    fetchStaff();
   }, []);
+
+  const fetchStaff = async () => {
+    try {
+      const data = await apiGet<{ staff: Staff[] }>("/api/management/staff");
+      setStaffList(data.staff || []);
+    } catch (err) {
+      console.error("Failed to load staff list");
+    }
+  };
+
+  const handleViewNow = async () => {
+    try {
+      const res = await apiGet<{reports: any[]}>("/api/reports");
+      setAllReports(res.reports || []);
+      setShowAllIssuesModal(true);
+    } catch (err) {
+      console.error("Failed to fetch all reports");
+    }
+  };
+
+  const handleAssignClick = (ids: string[]) => {
+    setAssigningIds(ids);
+    setShowAssignModal(true);
+  };
+
+  const submitAssign = async (staffId: string) => {
+    try {
+      await apiPost("/api/management/assign", { ids: assigningIds, staffId });
+      setShowAssignModal(false);
+      fetchData();
+      alert("Staff assigned successfully! The staff member has been notified.");
+    } catch (err) {
+      console.error("Failed to assign staff");
+      alert("Failed to assign staff. Please try again.");
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -101,7 +151,10 @@ export default function FacilityPage() {
             <p className="text-white/80 text-sm">{escalated.length} escalations, {pending.length} pending</p>
           </div>
         </div>
-        <button className="bg-white text-orange-600 px-6 py-2 rounded-lg font-semibold hover:bg-orange-50 transition-colors shadow-sm">
+        <button 
+          onClick={handleViewNow}
+          className="bg-white text-orange-600 px-6 py-2 rounded-lg font-semibold hover:bg-orange-50 transition-colors shadow-sm"
+        >
           View Now
         </button>
       </div>
@@ -164,41 +217,41 @@ export default function FacilityPage() {
               <Activity className="text-red-500" size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900">Total Reports</h3>
+              <h3 className="font-bold text-gray-900">Total Issues</h3>
               <p className="text-xs text-red-600 font-medium">{stats.totalReports}</p>
             </div>
           </div>
         </div>
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
-            <div className="bg-blue-100 p-2 rounded-full">
-              <CheckCircle className="text-blue-500" size={20} />
+            <div className="bg-orange-100 p-2 rounded-full">
+              <AlertTriangle className="text-orange-500" size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900">Fixed Issues</h3>
-              <p className="text-xs text-blue-600 font-medium">{stats.fixedReports}</p>
+              <h3 className="font-bold text-gray-900">Pending Issues</h3>
+              <p className="text-xs text-orange-600 font-medium">{pending.length}</p>
             </div>
           </div>
         </div>
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
-            <div className="bg-yellow-100 p-2 rounded-full">
-              <Clock className="text-yellow-600" size={20} />
+            <div className="bg-blue-100 p-2 rounded-full">
+              <Clock className="text-blue-500" size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900">Avg Rating</h3>
-              <p className="text-xs text-yellow-600 font-medium">{stats.avgRating?.toFixed(1) || "0.0"}</p>
+              <h3 className="font-bold text-gray-900">Ongoing Issues</h3>
+              <p className="text-xs text-blue-600 font-medium">{assigned.length}</p>
             </div>
           </div>
         </div>
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
             <div className="bg-green-100 p-2 rounded-full">
-              <ThumbsUp className="text-green-600" size={20} />
+              <CheckCircle className="text-green-600" size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900">Response Time</h3>
-              <p className="text-xs text-green-600 font-medium">{stats.avgResponseTime || "< 1 day"}</p>
+              <h3 className="font-bold text-gray-900">Fixed Issues</h3>
+              <p className="text-xs text-green-600 font-medium">{stats.fixedReports}</p>
             </div>
           </div>
         </div>
@@ -224,7 +277,9 @@ export default function FacilityPage() {
                     {item.count}
                   </span>
                   <span className="text-red-500 font-medium text-sm flex-1 ml-2">{item.issueType}</span>
-                  <button className="bg-blue-500 hover:bg-blue-600 text-white text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1 transition-colors">
+                  <button 
+                    onClick={() => handleAssignClick(item.ids)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1 transition-colors">
                     <UserPlus size={12} /> Assign
                   </button>
                 </div>
@@ -250,7 +305,9 @@ export default function FacilityPage() {
               <div key={item.id} className="bg-white rounded-xl shadow-sm border border-yellow-50 p-4">
                 <div className="flex justify-between items-start mb-1">
                   <span className="text-gray-900 font-semibold text-sm flex-1">{item.issueType}</span>
-                  <button className="bg-blue-500 hover:bg-blue-600 text-white text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1 transition-colors">
+                  <button 
+                    onClick={() => handleAssignClick([item.id])}
+                    className="bg-blue-500 hover:bg-blue-600 text-white text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1 transition-colors">
                     <UserPlus size={12} /> Assign
                   </button>
                 </div>
@@ -312,6 +369,107 @@ export default function FacilityPage() {
           </div>
         </div>
       </div>
+
+      {showAssignModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Assign Staff</h3>
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {staffList.map((staff) => (
+                <div key={staff.id} className="flex justify-between items-center p-3 border border-gray-100 rounded-xl hover:bg-gray-50">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-sm text-gray-900">{staff.name}</p>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        staff.workloadStatus === 'Free' ? 'bg-green-100 text-green-700' :
+                        staff.workloadStatus === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {staff.workloadStatus}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{staff.role} • {staff.specialty}</p>
+                  </div>
+                  <button
+                    onClick={() => submitAssign(staff.id)}
+                    className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-3 py-1.5 rounded-lg transition-colors ml-4 whitespace-nowrap"
+                  >
+                    Assign
+                  </button>
+                </div>
+              ))}
+              {staffList.length === 0 && <p className="text-sm text-gray-500 text-center">No staff available.</p>}
+            </div>
+            <button
+              onClick={() => setShowAssignModal(false)}
+              className="mt-4 w-full text-center text-sm text-gray-500 hover:text-gray-700"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* All Issues Modal */}
+      {showAllIssuesModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="font-bold text-xl text-gray-900">All Facility Issues</h3>
+                <p className="text-gray-500 text-sm">Comprehensive list of all reported issues</p>
+              </div>
+              <button onClick={() => setShowAllIssuesModal(false)} className="text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 w-8 h-8 flex items-center justify-center rounded-full transition-colors">
+                ✕
+              </button>
+            </div>
+            
+            <div className="overflow-x-auto flex-1 border border-gray-100 rounded-xl bg-white shadow-inner relative">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 bg-gray-50 shadow-sm z-10">
+                  <tr className="text-gray-700 text-sm font-semibold uppercase tracking-wider">
+                    <th className="p-4 border-b">ID</th>
+                    <th className="p-4 border-b">Location</th>
+                    <th className="p-4 border-b">Issue Type</th>
+                    <th className="p-4 border-b">Details</th>
+                    <th className="p-4 border-b">Status</th>
+                    <th className="p-4 border-b">Reported By</th>
+                    <th className="p-4 border-b">Assigned To</th>
+                    <th className="p-4 border-b">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {allReports.map(report => (
+                    <tr key={report._id} className="hover:bg-gray-50 transition-colors">
+                      <td className="p-4 text-xs font-mono text-gray-500">{report._id.slice(-6)}</td>
+                      <td className="p-4 text-sm font-medium text-gray-900">{report.location}</td>
+                      <td className="p-4 text-sm text-gray-600">{report.issueType}</td>
+                      <td className="p-4 text-sm text-gray-500 max-w-xs truncate" title={report.comment}>{report.comment || "N/A"}</td>
+                      <td className="p-4">
+                        <span className={`px-2.5 py-1 text-xs rounded-full font-semibold ${
+                          report.status === 'Fixed' ? 'bg-green-100 text-green-700' :
+                          report.status === 'Pending' ? 'bg-orange-100 text-orange-700' :
+                          'bg-blue-100 text-blue-700'
+                        }`}>
+                          {report.status}
+                        </span>
+                      </td>
+                      <td className="p-4 text-sm text-gray-600">{report.studentId}</td>
+                      <td className="p-4 text-sm text-gray-600">{report.assignedTo || "-"}</td>
+                      <td className="p-4 text-sm text-gray-500">{new Date(report.createdAt).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                  {allReports.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-gray-500">No issues found in the system.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

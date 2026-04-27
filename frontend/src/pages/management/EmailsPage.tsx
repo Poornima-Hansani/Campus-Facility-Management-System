@@ -29,12 +29,28 @@ export default function EmailsPage() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const [students, setStudents] = useState<any[]>([]);
+
   useEffect(() => {
     apiGet<EmailItem[]>("/api/management/emails")
       .then(data => setEmails(data))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    apiGet<any[]>("/api/management/students")
+      .then(data => setStudents(data))
+      .catch(() => {});
   }, []);
+
+  const handleStudentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const studentId = e.target.value;
+    const student = students.find(s => s.userId === studentId);
+    setFormData({
+      ...formData,
+      studentId,
+      studentEmail: student ? student.email : ""
+    });
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -97,14 +113,17 @@ export default function EmailsPage() {
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Student ID *</label>
-            <input
-              type="text"
+            <select
               name="studentId"
               value={formData.studentId}
-              onChange={handleChange}
-              placeholder="e.g. IT23200001"
+              onChange={handleStudentChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-            />
+            >
+              <option value="">Select a student...</option>
+              {students.map(s => (
+                <option key={s.userId} value={s.userId}>{s.userId} - {s.name}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Student Email *</label>
@@ -113,8 +132,9 @@ export default function EmailsPage() {
               name="studentEmail"
               value={formData.studentEmail}
               onChange={handleChange}
+              readOnly
               placeholder="e.g. student@my.sliit.lk"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
             />
           </div>
           <div>

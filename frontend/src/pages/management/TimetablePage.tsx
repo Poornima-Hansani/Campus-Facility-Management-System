@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Layout from "../../components/Layout";
 import { apiGet, apiPost } from "../../lib/api";
-import { Calendar, Plus, X, Trash2, Upload, Download, FileDown } from "lucide-react";
+import { Calendar, Plus, X, Trash2, Download, FileDown, BellDot } from "lucide-react";
 
 type TimetableRow = {
   id: number;
@@ -19,13 +19,11 @@ type TimetableRow = {
   scheduleType: string;
 };
 
-type UploadedFile = {
-  id: number;
-  fileName: string;
-  originalName: string;
-  rowCount: number;
-  sessions: number[];
-  createdAt: string;
+type Lecturer = {
+  _id: string;
+  name: string;
+  moduleCode?: string;
+  moduleName?: string;
 };
 
 export default function TimetablePage() {
@@ -37,10 +35,8 @@ export default function TimetablePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [showUploadForm, setShowUploadForm] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [viewMode, setViewMode] = useState<"sessions" | "files">("sessions");
+  const [showSyncBadge, setShowSyncBadge] = useState(false);
+  const [lecturers, setLecturers] = useState<Lecturer[]>([]);
 
   const [formData, setFormData] = useState({
     moduleCode: "",
@@ -54,13 +50,13 @@ export default function TimetablePage() {
     endTime: "11:00",
     faculty: "Computing",
     year: "1",
-    specialization: "SE",
+    specialization: "Software Engineering",
     scheduleType: "Weekday",
   });
 
   useEffect(() => {
     fetchTimetable();
-    fetchUploadedFiles();
+    fetchLecturers();
   }, []);
 
   const fetchTimetable = () => {
@@ -70,9 +66,9 @@ export default function TimetablePage() {
       .finally(() => setLoading(false));
   };
 
-  const fetchUploadedFiles = () => {
-    apiGet<UploadedFile[]>("/api/timetable/files")
-      .then(data => setUploadedFiles(data))
+  const fetchLecturers = () => {
+    apiGet<Lecturer[]>("/api/lecturers")
+      .then(data => setLecturers(data))
       .catch(() => {});
   };
 
@@ -82,11 +78,26 @@ export default function TimetablePage() {
     setSuccess("");
   };
 
+  const handleLecturerSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedLecturer = lecturers.find(l => l._id === e.target.value);
+    if (selectedLecturer) {
+      setFormData(prev => ({
+        ...prev,
+        lecturerName: selectedLecturer.name,
+        moduleCode: selectedLecturer.moduleCode || prev.moduleCode,
+        moduleName: selectedLecturer.moduleName || prev.moduleName,
+      }));
+    } else {
+      // If "Manual Entry" is selected, just keep the values as they are, but clear lecturerName if desired.
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
     setSubmitting(true);
+    setShowSyncBadge(false);
 
     try {
       const payload = {
@@ -107,6 +118,8 @@ export default function TimetablePage() {
 
       await apiPost("/api/timetable", payload);
       setSuccess("Timetable added successfully!");
+      setShowSyncBadge(true); // Show the badge when a new session is added!
+      
       setFormData({
         moduleCode: "",
         moduleName: "",
@@ -119,11 +132,14 @@ export default function TimetablePage() {
         endTime: "11:00",
         faculty: "Computing",
         year: "1",
-        specialization: "SE",
+        specialization: "Software Engineering",
         scheduleType: "Weekday",
       });
       fetchTimetable();
       setTimeout(() => setShowAddForm(false), 1500);
+      
+      // Hide the badge after 5 seconds
+      setTimeout(() => setShowSyncBadge(false), 5000);
     } catch (err: any) {
       setError(err.message || "Failed to add timetable");
     } finally {
@@ -141,110 +157,9 @@ export default function TimetablePage() {
     }
   };
 
-  const handleFileUpload = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const fileInput = form.elements.namedItem('file') as HTMLInputElement;
-    const file = fileInput?.files?.[0];
-    if (!file) {
-      setError("Please select a CSV file");
-      return;
-    }
-
-    setUploading(true);
-    setError("");
-
-    try {
-      const text = await file.text();
-      const lines = text.trim().split('\n');
-      const results: { success: number; failed: number; errors: string[]; sessionIds: number[] } = { success: 0, failed: 0, errors: [], sessionIds: [] };
-
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-
-        const cols = line.split(',').map(c => c.trim());
-        if (cols.length < 8) {
-          results.failed++;
-          continue;
-        }
-
-        try {
-          const payload = {
-            moduleCode: cols[0],
-            moduleName: cols[1],
-            sessionType: cols[2] || "Lecture",
-            venueName: cols[3],
-            lecturerTitle: cols[4] || "Mr.",
-            lecturerName: cols[5],
-            day: cols[6],
-            startTime: cols[7],
-            endTime: cols[8] || cols[7],
-            faculty: cols[9] || "Computing",
-            year: parseInt(cols[10]) || 1,
-            specialization: cols[11] || "SE",
-            scheduleType: cols[12] || "Weekday",
-          };
-
-          console.log("Sending row", i, "payload:", payload);
-          const created = await apiPost<{id: number}>("/api/timetable", payload);
-          console.log("Row", i, "success, id:", created.id);
-          results.success++;
-          results.sessionIds.push(created.id);
-        } catch (err: any) {
-          console.log("Row", i, "error:", err.message);
-          results.failed++;
-          results.errors.push(`Row ${i}: ${err.message}`);
-        }
-      }
-
-      if (results.success > 0) {
-        const fileName = `timetable_${Date.now()}.csv`;
-        await apiPost("/api/timetable/files", {
-          fileName,
-          originalName: file.name,
-          rowCount: results.success,
-          sessionIds: results.sessionIds,
-        });
-        
-        // Notify lecturers about new timetable
-        try {
-          await apiPost("/api/timetable/notifications", {
-            type: "Created",
-            moduleCode: "ALL",
-            moduleName: "New Timetable Uploaded",
-            lecturer: "All Lecturers",
-            day: "-",
-            message: `New timetable with ${results.success} sessions has been uploaded. Check your dashboard for your classes.`,
-            targetAudience: "Lecturer",
-          });
-        } catch (e) {
-          console.log("Notification error:", e);
-        }
-        
-        setSuccess(`Successfully imported ${results.success} sessions!`);
-        fetchTimetable();
-        fetchUploadedFiles();
-        setTimeout(() => setShowUploadForm(false), 2000);
-      } else {
-        setError("All imports failed");
-      }
-    } catch (err: any) {
-      setError(err.message || "Failed to process file");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const deleteUploadedFile = async (id: number) => {
-    if (!confirm("Delete this uploaded file and all its sessions?")) return;
-    try {
-      await apiPost(`/api/timetable/files/${id}`, {}, "DELETE");
-      fetchTimetable();
-      fetchUploadedFiles();
-    } catch (err) {
-      alert("Failed to delete file");
-    }
+  const handleDownloadPDF = () => {
+    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    window.open(`${API_BASE}/api/timetable/pdf`, '_blank');
   };
 
   const filteredTimetable = timetable.filter(item => {
@@ -267,29 +182,27 @@ export default function TimetablePage() {
             </div>
             Timetable & Lectures
           </h2>
-          <p className="text-gray-500 text-sm mt-1">Manage module timetable and lecture schedules</p>
+          <p className="text-gray-500 text-sm mt-1">Manage module timetable and lecture schedules. The single source of truth.</p>
         </div>
         <div className="flex items-center gap-3">
+          {showSyncBadge && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-lg animate-pulse shadow-sm">
+              <BellDot size={16} />
+              <span className="text-sm font-bold">New timetable updated & synced</span>
+            </div>
+          )}
+
           <button
-            onClick={() => {
-              const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-              window.open(`${API_BASE}/api/timetable/export`, '_blank');
-            }}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            onClick={handleDownloadPDF}
+            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors shadow-sm font-medium"
           >
-            <Download size={20} />
-            Export CSV
+            <FileDown size={20} />
+            Download Timetable PDF
           </button>
-          <button
-            onClick={() => setShowUploadForm(true)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Upload size={20} />
-            Import CSV
-          </button>
+          
           <button
             onClick={() => setShowAddForm(true)}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm font-medium"
           >
             <Plus size={20} />
             Add Session
@@ -309,149 +222,126 @@ export default function TimetablePage() {
         </div>
       )}
 
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setViewMode("files")}
-          className={`px-4 py-2 rounded-lg ${viewMode === "files" ? "bg-green-600 text-white" : "bg-gray-200 text-gray-700"}`}
+      <div className="flex gap-4 mb-6">
+        <input
+          type="text"
+          placeholder="Filter by module code..."
+          value={filterModuleCode}
+          onChange={(e) => setFilterModuleCode(e.target.value.toUpperCase())}
+          className="px-4 py-2 border border-gray-300 rounded-lg"
+        />
+        <select
+          value={filterDay}
+          onChange={(e) => setFilterDay(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg"
         >
-          Uploaded Files
-        </button>
-        <button
-          onClick={() => setViewMode("sessions")}
-          className={`px-4 py-2 rounded-lg ${viewMode === "sessions" ? "bg-green-600 text-white" : "bg-gray-200 text-gray-700"}`}
-        >
-          All Sessions
-        </button>
+          <option value="">All Days</option>
+          <option value="Monday">Monday</option>
+          <option value="Tuesday">Tuesday</option>
+          <option value="Wednesday">Wednesday</option>
+          <option value="Thursday">Thursday</option>
+          <option value="Friday">Friday</option>
+        </select>
       </div>
 
-      {viewMode === "files" ? (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="font-bold text-lg mb-4">Uploaded Files</h3>
-          {uploadedFiles.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">No files uploaded yet</div>
-          ) : (
-            <div className="space-y-3">
-              {uploadedFiles.map(file => (
-                <div key={file.id} className="flex justify-between items-center bg-gray-50 p-4 rounded-lg">
-                  <div>
-                    <div className="font-medium">{file.originalName}</div>
-                    <div className="text-sm text-gray-500">
-                      {file.rowCount} sessions | {new Date(file.createdAt).toLocaleString()}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => deleteUploadedFile(file.id)}
-                    className="text-red-500 hover:text-red-700 flex items-center gap-2"
-                  >
-                    <Trash2 size={18} />
-                    Delete
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+      {loading ? (
+        <div className="text-center py-8 text-gray-500">Loading...</div>
+      ) : filteredTimetable.length === 0 ? (
+        <div className="text-center py-16 text-gray-500 bg-white rounded-xl shadow-sm border border-gray-100">
+          <Calendar size={48} className="mx-auto mb-4 text-gray-300" />
+          <h3 className="text-lg font-bold text-gray-700">No timetable records found</h3>
+          <p className="mt-1">Add a session to populate the timetable.</p>
         </div>
       ) : (
-        <>
-          <div className="flex gap-4 mb-6">
-            <input
-              type="text"
-              placeholder="Filter by module code..."
-              value={filterModuleCode}
-              onChange={(e) => setFilterModuleCode(e.target.value.toUpperCase())}
-              className="px-4 py-2 border border-gray-300 rounded-lg"
-            />
-            <select
-              value={filterDay}
-              onChange={(e) => setFilterDay(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg"
-            >
-              <option value="">All Days</option>
-              <option value="Monday">Monday</option>
-              <option value="Tuesday">Tuesday</option>
-              <option value="Wednesday">Wednesday</option>
-              <option value="Thursday">Thursday</option>
-              <option value="Friday">Friday</option>
-            </select>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-8">Loading...</div>
-          ) : filteredTimetable.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">No timetable records found</div>
-          ) : (
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Module</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Day</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Time</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Venue</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Lecturer</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Type</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Year</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredTimetable.map(row => (
-                    <tr key={row.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <div className="font-medium">{row.moduleCode}</div>
-                        <div className="text-xs text-gray-500">{row.moduleName}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm">{row.day}</td>
-                      <td className="px-4 py-3 text-sm">{row.startTime} - {row.endTime}</td>
-                      <td className="px-4 py-3 text-sm">{row.venueName}</td>
-                      <td className="px-4 py-3 text-sm">{row.lecturer}</td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">{row.sessionType}</span>
-                      </td>
-                      <td className="px-4 py-3 text-sm">Year {row.year}</td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleDelete(row.id)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-b border-gray-100">Module</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-b border-gray-100">Day</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-b border-gray-100">Time</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-b border-gray-100">Venue</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-b border-gray-100">Lecturer</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-b border-gray-100">Type</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-b border-gray-100">Year</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-b border-gray-100">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredTimetable.map(row => (
+                <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="font-bold text-gray-900">{row.moduleCode}</div>
+                    <div className="text-xs text-gray-500">{row.moduleName}</div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700 font-medium">{row.day}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{row.startTime} - {row.endTime}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600 flex items-center gap-1">
+                    {row.venueName}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{row.lecturer}</td>
+                  <td className="px-4 py-3 text-sm">
+                    <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-bold uppercase tracking-wider border border-blue-100">
+                      {row.sessionType}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">Year {row.year}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => handleDelete(row.id)}
+                      className="text-red-500 hover:text-red-700 p-1 rounded-md hover:bg-red-50 transition-colors"
+                      title="Delete Session"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {showAddForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold">Add Timetable Session</h3>
-              <button onClick={() => setShowAddForm(false)} className="text-gray-500 hover:text-gray-700">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+              <h3 className="text-xl font-bold text-gray-900">Add Timetable Session</h3>
+              <button onClick={() => setShowAddForm(false)} className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 p-1.5 rounded-full transition-colors">
                 <X size={24} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="bg-green-50 border border-green-100 p-4 rounded-xl mb-6">
+                <label className="block text-sm font-bold text-green-900 mb-2">Select Registered Lecturer (Auto-fill)</label>
+                <select onChange={handleLecturerSelect} defaultValue="" className="w-full px-4 py-2.5 bg-white border border-green-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-gray-700">
+                  <option value="" disabled>-- Select Lecturer --</option>
+                  {lecturers.map(l => (
+                    <option key={l._id} value={l._id}>
+                      {l.name} {l.moduleCode ? `- ${l.moduleCode} (${l.moduleName})` : ''}
+                    </option>
+                  ))}
+                  <option value="manual">-- Manual Entry --</option>
+                </select>
+                <p className="text-xs text-green-700 mt-2">Selecting a lecturer will automatically fill the Module Code, Module Name, and Lecturer Name below.</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Module Code *</label>
-                  <input type="text" name="moduleCode" value={formData.moduleCode} onChange={handleInputChange} placeholder="SE101" required className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Module Code <span className="text-red-500">*</span></label>
+                  <input type="text" name="moduleCode" value={formData.moduleCode} onChange={handleInputChange} placeholder="e.g. SE101" required className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Module Name *</label>
-                  <input type="text" name="moduleName" value={formData.moduleName} onChange={handleInputChange} placeholder="Software Engineering" required className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Module Name <span className="text-red-500">*</span></label>
+                  <input type="text" name="moduleName" value={formData.moduleName} onChange={handleInputChange} placeholder="e.g. Software Engineering" required className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Session Type *</label>
-                  <select name="sessionType" value={formData.sessionType} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Session Type <span className="text-red-500">*</span></label>
+                  <select name="sessionType" value={formData.sessionType} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none">
                     <option value="Lecture">Lecture</option>
                     <option value="Practical">Practical</option>
                     <option value="Lab">Lab</option>
@@ -462,71 +352,74 @@ export default function TimetablePage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Venue *</label>
-                  <input type="text" name="venueName" value={formData.venueName} onChange={handleInputChange} placeholder="Lab 2" required className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Venue <span className="text-red-500">*</span></label>
+                  <input type="text" name="venueName" value={formData.venueName} onChange={handleInputChange} placeholder="e.g. Lab 2" required className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Lecturer Title</label>
-                  <select name="lecturerTitle" value={formData.lecturerTitle} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+              <div className="grid grid-cols-3 gap-5">
+                <div className="col-span-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
+                  <select name="lecturerTitle" value={formData.lecturerTitle} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none">
                     <option value="Mr.">Mr.</option>
                     <option value="Miss.">Miss.</option>
                     <option value="Mrs.">Mrs.</option>
                     <option value="Ms.">Ms.</option>
                     <option value="Dr.">Dr.</option>
+                    <option value="Prof.">Prof.</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Lecturer Name *</label>
-                  <input type="text" name="lecturerName" value={formData.lecturerName} onChange={handleInputChange} placeholder="John Doe" required className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Lecturer Name <span className="text-red-500">*</span></label>
+                  <input type="text" name="lecturerName" value={formData.lecturerName} onChange={handleInputChange} placeholder="e.g. John Doe" required className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Day *</label>
-                  <select name="day" value={formData.day} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Day <span className="text-red-500">*</span></label>
+                  <select name="day" value={formData.day} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none">
                     <option value="Monday">Monday</option>
                     <option value="Tuesday">Tuesday</option>
                     <option value="Wednesday">Wednesday</option>
                     <option value="Thursday">Thursday</option>
                     <option value="Friday">Friday</option>
+                    <option value="Saturday">Saturday</option>
+                    <option value="Sunday">Sunday</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Schedule Type</label>
-                  <select name="scheduleType" value={formData.scheduleType} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Schedule Type</label>
+                  <select name="scheduleType" value={formData.scheduleType} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none">
                     <option value="Weekday">Weekday</option>
                     <option value="Weekend">Weekend</option>
                   </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time *</label>
-                  <input type="time" name="startTime" value={formData.startTime} onChange={handleInputChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Start Time <span className="text-red-500">*</span></label>
+                  <input type="time" name="startTime" value={formData.startTime} onChange={handleInputChange} required className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time *</label>
-                  <input type="time" name="endTime" value={formData.endTime} onChange={handleInputChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">End Time <span className="text-red-500">*</span></label>
+                  <input type="time" name="endTime" value={formData.endTime} onChange={handleInputChange} required className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Faculty</label>
-                  <select name="faculty" value={formData.faculty} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Faculty</label>
+                  <select name="faculty" value={formData.faculty} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none">
                     <option value="Computing">Computing</option>
                     <option value="Engineering">Engineering</option>
                     <option value="Business">Business</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
-                  <select name="year" value={formData.year} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Year</label>
+                  <select name="year" value={formData.year} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none">
                     <option value="1">Year 1</option>
                     <option value="2">Year 2</option>
                     <option value="3">Year 3</option>
@@ -534,20 +427,23 @@ export default function TimetablePage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Specialization</label>
-                  <select name="specialization" value={formData.specialization} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <option value="SE">SE</option>
-                    <option value="IT">IT</option>
-                    <option value="DS">DS</option>
-                    <option value="CS">CS</option>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Specialization</label>
+                  <select name="specialization" value={formData.specialization} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none">
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Information Systems">Information Systems</option>
+                    <option value="Software Engineering">Software Engineering</option>
+                    <option value="Data Science">Data Science</option>
+                    <option value="Cyber Security">Cyber Security</option>
+                    <option value="Artificial Intelligence">Artificial Intelligence</option>
+                    <option value="Computer Engineering">Computer Engineering</option>
                   </select>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={() => setShowAddForm(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
-                  {submitting ? "Adding..." : "Add Session"}
+              <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
+                <button type="button" onClick={() => setShowAddForm(false)} className="px-6 py-3 font-bold text-gray-600 rounded-xl hover:bg-gray-100 transition-colors">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-8 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-md active:scale-95 transition-all disabled:opacity-50">
+                  {submitting ? "Adding..." : "Add Session to Database"}
                 </button>
               </div>
             </form>
@@ -555,54 +451,6 @@ export default function TimetablePage() {
         </div>
       )}
 
-      {showUploadForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold">Import Timetable from CSV</h3>
-              <button onClick={() => setShowUploadForm(false)} className="text-gray-500 hover:text-gray-700">
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="bg-blue-50 p-4 rounded-lg mb-4">
-              <p className="text-sm text-blue-700 mb-2">CSV Format: moduleCode,moduleName,sessionType,venue,lecturerTitle,lecturerName,day,startTime,endTime,faculty,year,specialization,scheduleType</p>
-              <button
-                type="button"
-                onClick={() => {
-                  const template = "moduleCode,moduleName,sessionType,venue,lecturerTitle,lecturerName,day,startTime,endTime,faculty,year,specialization,scheduleType\nSE101,Software Engineering,Lecture,Lab 2,Mr.,John Doe,Monday,09:00,11:00,Computing,1,SE,Weekday";
-                  const blob = new Blob([template], { type: "text/csv" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = "timetable_template.csv";
-                  a.click();
-                }}
-                className="mt-2 flex items-center gap-1 text-sm text-blue-700 hover:text-blue-900 underline"
-              >
-                <FileDown size={14} /> Download Template
-              </button>
-            </div>
-
-            <form onSubmit={handleFileUpload} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Select CSV File</label>
-                <input type="file" name="file" accept=".csv" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
-              </div>
-
-              {error && <div className="text-red-600 text-sm">{error}</div>}
-              {success && <div className="text-green-600 text-sm">{success}</div>}
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setShowUploadForm(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-                <button type="submit" disabled={uploading} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                  {uploading ? "Importing..." : "Import"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 }
