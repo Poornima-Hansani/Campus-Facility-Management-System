@@ -3,6 +3,7 @@ const router = express.Router();
 const TimetableSession = require("../models/TimetableSession");
 const TimetableNotification = require("../models/TimetableNotification");
 const UploadedFile = require("../models/UploadedFile");
+const StudentTimeTable = require("../models/StudentTimeTable");
 const { nextNumericId } = require("../lib/nextNumericId");
 
 const dayOrder = [
@@ -25,6 +26,159 @@ const SESSION_TYPES = new Set([
   "Discussion",
   "Assignment Help",
 ]);
+
+// Convert time string to number (e.g., "09:00" -> 9.0, "09:30" -> 9.5)
+function timeToNumber(t) {
+  const [h, m] = t.split(':').map(Number);
+  return h + (m === 30 ? 0.5 : 0);
+}
+
+// Sync timetable session to student timetables
+async function syncSessionToStudentTimetables(session) {
+  try {
+    const { year, specialization, scheduleType, day, startTime, endTime, moduleCode, moduleName, lecturer, sessionType, venueName } = session;
+    
+    // Convert year number to Y1, Y2 format
+    const dbYear = `Y${year}`;
+    // Determine semester - default to S1
+    const dbSemester = 'S1';
+    // Convert schedule type
+    const dbBatch = scheduleType === 'Weekend' ? 'WE' : 'WD';
+    
+    // Find all student timetables matching this group
+    const matchingTimetables = await StudentTimeTable.find({
+      year: dbYear,
+      semester: dbSemester,
+      batch: dbBatch,
+      specialization: { $regex: new RegExp(specialization || '', 'i') }
+    });
+    
+    const startNum = timeToNumber(startTime);
+    const endNum = timeToNumber(endTime);
+    
+    for (const timetable of matchingTimetables) {
+      // Add session to the timetable
+      const newSession = {
+        sessionId: `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        day: day,
+        startTime: startTime,
+        endTime: endTime,
+        startNum: startNum,
+        endNum: endNum,
+        type: sessionType || 'Lecture',
+        subject: moduleCode,
+        lecturer: lecturer,
+        location: venueName
+      };
+      
+      // Add to sessions array
+      const existingSessions = timetable.sessions || [];
+      existingSessions.push(newSession);
+      
+      // Recalculate free time for that day
+      const daySessions = existingSessions.filter(s => s.day === day).sort((a, b) => a.startNum - b.startNum);
+      
+      // Calculate working hours based on batch
+      const workingHours = dbBatch === 'WE' 
+        ? { start: 8.0, end: 20.0 }
+        : { start: 8.0, end: 17.5 };
+      
+      // Calculate free slots
+      const busy = daySessions.map(s => ({ start: s.startNum, end: s.endNum }));
+      const free = [];
+      let currentTime = workingHours.start;
+      
+      for (const s of daySessions) {
+        if (currentTime < s.startNum) {
+          free.push({ start: currentTime, end: s.startNum });
+        }
+        currentTime = Math.max(currentTime, s.endNum);
+      }
+      if (currentTime < workingHours.end) {
+        free.push({ start: currentTime, end: workingHours.end });
+      }
+      
+      // Update freeTime for this day
+      const updatedFreeTime = { ...timetable.freeTime };
+      updatedFreeTime[day] = { busy, free };
+      
+      await StudentTimeTable.findByIdAndUpdate(timetable._id, {
+        sessions: existingSessions,
+        freeTime: updatedFreeTime
+      });
+      
+      console.log(`Synced session to timetable ${timetable._id} (${dbYear}/${dbSemester}/${dbBatch}/${timetable.group})`);
+    }
+    
+    return { success: true, synced: matchingTimetables.length };
+  } catch (error) {
+    console.error('Error syncing session to student timetables:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Remove session from student timetables when deleted from management
+async function removeSessionFromStudentTimetables(session) {
+  try {
+    const { year, specialization, scheduleType, day, startTime, endTime } = session;
+    
+    const dbYear = `Y${year}`;
+    const dbSemester = 'S1';
+    const dbBatch = scheduleType === 'Weekend' ? 'WE' : 'WD';
+    
+    const startNum = timeToNumber(startTime);
+    const endNum = timeToNumber(endTime);
+    
+    // Find all matching student timetables
+    const matchingTimetables = await StudentTimeTable.find({
+      year: dbYear,
+      semester: dbSemester,
+      batch: dbBatch,
+      specialization: { $regex: new RegExp(specialization || '', 'i') }
+    });
+    
+    for (const timetable of matchingTimetables) {
+      // Filter out the deleted session
+      const remainingSessions = (timetable.sessions || []).filter(s => 
+        !(s.day === day && s.startNum === startNum && s.endNum === endNum)
+      );
+      
+      // Recalculate free time for that day
+      const workingHours = dbBatch === 'WE' 
+        ? { start: 8.0, end: 20.0 }
+        : { start: 8.0, end: 17.5 };
+      
+      const daySessions = remainingSessions.filter(s => s.day === day).sort((a, b) => a.startNum - b.startNum);
+      const busy = daySessions.map(s => ({ start: s.startNum, end: s.endNum }));
+      const free = [];
+      let currentTime = workingHours.start;
+      
+      for (const s of daySessions) {
+        if (currentTime < s.startNum) {
+          free.push({ start: currentTime, end: s.startNum });
+        }
+        currentTime = Math.max(currentTime, s.endNum);
+      }
+      if (currentTime < workingHours.end) {
+        free.push({ start: currentTime, end: workingHours.end });
+      }
+      
+      // Update freeTime for this day
+      const updatedFreeTime = { ...timetable.freeTime };
+      updatedFreeTime[day] = { busy, free };
+      
+      await StudentTimeTable.findByIdAndUpdate(timetable._id, {
+        sessions: remainingSessions,
+        freeTime: updatedFreeTime
+      });
+    }
+    
+    return { success: true, removed: matchingTimetables.length };
+  } catch (error) {
+    console.error('Error removing session from student timetables:', error);
+    return { success: false, error: error.message };
+  }
+}
 
 function resolveSessionType(doc) {
   const st = doc.sessionType;
@@ -290,6 +444,26 @@ router.post("/", async (req, res) => {
     } catch (notifErr) {
       console.log("Failed to auto-create notification:", notifErr);
     }
+    
+    // Auto-sync to student timetables for booking system
+    try {
+      const sessionData = {
+        year: cleanYear,
+        specialization: cleanSpec,
+        scheduleType: cleanScheduleType,
+        day: day || "Monday",
+        startTime: startTime || "09:00",
+        endTime: endTime || "10:00",
+        moduleCode: cleanModuleCode,
+        moduleName: cleanModuleName,
+        lecturer: cleanLecturer,
+        sessionType: cleanSessionType,
+        venueName: cleanVenueName
+      };
+      await syncSessionToStudentTimetables(sessionData);
+    } catch (syncErr) {
+      console.log("Failed to sync to student timetables:", syncErr);
+    }
 
     res.status(201).json(serialize(doc.toObject()));
   } catch (e) {
@@ -305,7 +479,62 @@ router.delete("/:id", async (req, res) => {
     if (!deleted) {
       return res.status(404).json({ message: "Session not found" });
     }
+    
+    // Sync deletion to student timetables
+    try {
+      const sessionData = {
+        year: deleted.year,
+        specialization: deleted.specialization,
+        scheduleType: deleted.scheduleType,
+        day: deleted.day,
+        startTime: deleted.startTime,
+        endTime: deleted.endTime,
+        moduleCode: deleted.moduleCode,
+        moduleName: deleted.moduleName,
+        lecturer: deleted.lecturer,
+        sessionType: deleted.sessionType,
+        venueName: deleted.venueName
+      };
+      // For deletion, we remove the session
+      await removeSessionFromStudentTimetables(sessionData);
+    } catch (syncErr) {
+      console.log("Failed to sync deletion to student timetables:", syncErr);
+    }
+    
     res.json({ message: "Deleted", id: numericId });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Bulk sync all existing sessions to student timetables
+router.post("/sync-to-booking", async (req, res) => {
+  try {
+    const allSessions = await TimetableSession.find({}).lean();
+    let synced = 0;
+    
+    for (const session of allSessions) {
+      const result = await syncSessionToStudentTimetables({
+        year: session.year,
+        specialization: session.specialization,
+        scheduleType: session.scheduleType,
+        day: session.day,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        moduleCode: session.moduleCode,
+        moduleName: session.moduleName,
+        lecturer: session.lecturer,
+        sessionType: session.sessionType,
+        venueName: session.venueName
+      });
+      if (result.success) synced++;
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Synced ${synced} sessions to student timetables`,
+      totalSessions: allSessions.length 
+    });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

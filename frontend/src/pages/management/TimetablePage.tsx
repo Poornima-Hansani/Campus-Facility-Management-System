@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Layout from "../../components/Layout";
 import { apiGet, apiPost } from "../../lib/api";
-import { Calendar, Plus, X, Trash2, Download, FileDown, BellDot } from "lucide-react";
+import { Calendar, Plus, X, Trash2, Download, FileDown, BellDot, RefreshCw } from "lucide-react";
 
 type TimetableRow = {
   id: number;
@@ -36,6 +36,8 @@ export default function TimetablePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showSyncBadge, setShowSyncBadge] = useState(false);
+  const [syncingToBooking, setSyncingToBooking] = useState(false);
+  const [syncResult, setSyncResult] = useState("");
   const [lecturers, setLecturers] = useState<Lecturer[]>([]);
 
   const [formData, setFormData] = useState({
@@ -162,6 +164,27 @@ export default function TimetablePage() {
     window.open(`${API_BASE}/api/timetable/pdf`, '_blank');
   };
 
+  const handleSyncToBooking = async () => {
+    if (!confirm("This will import all timetable sessions to the booking system. Continue?")) return;
+    setSyncingToBooking(true);
+    setSyncResult("");
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const response = await fetch(`${API_BASE}/api/student-timetables/import-from-admin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      setSyncResult(data.message || `Synced: ${data.sessionsAdded} sessions`);
+      setShowSyncBadge(true);
+      setTimeout(() => setShowSyncBadge(false), 5000);
+    } catch (err: any) {
+      setSyncResult(err.message || "Sync failed");
+    } finally {
+      setSyncingToBooking(false);
+    }
+  };
+
   const filteredTimetable = timetable.filter(item => {
     if (filterModuleCode && !item.moduleCode.toLowerCase().includes(filterModuleCode.toLowerCase())) {
       return false;
@@ -186,9 +209,9 @@ export default function TimetablePage() {
         </div>
         <div className="flex items-center gap-3">
           {showSyncBadge && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-lg animate-pulse shadow-sm">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg animate-pulse shadow-sm">
               <BellDot size={16} />
-              <span className="text-sm font-bold">New timetable updated & synced</span>
+              <span className="text-sm font-bold">{syncResult || "Timetable synced to booking system"}</span>
             </div>
           )}
 
@@ -198,6 +221,15 @@ export default function TimetablePage() {
           >
             <FileDown size={20} />
             Download Timetable PDF
+          </button>
+          
+          <button
+            onClick={handleSyncToBooking}
+            disabled={syncingToBooking}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium disabled:opacity-50"
+          >
+            <RefreshCw size={20} className={syncingToBooking ? "animate-spin" : ""} />
+            {syncingToBooking ? "Syncing..." : "Sync to Booking"}
           </button>
           
           <button

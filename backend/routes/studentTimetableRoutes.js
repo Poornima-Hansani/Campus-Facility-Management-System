@@ -904,7 +904,12 @@ router.get('/free-time/:userId', async (req, res) => {
     
     // 1. Find the user by userId from Users collection
     const User = require('../models/User');
-    const user = await User.findById(userId);
+    let user = await User.findById(userId);
+    
+    // If not found by _id, try by userId field
+    if (!user) {
+      user = await User.findOne({ userId: userId });
+    }
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -959,6 +964,174 @@ router.get('/free-time/:userId', async (req, res) => {
     
   } catch (error) {
     res.status(500).json({ message: 'Error fetching free time', error: error.message });
+  }
+});
+
+// Import timetable sessions from admin (TimetableSession) to student timetables
+router.post('/import-from-admin', async (req, res) => {
+  try {
+    const TimetableSession = require('../models/TimetableSession');
+    
+    // Get all admin timetable sessions
+    const adminSessions = await TimetableSession.find({}).lean();
+    
+    if (adminSessions.length === 0) {
+      return res.json({ success: true, message: 'No admin sessions to import', imported: 0 });
+    }
+    
+    // Group sessions by year/semester/batch/specialization
+    const groupedSessions = {};
+    
+    adminSessions.forEach(session => {
+      const key = `${session.year}|${session.scheduleType}|${session.specialization}`;
+      if (!groupedSessions[key]) {
+        groupedSessions[key] = {
+          year: `Y${session.year}`,
+          semester: 'S1',
+          batch: session.scheduleType === 'Weekend' ? 'WE' : 'WD',
+          specialization: session.specialization || 'Software Engineering',
+          sessions: []
+        };
+      }
+      
+      groupedSessions[key].sessions.push({
+        sessionId: `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        day: session.day,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        startNum: timeToNumber(session.startTime),
+        endNum: timeToNumber(session.endTime),
+        type: session.sessionType || 'Lecture',
+        subject: session.moduleCode,
+        lecturer: session.lecturer,
+        location: session.venueName
+      });
+    });
+    
+    let imported = 0;
+    let created = 0;
+    
+    // Process each group
+    for (const [key, groupData] of Object.entries(groupedSessions)) {
+      const { year, semester, batch, specialization, sessions } = groupData;
+      
+      // For each group, we need to determine groups - default to 'A' for all
+      // In real scenario, you might want to split by module code or other criteria
+      
+      const group = 'A'; // Default group
+      
+      // Check if timetable exists
+      let existingTimetable = await StudentTimeTable.findOne({ year, semester, batch, specialization, group });
+      
+      if (existingTimetable) {
+        // Merge sessions (avoid duplicates)
+        const existingSessionKeys = new Set(
+          existingTimetable.sessions.map(s => `${s.day}|${s.startNum}|${s.endNum}`)
+        );
+        
+        const newSessions = sessions.filter(s => {
+          const key = `${s.day}|${s.startNum}|${s.endNum}`;
+          return !existingSessionKeys.has(key);
+        });
+        
+        if (newSessions.length > 0) {
+          existingTimetable.sessions = [...existingTimetable.sessions, ...newSessions];
+          
+          // Recalculate free time for all days
+          const days = batch === 'WE' 
+            ? ['Saturday', 'Sunday']
+            : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+          
+          const workingHours = batch === 'WE' 
+            ? { start: 8.0, end: 20.0 }
+            : { start: 8.0, end: 17.5 };
+          
+          const freeTime = {};
+          
+          days.forEach(day => {
+            const daySessions = existingTimetable.sessions
+              .filter(s => s.day === day)
+              .sort((a, b) => a.startNum - b.startNum);
+            
+            const busy = daySessions.map(s => ({ start: s.startNum, end: s.endNum }));
+            const free = [];
+            let currentTime = workingHours.start;
+            
+            for (const s of daySessions) {
+              if (currentTime < s.startNum) {
+                free.push({ start: currentTime, end: s.startNum });
+              }
+              currentTime = Math.max(currentTime, s.endNum);
+            }
+            if (currentTime < workingHours.end) {
+              free.push({ start: currentTime, end: workingHours.end });
+            }
+            
+            freeTime[day] = { busy, free };
+          });
+          
+          existingTimetable.freeTime = freeTime;
+          await existingTimetable.save();
+          imported += newSessions.length;
+        }
+      } else {
+        // Create new timetable
+        const workingHours = batch === 'WE' 
+          ? { start: 8.0, end: 20.0 }
+          : { start: 8.0, end: 17.5 };
+        
+        const days = batch === 'WE' 
+          ? ['Saturday', 'Sunday']
+          : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        
+        const freeTime = {};
+        
+        days.forEach(day => {
+          const daySessions = sessions
+            .filter(s => s.day === day)
+            .sort((a, b) => a.startNum - b.startNum);
+          
+          const busy = daySessions.map(s => ({ start: s.startNum, end: s.endNum }));
+          const free = [];
+          let currentTime = workingHours.start;
+          
+          for (const s of daySessions) {
+            if (currentTime < s.startNum) {
+              free.push({ start: currentTime, end: s.startNum });
+            }
+            currentTime = Math.max(currentTime, s.endNum);
+          }
+          if (currentTime < workingHours.end) {
+            free.push({ start: currentTime, end: workingHours.end });
+          }
+          
+          freeTime[day] = { busy, free };
+        });
+        
+        await StudentTimeTable.create({
+          year,
+          semester,
+          batch,
+          specialization,
+          group,
+          sessions,
+          freeTime
+        });
+        
+        created++;
+        imported += sessions.length;
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `Imported ${imported} sessions from ${adminSessions.length} admin sessions`,
+      timetablesCreated: created,
+      sessionsAdded: imported
+    });
+    
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error importing timetables', error: error.message });
   }
 });
 
