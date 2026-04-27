@@ -21,11 +21,14 @@ const AdminDashboard = () => {
   const [showEditStudyArea, setShowEditStudyArea] = useState(false);
   const [editingArea, setEditingArea] = useState<any>(null);
   const [studyAreas, setStudyAreas] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
+  const [showReports, setShowReports] = useState(false);
 
   useEffect(() => {
     fetchWeeklyReport();
     fetchStudentTimetables();
     fetchStudyAreas();
+    fetchReports();
   }, []);
 
   const fetchStudyAreas = async () => {
@@ -37,6 +40,18 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       console.error('Error fetching study areas:', err);
+    }
+  };
+
+  const fetchReports = async () => {
+    try {
+      const res = await fetch('http://localhost:3000/api/reports');
+      const data = await res.json();
+      if (data.reports) {
+        setReports(data.reports);
+      }
+    } catch (err) {
+      console.error('Error fetching reports:', err);
     }
   };
 
@@ -212,8 +227,69 @@ const AdminDashboard = () => {
           >
             <span>🏛️ {showStudyAreas ? 'Hide Study Areas' : 'Study Areas'}</span>
           </button>
+          <button
+            onClick={() => setShowReports(!showReports)}
+            className={`admin-action-btn reports-btn ${showReports ? 'active' : ''}`}
+            style={{ backgroundColor: '#f97316', color: 'white' }}
+          >
+            <span>📋 {showReports ? 'Hide All Issues' : 'All Issues'}</span>
+          </button>
         </div>
       </div>
+
+      {/* All Issues Section */}
+      {showReports && (
+        <div className="content-card mb-8">
+          <div className="section-head mb-6">
+            <h3>All Facility Issues</h3>
+            <p>Comprehensive list of all reported facility issues across the campus</p>
+          </div>
+          
+          <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-100">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 text-gray-700 text-sm font-semibold uppercase tracking-wider">
+                  <th className="p-4 border-b">ID</th>
+                  <th className="p-4 border-b">Location</th>
+                  <th className="p-4 border-b">Issue Type</th>
+                  <th className="p-4 border-b">Details</th>
+                  <th className="p-4 border-b">Status</th>
+                  <th className="p-4 border-b">Reported By</th>
+                  <th className="p-4 border-b">Assigned To</th>
+                  <th className="p-4 border-b">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {reports.map(report => (
+                  <tr key={report._id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-4 text-xs font-mono text-gray-500">{report._id.slice(-6)}</td>
+                    <td className="p-4 text-sm font-medium text-gray-900">{report.location}</td>
+                    <td className="p-4 text-sm text-gray-600">{report.issueType}</td>
+                    <td className="p-4 text-sm text-gray-500 max-w-xs truncate" title={report.comment}>{report.comment || "N/A"}</td>
+                    <td className="p-4">
+                      <span className={`px-2.5 py-1 text-xs rounded-full font-semibold ${
+                        report.status === 'Fixed' ? 'bg-green-100 text-green-700' :
+                        report.status === 'Pending' ? 'bg-orange-100 text-orange-700' :
+                        'bg-blue-100 text-blue-700'
+                      }`}>
+                        {report.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-sm text-gray-600">{report.studentId}</td>
+                    <td className="p-4 text-sm text-gray-600">{report.assignedTo || "-"}</td>
+                    <td className="p-4 text-sm text-gray-500">{new Date(report.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+                {reports.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-gray-500">No issues found in the system.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Weekly Confirmation Report Section */}
       {showWeeklyReport && (

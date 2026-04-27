@@ -71,6 +71,10 @@ export default function StaffDashboard() {
       return;
     }
     fetchData();
+    const interval = setInterval(() => {
+      fetchData();
+    }, 10000); // Poll every 10 seconds for new notifications & tasks
+    return () => clearInterval(interval);
   }, [staffId]);
 
   useEffect(() => {

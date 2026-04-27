@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import Layout from "../components/Layout";
 import { 
   MapPin, BookOpen, Calendar, 
-  Users, Monitor, Snowflake, CheckCircle,
-  Bell, PlayCircle, PlusCircle, AlertTriangle,
-  BarChart3, User, Clock, TrendingUp
+  CheckCircle, Bell, PlayCircle, AlertTriangle,
+  Clock, TrendingUp
 } from "lucide-react";
 import { getLecturerLabAlerts, confirmLabAlert, type LabAlert } from "../api/labGapApi";
 
@@ -20,12 +20,7 @@ type TodaySession = {
   endTime: string;
 };
 
-type RoomInfo = {
-  name: string;
-  capacity: number;
-  hasProjector: boolean;
-  hasAC: boolean;
-};
+
 
 const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -40,14 +35,37 @@ function getCurrentDay(): string {
 }
 
 function convertTo24Hour(timeStr: string): number {
-  const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
-  if (!match) return 0;
-  let hours = parseInt(match[1]);
-  const minutes = parseInt(match[2]);
-  const period = match[3].toUpperCase();
-  if (period === "PM" && hours !== 12) hours += 12;
-  if (period === "AM" && hours === 12) hours = 0;
-  return hours * 60 + minutes;
+  if (!timeStr) return 0;
+  
+  // Try 12-hour format first
+  const match12 = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (match12) {
+    let hours = parseInt(match12[1]);
+    const minutes = parseInt(match12[2]);
+    const period = match12[3].toUpperCase();
+    if (period === "PM" && hours !== 12) hours += 12;
+    if (period === "AM" && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  }
+  
+  // Try 24-hour format
+  const match24 = timeStr.match(/(\d+):(\d+)/);
+  if (match24) {
+    const hours = parseInt(match24[1]);
+    const minutes = parseInt(match24[2]);
+    return hours * 60 + minutes;
+  }
+  
+  return 0;
+}
+
+function format12Hour(timeStr: string): string {
+  const mins = convertTo24Hour(timeStr);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  const period = h >= 12 ? 'PM' : 'AM';
+  const displayH = h % 12 || 12;
+  return `${displayH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${period}`;
 }
 
 function getSessionStatus(startTime: string, endTime: string): "Upcoming" | "Ongoing" | "Finished" {
@@ -83,8 +101,8 @@ export default function LecturerDashboard() {
   const [loading, setLoading] = useState(true);
   const [_loadError, setLoadError] = useState("");
   const [_currentTime, setCurrentTime] = useState(getCurrentTime());
-  const [reminders, setReminders] = useState<number[]>([]);
-  const [currentRoom, setCurrentRoom] = useState<RoomInfo | null>(null);
+  const [lecturerStatus, setLecturerStatus] = useState<"Free" | "In Lecture" | "Day Off">("Free");
+
   const [_notifications, setNotifications] = useState<Notification[]>([]);
   const [labAlerts, setLabAlerts] = useState<LabAlert[]>([]);
 
@@ -164,36 +182,11 @@ export default function LecturerDashboard() {
       endTime: item.endTime
     }));
 
-  const getRoomInfo = (venueName: string): RoomInfo => {
-    const rooms: Record<string, RoomInfo> = {
-      "Lab 1": { name: "Lab 1", capacity: 40, hasProjector: true, hasAC: true },
-      "Lab 2": { name: "Lab 2", capacity: 40, hasProjector: true, hasAC: true },
-      "Lab 3": { name: "Lab 3", capacity: 30, hasProjector: true, hasAC: true },
-      "Lecture Hall 1": { name: "Lecture Hall 1", capacity: 100, hasProjector: true, hasAC: true },
-      "Lecture Hall 2": { name: "Lecture Hall 2", capacity: 80, hasProjector: true, hasAC: true },
-    };
-    return rooms[venueName] || { name: venueName, capacity: 30, hasProjector: false, hasAC: false };
-  };
-
-  const handleRemind = (sessionId: number) => {
-    setReminders(prev => [...prev, sessionId]);
-    setTimeout(() => {
-      setReminders(prev => prev.filter(id => id !== sessionId));
-    }, 5000);
-  };
-
   const handleStartClass = (session: TodaySession) => {
-    const roomInfo = getRoomInfo(session.venueName);
-    setCurrentRoom(roomInfo);
+    console.log("Starting class for", session.moduleName);
   };
 
   // Logout functionality available for future use
-  // const handleLogout = () => {
-  //   localStorage.clear();
-  //   navigate('/login');
-  // };
-
-  // Session status check available for future use
   // const ongoingSession = todaySessions.find(s => getSessionStatus(s.startTime, s.endTime) === "Ongoing");
 
   if (loading) {
@@ -208,299 +201,247 @@ export default function LecturerDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-          <BookOpen className="w-8 h-8 text-teal-600" />
-          Lecturer Dashboard
-        </h1>
-        <div className="text-sm text-gray-500 flex items-center gap-3">
-          <User className="w-4 h-4" />
-          Welcome back, {lecturerName || lecturerId || 'Lecturer'}
+    <Layout>
+      <div className="space-y-6">
+        {/* Top Bar */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center text-teal-700 font-bold text-2xl">
+            {lecturerName ? lecturerName.charAt(0).toUpperCase() : (lecturerId ? lecturerId.charAt(0).toUpperCase() : 'L')}
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {lecturerName || lecturerId || 'Lecturer Name'}
+            </h1>
+            <p className="text-sm text-gray-500 flex items-center gap-2 mt-1">
+              <BookOpen className="w-4 h-4" />
+              Senior Lecturer - Faculty of Computing
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
+            <span className="text-sm font-medium text-gray-600">Status:</span>
+            <select 
+              value={lecturerStatus}
+              onChange={(e) => setLecturerStatus(e.target.value as any)}
+              className={`text-sm font-bold bg-transparent outline-none cursor-pointer ${
+                lecturerStatus === "Free" ? "text-green-600" :
+                lecturerStatus === "In Lecture" ? "text-blue-600" : "text-gray-500"
+              }`}
+            >
+              <option value="Free">Free</option>
+              <option value="In Lecture">In Lecture</option>
+              <option value="Day Off">Day Off</option>
+            </select>
+          </div>
+          <button className="p-3 relative text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
+            <Bell className="w-6 h-6" />
+            <span className="absolute top-2 right-2 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>
+          </button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Today's Sessions</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{todaySessions.length}</p>
-            </div>
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <Calendar className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Students</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">156</p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-lg">
-              <Users className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Courses</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">4</p>
-            </div>
-            <div className="bg-purple-100 p-3 rounded-lg">
-              <BookOpen className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Office Hours</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">8</p>
-            </div>
-            <div className="bg-orange-100 p-3 rounded-lg">
-              <Clock className="h-6 w-6 text-orange-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Today's Schedule - Detailed View */}
-      <div className="bg-white rounded-2xl shadow-xl p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <Calendar className="w-5 h-5" />
-          Today's Schedule ({getCurrentDay()})
-        </h2>
-        
-        {todaySessions.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p>No classes scheduled for today</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {todaySessions.map((session) => {
-              const status = getSessionStatus(session.startTime, session.endTime);
-              const isOngoing = status === "Ongoing";
-              const isFinished = status === "Finished";
-              
-              return (
-                <div
-                  key={session.id}
-                  className={`p-4 rounded-xl border-2 transition ${
-                    isOngoing
-                      ? "border-green-500 bg-green-50"
-                      : isFinished
-                      ? "border-gray-300 bg-gray-50 opacity-60"
-                      : "border-teal-200 bg-teal-50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="font-mono text-lg font-bold text-gray-700">
-                        {session.startTime}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Calendar - Left Side (col-span-2) */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+              <Calendar className="w-6 h-6 text-teal-600" />
+              Weekly Timetable
+            </h2>
+            
+            <div className="overflow-x-auto">
+              <div className="min-w-[700px]">
+                <div className="grid grid-cols-6 gap-2 mb-2">
+                  <div className="text-center font-semibold text-gray-500 py-2">Time</div>
+                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => (
+                    <div key={day} className="text-center font-semibold text-gray-700 py-2 bg-gray-50 rounded-lg">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="space-y-2">
+                  {(Array.from(new Set(timetableData.map(item => item.startTime))).sort((a, b) => convertTo24Hour(a) - convertTo24Hour(b)).length > 0 
+                    ? Array.from(new Set(timetableData.map(item => item.startTime))).sort((a, b) => convertTo24Hour(a) - convertTo24Hour(b))
+                    : ['08:00 AM', '10:00 AM', '01:00 PM', '03:00 PM']
+                  ).map(time => (
+                    <div key={time} className="grid grid-cols-6 gap-2">
+                      <div className="text-center text-sm font-medium text-gray-500 py-4 flex items-center justify-center whitespace-nowrap px-1">
+                        {format12Hour(time)}
                       </div>
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {session.moduleCode} - {session.moduleName}
+                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => {
+                        const sessions = timetableData.filter((item: any) => item.day === day && item.startTime === time);
+                        return (
+                          <div key={`${day}-${time}`} className="bg-gray-50 rounded-xl min-h-[80px] p-2 border border-gray-100">
+                            {sessions.map((session: any, idx: number) => (
+                              <div key={idx} className="bg-teal-50 border border-teal-200 p-2 rounded-lg mb-1">
+                                <div className="text-xs font-bold text-teal-800">{session.moduleCode}</div>
+                                <div className="text-[10px] text-teal-600 truncate">{session.moduleName}</div>
+                                <div className="text-[10px] text-gray-500 mt-1 flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {session.venueName}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Lab Free Time Alerts */}
+          {labAlerts.length > 0 && (
+            <div className="bg-yellow-50 border border-yellow-300 p-6 rounded-2xl shadow-sm">
+              <h2 className="text-lg font-semibold text-yellow-800 mb-4 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Lab Free Time Alerts (Turn off AC & Lights)
+              </h2>
+
+              {labAlerts.map((a, i) => (
+                <div key={i} className="mb-3 p-4 bg-white rounded-xl border border-yellow-200 shadow-sm">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <p className="font-bold text-gray-900">
+                        {a.labName} - {a.day}
+                      </p>
+                      <p className="text-sm text-gray-700 mt-1">
+                        Free from {a.start}:00 to {a.end}:00 ({a.duration} hours)
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Week {a.weekNumber} - {a.year}
+                      </p>
+                    </div>
+                    <div className="ml-4">
+                      {!a.confirmed ? (
+                        <button
+                          onClick={() => handleConfirmAlert(a._id)}
+                          className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors shadow-sm"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="text-sm font-medium">Confirm Turn Off</span>
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-lg border border-gray-200">
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="text-sm font-medium">Confirmed</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <MapPin className="w-3 h-3" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Right Side - Today Classes Panel */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-teal-600" />
+                Today's Classes
+              </h2>
+              <span className="bg-teal-100 text-teal-800 text-xs font-bold px-3 py-1 rounded-full">
+                {getCurrentDay()}
+              </span>
+            </div>
+            
+            {todaySessions.length === 0 ? (
+              <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="font-medium">No classes today</p>
+                <p className="text-sm mt-1">Enjoy your free time!</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {todaySessions.map((session) => {
+                  const status = getSessionStatus(session.startTime, session.endTime);
+                  const isOngoing = status === "Ongoing";
+                  const isFinished = status === "Finished";
+                  
+                  return (
+                    <div
+                      key={session.id}
+                      className={`p-4 rounded-xl border-l-4 transition-all ${
+                        isOngoing
+                          ? "border-l-green-500 bg-green-50 shadow-sm"
+                          : isFinished
+                          ? "border-l-gray-300 bg-gray-50 opacity-75"
+                          : "border-l-teal-500 bg-teal-50/50 hover:bg-teal-50"
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-mono text-sm font-bold text-gray-700 bg-white px-2 py-1 rounded shadow-sm">
+                          {session.startTime}
+                        </span>
+                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                          isOngoing
+                            ? "bg-green-500 text-white"
+                            : isFinished
+                            ? "bg-gray-300 text-gray-600"
+                            : "bg-teal-100 text-teal-700"
+                        }`}>
+                          {isOngoing ? "Ongoing" : isFinished ? "Done" : "Upcoming"}
+                        </span>
+                      </div>
+                      
+                      <h3 className="font-bold text-gray-900 leading-tight">
+                        {session.moduleCode}
+                      </h3>
+                      <p className="text-sm text-gray-600 line-clamp-1 mb-3">
+                        {session.moduleName}
+                      </p>
+                      
+                      <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-200/60">
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-white px-2 py-1 rounded shadow-sm">
+                          <MapPin className="w-3 h-3 text-red-500" />
                           {session.venueName}
                         </div>
+                        
+                        {!isFinished && status === "Upcoming" && (
+                          <button
+                            onClick={() => handleStartClass(session)}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 shadow-sm transition-colors"
+                          >
+                            <PlayCircle className="w-3 h-3" />
+                            Start
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        isOngoing
-                          ? "bg-green-500 text-white"
-                          : isFinished
-                          ? "bg-gray-400 text-white"
-                          : "bg-teal-500 text-white"
-                      }`}>
-                        {isOngoing ? "Ongoing" : isFinished ? "Finished" : "Upcoming"}
-                      </span>
-                      {!isFinished && (
-                        <button
-                          onClick={() => handleRemind(session.id)}
-                          disabled={reminders.includes(session.id)}
-                          className={`flex items-center gap-1 px-3 py-1 rounded-lg text-sm ${
-                            reminders.includes(session.id)
-                              ? "bg-gray-300 text-gray-600 cursor-default"
-                              : "bg-blue-500 text-white hover:bg-blue-600"
-                          }`}
-                        >
-                          <Bell className="w-3 h-3" />
-                          {reminders.includes(session.id) ? "Reminded!" : "Remind me"}
-                        </button>
-                      )}
-                      {status === "Upcoming" && (
-                        <button
-                          onClick={() => handleStartClass(session)}
-                          className="flex items-center gap-1 px-3 py-1 rounded-lg text-sm bg-green-500 text-white hover:bg-green-600"
-                        >
-                          <PlayCircle className="w-3 h-3" />
-                          Start class
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-
-      {/* Room Information */}
-      {currentRoom && (
-        <div className="bg-white rounded-2xl shadow-xl p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <MapPin className="w-5 h-5" />
-            Room Information
-          </h2>
           
-          <div className="p-4 rounded-xl border-2 border-teal-500 bg-teal-50">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-gray-800">
-                  {currentRoom.name}
-                </div>
-                <div className="flex items-center gap-4 mt-2 text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    Capacity: {currentRoom.capacity}
-                  </div>
-                </div>
+          {/* Quick Stats or Info */}
+          <div className="bg-gradient-to-br from-teal-600 to-emerald-700 rounded-2xl shadow-sm p-6 text-white">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Weekly Overview
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm border border-white/20">
+                <p className="text-teal-100 text-xs font-medium uppercase tracking-wider mb-1">Total Classes</p>
+                <p className="text-2xl font-bold">{timetableData.length}</p>
               </div>
-              <div className="flex gap-4">
-                <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                  currentRoom.hasProjector ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                }`}>
-                  {currentRoom.hasProjector ? <CheckCircle className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
-                  Projector {currentRoom.hasProjector ? "Yes" : "No"}
-                </div>
-                <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                  currentRoom.hasAC ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                }`}>
-                  {currentRoom.hasAC ? <CheckCircle className="w-4 h-4" /> : <Snowflake className="w-4 h-4" />}
-                  AC {currentRoom.hasAC ? "Yes" : "No"}
-                </div>
+              <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm border border-white/20">
+                <p className="text-teal-100 text-xs font-medium uppercase tracking-wider mb-1">Students</p>
+                <p className="text-2xl font-bold">156</p>
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Lab Free Time Alerts */}
-      {labAlerts.length > 0 && (
-        <div className="bg-yellow-50 border border-yellow-300 p-6 rounded-xl">
-          <h2 className="text-lg font-semibold text-yellow-800 mb-4">
-            Lab Free Time Alerts (Turn off AC & Lights)
-          </h2>
-
-          {labAlerts.map((a, i) => (
-            <div key={i} className="mb-3 p-3 bg-white rounded border">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">
-                    {a.labName} - {a.day}
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    Free from {a.start}:00 to {a.end}:00 ({a.duration} hours)
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Week {a.weekNumber} - {a.year}
-                  </p>
-                </div>
-                <div className="ml-4">
-                  {!a.confirmed ? (
-                    <button
-                      onClick={() => handleConfirmAlert(a._id)}
-                      className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      <span className="text-sm">Confirm Turn Off</span>
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-600 rounded-lg">
-                      <CheckCircle className="h-4 w-4" />
-                      <span className="text-sm">Confirmed</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-          <div className="space-y-3">
-            <button 
-              onClick={() => navigate('/timetable-builder')}
-              className="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-3"
-            >
-              <Calendar className="h-5 w-5 text-gray-600" />
-              <span className="text-gray-900">Manage Schedule</span>
-            </button>
-            <Link to="/lab-booking" className="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-3">
-              <PlusCircle className="h-5 w-5 text-gray-600" />
-              <span className="text-gray-900">Book Extra Room</span>
-            </Link>
-            <Link to="/report-issue" className="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-gray-600" />
-              <span className="text-gray-900">Report Issue</span>
-            </Link>
-            <Link to="/reports" className="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-3">
-              <BarChart3 className="h-5 w-5 text-gray-600" />
-              <span className="text-gray-900">View Reports</span>
-            </Link>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="bg-blue-100 p-2 rounded-lg">
-                <TrendingUp className="h-4 w-4 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">New assignment submitted</p>
-                <p className="text-xs text-gray-500">CS101 - 2 hours ago</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="bg-green-100 p-2 rounded-lg">
-                <Users className="h-4 w-4 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Student meeting scheduled</p>
-                <p className="text-xs text-gray-500">Tomorrow at 2:00 PM</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="bg-purple-100 p-2 rounded-lg">
-                <BookOpen className="h-4 w-4 text-purple-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Course material updated</p>
-                <p className="text-xs text-gray-500">MATH201 - Yesterday</p>
-              </div>
-            </div>
-</div>
         </div>
       </div>
     </div>
+  </Layout>
   );
 }
