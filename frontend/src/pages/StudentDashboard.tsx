@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, BookOpen, Monitor, GraduationCap, Calendar, Clock, TrendingUp, Users, MapPin, Bell } from 'lucide-react';
+import { Plus, BookOpen, Monitor, GraduationCap, Calendar, Clock, TrendingUp, Users, MapPin, Bell, Book, AlertCircle, CheckCircle } from 'lucide-react';
 import { studyAreaApi } from '../api/studyAreaApi';
 
 type TimetableRow = {
@@ -17,6 +17,28 @@ type TimetableRow = {
   year: number;
   specialization: string;
   scheduleType: string;
+};
+
+type CampusNotification = {
+  _id: string;
+  type: string;
+  title: string;
+  message: string;
+  category: string;
+  status?: string;
+  location?: string;
+  issueType?: string;
+  moduleCode?: string;
+  moduleName?: string;
+  areaName?: string;
+  areaLocation?: string;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  createdAt: string;
+  readBy?: string[];
+  read?: boolean;
+  data?: any;
 };
 
 const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -37,6 +59,15 @@ function convertTo24Hour(timeStr: string): number {
   return hours * 60 + minutes;
 }
 
+// Category colors and icons
+const categoryConfig: Record<string, { color: string; bgColor: string; icon: any }> = {
+  timetable: { color: 'text-blue-800', bgColor: 'bg-blue-50 border-blue-200', icon: Calendar },
+  help: { color: 'text-purple-800', bgColor: 'bg-purple-50 border-purple-200', icon: GraduationCap },
+  issue: { color: 'text-red-800', bgColor: 'bg-red-50 border-red-200', icon: AlertCircle },
+  booking: { color: 'text-emerald-800', bgColor: 'bg-emerald-50 border-emerald-200', icon: CheckCircle },
+  general: { color: 'text-yellow-800', bgColor: 'bg-yellow-50 border-yellow-200', icon: Bell }
+};
+
 export default function StudentDashboard() {
   const studentId = localStorage.getItem('studentId') || 'Student';
   const studentName = localStorage.getItem('unifiedName') || 'Student';
@@ -44,28 +75,32 @@ export default function StudentDashboard() {
    
   const studentYear = localStorage.getItem('year') || '1';
   const studentFaculty = localStorage.getItem('faculty') || 'Computing';
-  const studentSpec = localStorage.getItem('specialization') || 'SE';
+  const studentSpec = localStorage.getItem('specialization') || 'Software Engineering';
   const studentType = localStorage.getItem('scheduleType') || 'Weekday';
 
-  const [timetable, setTimetable] = useState<TimetableRow[]>([]);
+const [timetable, setTimetable] = useState<TimetableRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [scheduleTypeFilter, setScheduleTypeFilter] = useState(studentType);
   const [dayFilter, setDayFilter] = useState('');
-  const [notifications, setNotifications] = useState<any[]>([]);
-const [todayBookings, setTodayBookings] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<CampusNotification[]>([]);
+  const [todayBookings, setTodayBookings] = useState<any[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string>('all');
 
   useEffect(() => {
-    fetchTimetable();
-    fetchNotifications();
+    fetchCampusNotifications();
     if (userId) {
       fetchTodayBookings();
     }
     const interval = setInterval(() => {
       fetchTimetable();
-      fetchNotifications();
+      fetchCampusNotifications();
     }, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    fetchTimetable();
+  }, [scheduleTypeFilter]);
 
   const fetchTimetable = async () => {
     try {
@@ -86,12 +121,14 @@ const [todayBookings, setTodayBookings] = useState<any[]>([]);
     }
   };
 
-  const fetchNotifications = async () => {
+  const fetchCampusNotifications = async () => {
     try {
       const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const res = await fetch(`${API_BASE}/api/timetable/notifications?userId=${studentId}`);
+      const res = await fetch(`${API_BASE}/api/campus-notifications?studentId=${encodeURIComponent(studentId)}&specialization=${encodeURIComponent(studentSpec)}`);
       const data = await res.json();
-      setNotifications(Array.isArray(data) ? data : []);
+      if (data.notifications) {
+        setNotifications(data.notifications);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -114,14 +151,16 @@ const [todayBookings, setTodayBookings] = useState<any[]>([]);
       console.error('Error fetching today bookings:', err);
     }
   };
-
-  const filteredTimetable = timetable.filter(item => {
-    if (dayFilter && item.day !== dayFilter) return false;
-    return true;
-  });
-
-  const todaySessions = filteredTimetable.filter(item => item.day === getCurrentDay());
-  const unreadCount = notifications.filter(n => !n.readBy?.includes(studentId)).length;
+  
+  // Filter notifications based on active filter
+  const filteredNotifications = activeFilter === 'all' 
+    ? notifications 
+    : notifications.filter(n => n.category === activeFilter);
+  
+  // Calculate unread count based on notification type
+  const unreadCount = notifications.filter(n => 
+    !n.readBy?.includes(studentId) && !n.read
+  ).length;
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-green-700 via-teal-800 to-blue-900">
       <div className="absolute inset-0 bg-black/20"></div>
@@ -220,134 +259,220 @@ const [todayBookings, setTodayBookings] = useState<any[]>([]);
           </Link>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Left Panel: Timetable */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-sm p-6 h-fit">
-            <div className="flex items-center justify-between mb-4">
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Left Panel: Timetable (Weekly Calendar) */}
+          <div className="lg:col-span-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
               <div className="flex items-center gap-2">
-                <Calendar size={20} className="text-teal-600" />
-                <h2 className="font-bold text-gray-900">My Timetable</h2>
+                <Calendar size={24} className="text-teal-600" />
+                <h2 className="font-bold text-gray-900 text-xl">Weekly Timetable</h2>
               </div>
-            <div className="flex gap-2">
               <select
                 value={scheduleTypeFilter}
-                onChange={(e) => {
-                  setScheduleTypeFilter(e.target.value);
-                  fetchTimetable();
-                }}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
+                onChange={(e) => setScheduleTypeFilter(e.target.value)}
+                className="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 font-medium text-gray-700 outline-none focus:ring-2 focus:ring-teal-500"
               >
                 <option value="Weekday">Weekday</option>
                 <option value="Weekend">Weekend</option>
               </select>
-              <select
-                value={dayFilter}
-                onChange={(e) => setDayFilter(e.target.value)}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
-              >
-                <option value="">All Days</option>
-                <option value="Monday">Monday</option>
-                <option value="Tuesday">Tuesday</option>
-                <option value="Wednesday">Wednesday</option>
-                <option value="Thursday">Thursday</option>
-                <option value="Friday">Friday</option>
-              </select>
             </div>
-          </div>
 
-          {loading ? (
-            <div className="text-center py-8 text-gray-500">Loading timetable...</div>
-          ) : todaySessions.length > 0 ? (
-            <div className="mb-4">
-              <h3 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                Today's Lectures ({getCurrentDay()})
-              </h3>
-              <div className="space-y-2">
-                {todaySessions
-                  .sort((a, b) => convertTo24Hour(a.startTime) - convertTo24Hour(b.startTime))
-                  .map(session => (
-                    <div key={session.id} className="flex items-center justify-between bg-green-50 p-3 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="text-center min-w-[60px]">
-                          <div className="font-bold text-gray-900">{session.startTime}</div>
-                          <div className="text-xs text-gray-500">{session.endTime}</div>
+            {loading ? (
+              <div className="text-center py-16 text-gray-500">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600 mx-auto mb-3"></div>
+                Loading calendar...
+              </div>
+            ) : timetable.length === 0 ? (
+              <div className="text-center py-16 text-gray-500 border-2 border-dashed border-gray-200 rounded-xl">
+                <Calendar size={48} className="mx-auto text-gray-300 mb-3" />
+                <p className="font-medium text-gray-600">No sessions scheduled for your modules.</p>
+                <p className="text-sm mt-1">Management will notify you when the timetable is updated.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto pb-2 custom-scrollbar">
+                <div className="flex gap-4 min-w-[700px]">
+                  {(scheduleTypeFilter === "Weekend" ? ["Saturday", "Sunday"] : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]).map(day => {
+                    const daySessions = timetable.filter(s => s.day === day).sort((a, b) => convertTo24Hour(a.startTime) - convertTo24Hour(b.startTime));
+                    const isToday = getCurrentDay() === day;
+                    
+                    return (
+                      <div key={day} className={`flex-1 min-w-[150px] rounded-xl overflow-hidden border ${isToday ? 'border-teal-500 shadow-md ring-1 ring-teal-500' : 'border-gray-200 shadow-sm'}`}>
+                        <div className={`py-2 px-3 text-center font-bold border-b ${isToday ? 'bg-teal-500 text-white border-teal-600' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                          {day}
+                          {isToday && <span className="block text-[10px] font-medium uppercase tracking-wider opacity-90">Today</span>}
                         </div>
-                        <div>
-                          <div className="font-medium text-gray-900">{session.moduleCode} - {session.moduleName}</div>
-                          <div className="text-sm text-gray-500 flex items-center gap-2">
-                            <MapPin size={14} />
-                            {session.venueName} | {session.lecturer}
-                          </div>
+                        <div className="p-3 space-y-3 bg-white min-h-[300px]">
+                          {daySessions.length > 0 ? daySessions.map((session, idx) => (
+                            <div key={session.id || idx} className="bg-gradient-to-br from-teal-50 to-emerald-50 border border-teal-100 rounded-lg p-3 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all cursor-default">
+                              <div className="text-[11px] font-bold text-teal-800 mb-1.5 flex items-center justify-between border-b border-teal-100/50 pb-1.5">
+                                <span>{session.startTime} - {session.endTime}</span>
+                                <span className="bg-white/80 text-teal-700 px-1.5 py-0.5 rounded shadow-sm border border-teal-100">{session.sessionType}</span>
+                              </div>
+                              <div className="font-bold text-gray-900 text-sm leading-tight mb-1">{session.moduleCode}</div>
+                              <div className="text-[11px] text-gray-600 mb-2 line-clamp-2" title={session.moduleName}>{session.moduleName}</div>
+                              
+                              <div className="flex flex-col gap-1 mt-auto pt-2 border-t border-teal-100/50">
+                                <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                                  <MapPin size={10} className="shrink-0 text-teal-500" />
+                                  <span className="truncate">{session.venueName}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                                  <Users size={10} className="shrink-0 text-teal-500" />
+                                  <span className="truncate">{session.lecturer}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )) : (
+                            <div className="h-full min-h-[100px] flex items-center justify-center text-gray-300">
+                              <span className="text-sm italic">No Sessions</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
-                        {session.sessionType}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="text-center py-4 text-gray-500">No lectures scheduled for today</div>
-          )}
-
-          {filteredTimetable.length > 0 && dayFilter ? (
-            <div className="mt-4">
-              <h3 className="font-semibold text-gray-700 mb-3">All {dayFilter} Sessions</h3>
-              <div className="space-y-2">
-                {filteredTimetable
-                  .sort((a, b) => convertTo24Hour(a.startTime) - convertTo24Hour(b.startTime))
-                  .map(session => (
-                    <div key={session.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="text-center min-w-[60px]">
-                          <div className="font-bold text-gray-900">{session.startTime}</div>
-                          <div className="text-xs text-gray-500">{session.endTime}</div>
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900">{session.moduleCode} - {session.moduleName}</div>
-                          <div className="text-sm text-gray-500 flex items-center gap-2">
-                            <MapPin size={14} />
-                            {session.venueName}
-                          </div>
-                        </div>
-                      </div>
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
-                        {session.sessionType}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          ) : null}
+            )}
           </div>
 
           {/* Right Panel: Campus Notices */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-sm p-6 h-fit">
-            <div className="flex items-center gap-2 mb-4">
-              <Bell size={20} className="text-yellow-600" />
-              <h2 className="font-bold text-gray-900">Campus Notices</h2>
+          <div className="lg:col-span-1 bg-white/90 backdrop-blur-sm rounded-xl shadow-sm p-6 h-fit sticky top-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Bell size={20} className="text-yellow-600" />
+                <h2 className="font-bold text-gray-900">Campus Notices</h2>
+              </div>
+              {unreadCount > 0 && (
+                <span className="bg-red-500 text-white text-xs font-medium px-2 py-0.5 rounded-full">
+                  {unreadCount} new
+                </span>
+              )}
             </div>
-            {notifications.length > 0 ? (
-              <div className="space-y-3">
-                {notifications.map((notice, index) => (
-                  <div key={notice._id || notice.id || index} className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-                    <h4 className="font-semibold text-yellow-900">{notice.title || notice.message || 'Notice'}</h4>
-                    {notice.title && notice.message && (
-                      <p className="text-sm text-yellow-800 mt-1">{notice.message}</p>
-                    )}
-                    <div className="text-xs text-yellow-600 mt-2 flex justify-between">
-                      <span className="capitalize">{notice.type || 'General'} Alert</span>
-                      <span>{notice.createdAt ? new Date(notice.createdAt).toLocaleDateString() : new Date().toLocaleDateString()}</span>
+            
+            {/* Filter tabs */}
+            <div className="flex flex-wrap gap-1 mb-4">
+              <button 
+                onClick={() => setActiveFilter('all')}
+                className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                  activeFilter === 'all' 
+                    ? 'bg-teal-600 text-white' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                All
+              </button>
+              <button 
+                onClick={() => setActiveFilter('timetable')}
+                className={`px-2 py-1 text-xs rounded-full transition-colors flex items-center gap-1 ${
+                  activeFilter === 'timetable' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                }`}
+              >
+                <Calendar size={10} /> Timetable
+              </button>
+              <button 
+                onClick={() => setActiveFilter('help')}
+                className={`px-2 py-1 text-xs rounded-full transition-colors flex items-center gap-1 ${
+                  activeFilter === 'help' 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                }`}
+              >
+                <GraduationCap size={10} /> Help
+              </button>
+              <button 
+                onClick={() => setActiveFilter('issue')}
+                className={`px-2 py-1 text-xs rounded-full transition-colors flex items-center gap-1 ${
+                  activeFilter === 'issue' 
+                    ? 'bg-red-600 text-white' 
+                    : 'bg-red-50 text-red-600 hover:bg-red-100'
+                }`}
+              >
+                <AlertCircle size={10} /> Issues
+              </button>
+              <button 
+                onClick={() => setActiveFilter('booking')}
+                className={`px-2 py-1 text-xs rounded-full transition-colors flex items-center gap-1 ${
+                  activeFilter === 'booking' 
+                    ? 'bg-emerald-600 text-white' 
+                    : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                }`}
+              >
+                <CheckCircle size={10} /> Bookings
+              </button>
+            </div>
+            
+            {filteredNotifications.length > 0 ? (
+              <div className="space-y-3 max-h-[600px] overflow-y-auto custom-scrollbar">
+                {filteredNotifications.map((notice, index) => {
+                  const config = categoryConfig[notice.category] || categoryConfig.general;
+                  const Icon = config.icon;
+                  const isUnread = !notice.readBy?.includes(studentId) && !notice.read;
+                  
+                  return (
+                    <div 
+                      key={notice._id || index} 
+                      className={`${config.bgColor} border p-3 rounded-lg transition-all hover:shadow-sm ${isUnread ? 'ring-1 ring-offset-1 ring-gray-300' : ''}`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className={`shrink-0 mt-0.5 ${config.color}`}>
+                          <Icon size={16} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className={`font-semibold text-sm ${config.color}`}>
+                              {notice.title || 'Notification'}
+                            </h4>
+                            {isUnread && (
+                              <span className="shrink-0 w-2 h-2 bg-blue-500 rounded-full"></span>
+                            )}
+                          </div>
+                          <p className="text-xs mt-1 text-gray-600 line-clamp-2">
+                            {notice.message}
+                          </p>
+                          {/* Show additional info based on category */}
+                          {notice.category === 'issue' && notice.location && (
+                            <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
+                              <MapPin size={10} />
+                              <span>{notice.location}</span>
+                              {notice.issueType && <span>• {notice.issueType}</span>}
+                            </div>
+                          )}
+                          {notice.category === 'booking' && notice.areaName && (
+                            <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
+                              <MapPin size={10} />
+                              <span>{notice.areaName}</span>
+                              {notice.startTime && (
+                                <span>• {notice.startTime} - {notice.endTime}</span>
+                              )}
+                            </div>
+                          )}
+                          {notice.category === 'help' && notice.moduleCode && (
+                            <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
+                              <Book size={10} />
+                              <span>{notice.moduleCode}</span>
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-400 mt-2">
+                            {new Date(notice.createdAt).toLocaleDateString()} • {new Date(notice.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <Bell size={48} className="mx-auto text-gray-300 mb-3" />
-                <p>No new notices at the moment</p>
+                <p className="text-sm">
+                  {activeFilter === 'all' 
+                    ? 'No new notices at the moment'
+                    : `No ${activeFilter} notifications`
+                  }
+                </p>
               </div>
             )}
           </div>
