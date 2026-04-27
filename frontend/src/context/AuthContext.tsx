@@ -16,6 +16,7 @@ type AuthContextValue = {
   isAdmin: boolean;
   isStaff: boolean;
   isManagement: boolean;
+  isLecturer: boolean;
   loginAsStudent: () => void;
   loginAsAdmin: (password: string) => boolean;
   logoutToStudent: () => void;
@@ -83,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: role === "admin",
       isStaff: role === "staff",
       isManagement: role === "management",
+      isLecturer: role === "lecturer",
       loginAsStudent,
       loginAsAdmin,
       loginAsLecturer,

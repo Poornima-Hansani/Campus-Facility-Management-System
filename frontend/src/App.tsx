@@ -38,6 +38,14 @@ import FacilityPage from "./pages/management/FacilityPage";
 import TimetablePage from "./pages/management/TimetablePage";
 import StaffPage from "./pages/management/StaffPage";
 import EmailsPage from "./pages/management/EmailsPage";
+import LecturerListPage from "./pages/management/LecturerListPage";
+import MeetingsPage from "./pages/management/MeetingsPage";
+
+import AddLectureNotesPage from "./pages/lecturer/AddLectureNotesPage";
+import QRAttendancePage from "./pages/lecturer/QRAttendancePage";
+import LecturerMeetingsPage from "./pages/lecturer/LecturerMeetingsPage";
+import LectureNotesPage from "./pages/Student/LectureNotesPage";
+import AttendanceScanPage from "./pages/Student/AttendanceScanPage";
 
 function AppRoutes() {
   return (
@@ -50,18 +58,10 @@ function AppRoutes() {
         <Route path="/register" element={<RegisterPage />} />
         
         {/* We keep the inner dashboards but remove the old unneeded logins */}
-        <Route path="/student" element={
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><StudentDashboard /></main>
-        } />
-        <Route path="/reporting" element={
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><ReportingDashboard /></main>
-        } />
-        <Route path="/reporting/add" element={
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><ReportIssue /></main>
-        } />
-        <Route path="/reporting/view" element={
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><ReportHistory /></main>
-        } />
+        <Route path="/student" element={<StudentDashboard />} />
+        <Route path="/reporting" element={<ReportingDashboard />} />
+        <Route path="/reporting/add" element={<ReportIssue />} />
+        <Route path="/reporting/view" element={<ReportHistory />} />
         <Route path="/study-booking" element={
           <StudentRoute>
             <StudyAreaBooking />
@@ -89,6 +89,16 @@ function AppRoutes() {
             <StaffPage />
           </ProtectedRoute>
         } />
+        <Route path="/management/lecturers" element={
+          <ProtectedRoute role="management">
+            <LecturerListPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/management/meetings" element={
+          <ProtectedRoute role="management">
+            <MeetingsPage />
+          </ProtectedRoute>
+        } />
         <Route path="/management/emails" element={
           <ProtectedRoute role="management">
             <EmailsPage />
@@ -114,6 +124,24 @@ function AppRoutes() {
           </ProtectedRoute>
         } />
         
+        <Route path="/lecturer/notes" element={
+          <ProtectedRoute role="lecturer">
+            <AddLectureNotesPage />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/lecturer/attendance" element={
+          <ProtectedRoute role="lecturer">
+            <QRAttendancePage />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/lecturer/meetings" element={
+          <ProtectedRoute role="lecturer">
+            <LecturerMeetingsPage />
+          </ProtectedRoute>
+        } />
+        
         <Route path="/timetable-builder" element={
           <ProtectedRoute role={["lecturer", "management"]}>
             <TimetableBuilderPage />
@@ -136,9 +164,6 @@ function AppRoutes() {
             <LectureAvailabilityPage />
           </StudentRoute>
         } />
-        <Route path="/lecturer-dashboard" element={
-          <LecturerDashboard />
-        } />
         <Route path="/smart-booking" element={
           <StudentRoute>
             <SmartBookingHubPage />
@@ -153,7 +178,7 @@ function AppRoutes() {
           </ProtectedRoute>
         } />
         <Route path="/energy-alerts" element={
-          <ProtectedRoute role="admin">
+          <ProtectedRoute role={["admin", "management"]}>
             <EnergyAlertsPage />
           </ProtectedRoute>
         } />
@@ -186,6 +211,14 @@ function AppRoutes() {
           <StudentRoute>
             <StudyGoalsPage />
           </StudentRoute>
+        } />
+        <Route path="/lecture-notes" element={
+          <StudentRoute>
+            <LectureNotesPage />
+          </StudentRoute>
+        } />
+        <Route path="/attendance" element={
+          <AttendanceScanPage />
         } />
         <Route path="/gpa-tracker" element={
           <StudentRoute>

@@ -60,11 +60,47 @@ const routeCopy: Record<string, RouteCopy> = {
     title: "Smart Booking",
     detail: "Reserve study areas and computer labs across campus.",
   },
+  "/energy-alerts": {
+    title: "Energy Alerts",
+    detail: "Monitor energy saving alerts and lab statuses.",
+  },
+  "/management/staff": {
+    title: "Staff",
+    detail: "Manage campus staff, performance, and workload.",
+  },
+  "/management/lecturers": {
+    title: "Lecturers",
+    detail: "Monitor lecturer attendance, ratings, and academic workload.",
+  },
+  "/management/meetings": {
+    title: "Management Meetings",
+    detail: "Schedule and manage operational campus meetings.",
+  },
+  "/lecturer-dashboard": {
+    title: "Lecturer Dashboard",
+    detail: "Manage your weekly timetable, classes, and student interactions.",
+  },
+  "/lecturer/notes": {
+    title: "Add Lecture Notes",
+    detail: "Upload and manage course materials.",
+  },
+  "/lecturer/attendance": {
+    title: "Student Attendance",
+    detail: "Monitor and record student attendance.",
+  },
+  "/lecturer/meetings": {
+    title: "Meetings",
+    detail: "View and manage student consultations and meetings.",
+  },
+  "/lecturer/mails": {
+    title: "Mails",
+    detail: "Manage your communications.",
+  },
 };
 
 const defaultCopy: RouteCopy = {
-  title: "UniManage",
-  detail: "Campus facility and academic planning for students.",
+  title: "Facility Management",
+  detail: "",
 };
 
 const Topbar = () => {
@@ -76,6 +112,10 @@ const Topbar = () => {
     () => routeCopy[pathname] ?? defaultCopy,
     [pathname]
   );
+
+  if (pathname === '/lecturer-dashboard') {
+    return null;
+  }
 
   return (
     <header className="topbar">

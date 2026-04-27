@@ -13,12 +13,14 @@ import {
   FaListUl,
   FaPoll,
   FaBars,
-  FaPlusCircle
+  FaPlusCircle,
+  FaCalendarAlt,
+  FaUsers
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 
 const SidebarNew = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isLecturer } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const isManagement = localStorage.getItem('unifiedRole') === 'management' || localStorage.getItem('managementLoggedIn') === 'true';
@@ -40,13 +42,8 @@ const SidebarNew = () => {
     ? [
         {
           path: "/management-dashboard",
-          label: "Management Dashboard",
+          label: "Overview",
           icon: <FaChartBar />,
-        },
-        {
-          path: "/management/issues",
-          label: "Issues List",
-          icon: <FaFileAlt />,
         },
         {
           path: "/management/facility",
@@ -55,24 +52,68 @@ const SidebarNew = () => {
         },
         {
           path: "/management/timetable",
-          label: "Timetable",
+          label: "Timetables",
           icon: <FaChalkboardTeacher />,
-        },
-        {
-          path: "/management/staff",
-          label: "Staff",
-          icon: <FaUserShield />,
         },
         {
           path: "/management/emails",
           label: "Emails",
           icon: <FaHandsHelping />,
         },
+        {
+          path: "/management/staff",
+          label: "Stafflist",
+          icon: <FaUserShield />,
+        },
+        {
+          path: "/management/lecturers",
+          label: "Lecturelist",
+          icon: <FaChalkboardTeacher />,
+        },
+        {
+          path: "/energy-alerts",
+          label: "Energy",
+          icon: <FaTachometerAlt />,
+        },
+        {
+          path: "/management/meetings",
+          label: "Meetings",
+          icon: <FaCalendarAlt />,
+        },
+      ]
+    : isLecturer || localStorage.getItem('unifiedRole') === 'lecturer'
+    ? [
+        {
+          path: "/lecturer-dashboard",
+          label: "Overview",
+          icon: <FaChartBar />,
+        },
+        {
+          path: "/lecturer/mails",
+          label: "Mails",
+          icon: <FaFileAlt />,
+        },
+        {
+          path: "/lecturer/notes",
+          label: "Add Lec Notes",
+          icon: <FaPlusCircle />,
+        },
+        {
+          path: "/lecturer/attendance",
+          label: "Student Attendance",
+          icon: <FaUsers />,
+        },
+        {
+          path: "/lecturer/meetings",
+          label: "Meetings",
+          icon: <FaCalendarAlt />,
+        },
       ]
     : [
         { path: "/dashboard", label: "Overall", icon: <FaListUl /> },
         { path: "/assignments-exams", label: "Add Task", icon: <FaPlusCircle /> },
         { path: "/study-goals", label: "Study Goals", icon: <FaBullseye /> },
+        { path: "/lecture-notes", label: "Lecture Notes", icon: <FaFileAlt /> },
         {
           path: "/gpa-tracker",
           label: "GPA Tracker",
@@ -101,7 +142,7 @@ const SidebarNew = () => {
         {!isCollapsed && (
           <div>
             <h2>UNIMANAGE</h2>
-            <p>{isAdmin ? "Administrator" : isManagement ? "Management Portal" : "Student Portal"}</p>
+            <p>{isAdmin ? "Administrator" : isManagement ? "Management Portal" : (isLecturer || localStorage.getItem('unifiedRole') === 'lecturer') ? "Lecturer Portal" : "Student Portal"}</p>
           </div>
         )}
         <button 
