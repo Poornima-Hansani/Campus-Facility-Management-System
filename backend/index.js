@@ -273,8 +273,16 @@ app.get('/api/reports/count', async (req, res) => {
 app.get('/api/reports', async (req, res) => {
   try {
     const { studentId } = req.query;
-    const studentReports = await Report.find({ studentId }).sort({ createdAt: -1 });
-    res.json({ reports: studentReports });
+    
+    let reports;
+    if (studentId) {
+      // Return only specific student's reports
+      reports = await Report.find({ studentId }).sort({ createdAt: -1 });
+    } else {
+      // Return ALL reports (for management dashboard)
+      reports = await Report.find({}).sort({ createdAt: -1 });
+    }
+    res.json({ reports });
   } catch (error) {
     console.error('Error fetching reports:', error);
     res.status(500).json({ error: 'Failed to fetch reports' });
@@ -1037,6 +1045,31 @@ app.get('/api/notifications/staff', async (req, res) => {
   } catch (error) {
     console.error('Notifications error:', error);
     res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+app.get('/api/notifications/lecturer', async (req, res) => {
+  try {
+    const { lecturerId } = req.query;
+    const notifications = await Notification.find({ 
+      recipientType: 'lecturer', 
+      recipientId: lecturerId 
+    }).sort({ createdAt: -1 });
+    res.json({ notifications });
+  } catch (error) {
+    console.error('Notifications error:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+app.put('/api/notifications/lecturer/:id/read', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Notification.updateOne({ _id: id }, { $set: { read: true } });
+    res.json({ message: 'Notification marked as read' });
+  } catch (error) {
+    console.error('Mark read error:', error);
+    res.status(500).json({ error: 'Failed to mark as read' });
   }
 });
 
