@@ -260,6 +260,15 @@ const getDayName = (date) => {
   return days[date.getDay()];
 };
 
+// Convert user fields to timetable format
+const userToTimetableQuery = (user) => ({
+  year: `Y${user.year}`,
+  semester: `S${user.semester}`,
+  batch: user.scheduleType === 'Weekend' ? 'WE' : 'WD',
+  specialization: user.specialization,
+  group: user.group
+});
+
 // POST create study area booking
 router.post('/bookings', async (req, res) => {
   try {
@@ -294,8 +303,11 @@ router.post('/bookings', async (req, res) => {
       });
     }
     
-    // Get user information
-    const user = await User.findById(userId);
+    // Get user information - try by MongoDB _id first, then by userId field
+    let user = await User.findById(userId);
+    if (!user) {
+      user = await User.findOne({ userId: userId });
+    }
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -334,13 +346,9 @@ router.post('/bookings', async (req, res) => {
     // Get day name for the booking date
     const dayName = getDayName(bookingDate);
     
-    // Get student's timetable to validate free time
-    const timetable = await StudentTimeTable.findOne({
-      year: user.year,
-      semester: user.semester,
-      batch: user.batch,
-      group: user.group
-    });
+    // Get student's timetable to validate free time - use converted fields
+    const timetableQuery = userToTimetableQuery(user);
+    const timetable = await StudentTimeTable.findOne(timetableQuery);
     
     if (!timetable) {
       return res.status(404).json({

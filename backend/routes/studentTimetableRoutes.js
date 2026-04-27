@@ -783,9 +783,14 @@ router.get('/free-slots/:userId', async (req, res) => {
     const { userId } = req.params;
     const { date } = req.query;
     
-    // Get user information
+    // Get user information - find by MongoDB _id
     const User = require('../models/User');
-    const user = await User.findById(userId);
+    let user = await User.findById(userId);
+    
+    // If not found by _id, try by userId field
+    if (!user) {
+      user = await User.findOne({ userId: userId });
+    }
     
     if (!user) {
       return res.status(404).json({
@@ -794,13 +799,17 @@ router.get('/free-slots/:userId', async (req, res) => {
       });
     }
     
-    // Get student's timetable
-    const timetable = await StudentTimeTable.findOne({
-      year: user.year,
-      semester: user.semester,
-      batch: user.batch,
+    // Convert user fields to timetable format
+    const timetableQuery = {
+      year: `Y${user.year}`,
+      semester: `S${user.semester}`,
+      batch: user.scheduleType === 'Weekend' ? 'WE' : 'WD',
+      specialization: user.specialization,
       group: user.group
-    });
+    };
+    
+    // Get student's timetable
+    const timetable = await StudentTimeTable.findOne(timetableQuery);
     
     if (!timetable) {
       return res.status(404).json({
@@ -853,13 +862,15 @@ router.get('/free-slots/:userId', async (req, res) => {
     const allFreeSlots = {};
     Object.keys(timetable.freeTime).forEach(day => {
       const dayData = timetable.freeTime[day];
-      allFreeSlots[day] = dayData.free.map(slot => ({
-        startTime: timeToString(slot.start),
-        endTime: timeToString(slot.end),
-        startNum: slot.start,
-        endNum: slot.end,
-        duration: slot.end - slot.start
-      }));
+      if (dayData && dayData.free) {
+        allFreeSlots[day] = dayData.free.map(slot => ({
+          startTime: timeToString(slot.start),
+          endTime: timeToString(slot.end),
+          startNum: slot.start,
+          endNum: slot.end,
+          duration: slot.end - slot.start
+        }));
+      }
     });
     
     res.json({
