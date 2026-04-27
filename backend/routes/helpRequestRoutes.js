@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const HelpRequest = require("../models/HelpRequest");
 const { nextNumericId } = require("../lib/nextNumericId");
+const Notification = require("../models/Notification");
 
 function serialize(doc) {
   return {
@@ -127,6 +128,100 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ message: "Request not found" });
     }
     res.json({ message: "Deleted", id: numericId });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// PUT update help request status - used by lecturers to schedule/complete requests
+router.put("/:id/status", async (req, res) => {
+  try {
+    const numericId = Number(req.params.id);
+    const { status, scheduledDate, scheduledTime, notes } = req.body;
+    
+    if (!["Pending", "Scheduled", "Completed"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+    
+    const helpRequest = await HelpRequest.findOne({ numericId });
+    if (!helpRequest) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+    
+    helpRequest.status = status;
+    if (scheduledDate) helpRequest.scheduledDate = scheduledDate;
+    if (scheduledTime) helpRequest.scheduledTime = scheduledTime;
+    if (notes) helpRequest.notes = notes;
+    helpRequest.updatedAt = new Date();
+    await helpRequest.save();
+    
+    // Create notification for the student about status update
+    const notification = new Notification({
+      type: 'help_request_update',
+      recipientType: 'student',
+      recipientId: helpRequest.studentName, // Using studentName as identifier
+      message: status === 'Scheduled' 
+        ? `Your help request for ${helpRequest.moduleCode} - ${helpRequest.topic} has been scheduled${scheduledDate ? ` for ${scheduledDate}` : ''}`
+        : status === 'Completed'
+        ? `Your help request for ${helpRequest.moduleCode} - ${helpRequest.topic} has been completed`
+        : `Your help request for ${helpRequest.moduleCode} - ${helpRequest.topic} status is now ${status}`,
+      moduleCode: helpRequest.moduleCode,
+      moduleName: helpRequest.moduleName,
+      topic: helpRequest.topic,
+      helpRequestId: helpRequest.numericId,
+      createdAt: new Date().toISOString(),
+      read: false
+    });
+    await notification.save();
+    
+    res.json({ 
+      message: "Status updated", 
+      helpRequest: serialize(helpRequest),
+      notification: "Student notified"
+    });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Add notes/reply to help request - lecturer feedback
+router.put("/:id/notes", async (req, res) => {
+  try {
+    const numericId = Number(req.params.id);
+    const { notes, reply } = req.body;
+    
+    const helpRequest = await HelpRequest.findOne({ numericId });
+    if (!helpRequest) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+    
+    if (notes) helpRequest.notes = notes;
+    helpRequest.updatedAt = new Date();
+    await helpRequest.save();
+    
+    // If there's a reply, create notification for student
+    if (reply) {
+      const notification = new Notification({
+        type: 'help_request_reply',
+        recipientType: 'student',
+        recipientId: helpRequest.studentName,
+        message: `Reply to your help request: ${reply}`,
+        moduleCode: helpRequest.moduleCode,
+        moduleName: helpRequest.moduleName,
+        topic: helpRequest.topic,
+        helpRequestId: helpRequest.numericId,
+        reply: reply,
+        createdAt: new Date().toISOString(),
+        read: false
+      });
+      await notification.save();
+    }
+    
+    res.json({ 
+      message: "Notes updated",
+      helpRequest: serialize(helpRequest),
+      notification: reply ? "Student notified" : null
+    });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
