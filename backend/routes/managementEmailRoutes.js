@@ -1,6 +1,9 @@
+const User = require('../models/User');
+
 const express = require("express");
 const router = express.Router();
 const EncouragementEmail = require("../models/EncouragementEmail");
+const Notification = require('../models/Notification');
 const { nextNumericId } = require("../lib/nextNumericId");
 
 function serialize(doc) {
@@ -59,20 +62,16 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ message: "All fields are required." });
     }
 
-    if (!/^IT\d{8}$/.test(cleanStudentId)) {
+    // Validate using User collection - check if student exists
+    const student = await User.findOne({ userId: cleanStudentId, role: 'student' });
+    if (!student) {
       return res.status(400).json({
-        message: "Student ID must be in a format like IT23200001.",
+        message: "Student ID not found in the system. Please select a valid student.",
       });
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanStudentEmail)) {
       return res.status(400).json({ message: "Enter a valid email address." });
-    }
-
-    if (!/^[A-Z]{2,4}\d{3,4}$/.test(cleanModuleCode)) {
-      return res.status(400).json({
-        message: "Module code must be in a format like IT3040.",
-      });
     }
 
     if (cleanModuleName.length < 3) {
@@ -93,19 +92,6 @@ router.post("/", async (req, res) => {
         .json({ message: "Message must contain at least 10 characters." });
     }
 
-    const all = await EncouragementEmail.find().lean();
-    const dup = all.some(
-      (item) =>
-        item.studentId === cleanStudentId &&
-        item.moduleCode === cleanModuleCode &&
-        item.subject.toLowerCase() === cleanSubject.toLowerCase()
-    );
-    if (dup) {
-      return res.status(400).json({
-        message: "A similar encouragement email has already been recorded.",
-      });
-    }
-
     const numericId = await nextNumericId(EncouragementEmail);
     const doc = await EncouragementEmail.create({
       numericId,
@@ -118,6 +104,26 @@ router.post("/", async (req, res) => {
       sentDate: todayISO(),
       status: "Sent",
     });
+    
+    // Create notification for the student
+    try {
+      const notification = new Notification({
+        type: 'encouragement_email',
+        recipientType: 'student',
+        recipientId: cleanStudentId,
+        message: `You received an encouragement email: ${cleanSubject} - ${cleanModuleCode}`,
+        moduleCode: cleanModuleCode,
+        moduleName: cleanModuleName,
+        subject: cleanSubject,
+        messageBody: cleanMessage,
+        createdAt: new Date().toISOString(),
+        read: false
+      });
+      await notification.save();
+    } catch (notifErr) {
+      console.error('Failed to create notification:', notifErr);
+    }
+    
     res.status(201).json(serialize(doc.toObject()));
   } catch (e) {
     res.status(500).json({ message: e.message });
