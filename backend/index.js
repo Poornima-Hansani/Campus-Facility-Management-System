@@ -28,6 +28,11 @@ const labFreeGapRoutes = require("./routes/labFreeGapRoutes");
 const studyAreaRoutes = require("./routes/studyAreaRoutes");
 const managementRoutes = require("./routes/managementRoutes");
 const reportsRoutes = require("./routes/reportsRoutes");
+
+const lectureNoteRoutes = require("./routes/lectureNoteRoutes");
+const attendanceRoutes = require("./routes/attendanceRoutes");
+const meetingRoutes = require("./routes/meetingRoutes");
+
 const Reminder = require("./models/Reminder");
 const AcademicTask = require("./models/AcademicTask");
 const User = require("./models/User");
@@ -89,8 +94,10 @@ app.use('/api/lab-student-common-free', labStudentCommonFreeRoutes);
 app.use('/api/lab-booking', labBookingRoutes);
 app.use('/api/lab-gap', labFreeGapRoutes);
 app.use('/api/study-areas', studyAreaRoutes);
-app.use('/api/management', managementRoutes);
-app.use('/api/reports', reportsRoutes);
+
+app.use('/api/lecture-notes', lectureNoteRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/meetings', meetingRoutes);
 
 const staffMembers = [
   { id: 'STF001', name: 'Kamal Perera', role: 'Electrician', specialty: 'A/C & Electronics', phone: '+94 71 234 5678', email: 'kamal@university.edu' },
@@ -156,11 +163,22 @@ const notificationSchema = new mongoose.Schema({
   issueType: { type: String, default: null },
   staffName: { type: String, default: null },
   studentId: { type: String, default: null },
+  moduleCode: { type: String, default: null },
+  moduleName: { type: String, default: null },
+  topic: { type: String, default: null },
+  helpRequestId: { type: Number, default: null },
+  reply: { type: String, default: null },
   createdAt: { type: String, required: true },
   read: { type: Boolean, default: false }
 }, { collection: 'notifications' });
 
-const Notification = mongoose.model('Notification', notificationSchema);
+// Reuse the model if it exists, otherwise create it
+let Notification;
+try {
+  Notification = mongoose.models.Notification || mongoose.model('Notification', notificationSchema);
+} catch (e) {
+  Notification = mongoose.model('Notification', notificationSchema);
+}
 
 app.use("/api/tasks", academicTaskRoutes);
 app.use("/api/lectures", lectureRoutes);
@@ -238,6 +256,17 @@ app.post('/api/reports', upload.single('image'), async (req, res) => {
   } catch (error) {
     console.error('Error creating report:', error);
     res.status(500).json({ error: 'Failed to create report' });
+  }
+});
+
+app.get('/api/reports/count', async (req, res) => {
+  try {
+    const { location, issueType } = req.query;
+    const count = await Report.countDocuments({ location, issueType, status: { $ne: 'Fixed' } });
+    res.json({ count });
+  } catch (err) {
+    console.error('Count error:', err);
+    res.status(500).json({ error: 'Failed to fetch count' });
   }
 });
 
@@ -599,84 +628,6 @@ app.get('/api/management/charts', async (req, res) => {
   }
 });
 
-app.get('/api/management/charts', async (req, res) => {
-  try {
-    const allReports = await Report.find({});
-    
-    const categoryMap = {
-      'Lecture Rooms': 0,
-      'Washrooms': 0,
-      'Canteens': 0,
-      'Other': 0
-    };
-
-    const weeklyTrend = {
-      'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0
-    };
-
-    const dayMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    allReports.forEach(r => {
-      const loc = r.location.toLowerCase();
-      if (loc.includes('lecture') || loc.includes('room')) {
-        categoryMap['Lecture Rooms']++;
-      } else if (loc.includes('washroom') || loc.includes('toilet') || loc.includes('bathroom')) {
-        categoryMap['Washrooms']++;
-      } else if (loc.includes('canteen')) {
-        categoryMap['Canteens']++;
-      } else {
-        categoryMap['Other']++;
-      }
-
-      const day = dayMap[new Date(r.createdAt).getDay()];
-      weeklyTrend[day]++;
-    });
-
-    const categoryData = Object.entries(categoryMap).map(([name, count]) => ({ name, count }));
-    const weeklyData = Object.entries(weeklyTrend).map(([day, count]) => ({ day, count }));
-
-    res.json({ categoryData, weeklyData });
-  } catch (error) {
-    console.error('Charts error:', error);
-    res.status(500).json({ error: 'Failed to fetch charts data' });
-  }
-});
-
-app.get('/api/management/weekly-summary', async (req, res) => {
-  try {
-    const now = new Date();
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    
-    const weeklyReports = await Report.find({ createdAt: { $gte: weekAgo.toISOString() } });
-    const weeklyFixed = weeklyReports.filter(r => r.status === 'Fixed' && r.fixedAt && new Date(r.fixedAt) >= weekAgo);
-    
-    const categoryMap = { 'Lecture Rooms': 0, 'Washrooms': 0, 'Canteens': 0 };
-    weeklyReports.forEach(r => {
-      const loc = r.location.toLowerCase();
-      if (loc.includes('lecture') || loc.includes('room')) categoryMap['Lecture Rooms']++;
-      else if (loc.includes('washroom')) categoryMap['Washrooms']++;
-      else if (loc.includes('canteen')) categoryMap['Canteens']++;
-    });
-    
-    const avgResponseTimeWeekly = weeklyFixed.length > 0
-      ? Math.round(weeklyFixed.reduce((sum, r) => sum + (new Date(r.fixedAt) - new Date(r.createdAt)), 0) / weeklyFixed.length / (1000 * 60))
-      : 45;
-
-    const summary = {
-      totalReports: weeklyReports.length,
-      fixedReports: weeklyFixed.length,
-      avgResponseTime: avgResponseTimeWeekly,
-      categoryBreakdown: categoryMap,
-      resolutionRate: weeklyReports.length > 0 ? Math.round((weeklyFixed.length / weeklyReports.length) * 100) : 0
-    };
-
-    res.json({ summary });
-  } catch (error) {
-    console.error('Weekly summary error:', error);
-    res.status(500).json({ error: 'Failed to fetch weekly summary' });
-  }
-});
-
 app.post('/api/staff/register', async (req, res) => {
   try {
     const { name, role, specialty, phone, email, password, confirmPassword } = req.body;
@@ -945,6 +896,7 @@ app.put('/api/staff/tasks/:id/status', async (req, res) => {
       report.fixedAt = new Date().toISOString();
       report.awaitingApproval = true;
       
+      // Notify management
       const notification = new Notification({
         type: 'management_fix_complete',
         recipientType: 'management',
@@ -959,6 +911,38 @@ app.put('/api/staff/tasks/:id/status', async (req, res) => {
         read: false
       });
       await notification.save();
+      
+      // Also notify the student about the fix
+      const studentNotification = new Notification({
+        type: 'student_fixed',
+        recipientType: 'student',
+        recipientId: report.studentId,
+        message: `Your issue has been fixed: ${report.issueType} at ${report.location}`,
+        reportId: report.id,
+        location: report.location,
+        issueType: report.issueType,
+        staffName: report.assignedTo,
+        studentId: report.studentId,
+        createdAt: new Date().toISOString(),
+        read: false
+      });
+      await studentNotification.save();
+    } else if (status === 'In Progress') {
+      // Notify student that staff is working on it
+      const studentNotification = new Notification({
+        type: 'student_in_progress',
+        recipientType: 'student',
+        recipientId: report.studentId,
+        message: `${report.assignedTo} is now working on: ${report.issueType} at ${report.location}`,
+        reportId: report.id,
+        location: report.location,
+        issueType: report.issueType,
+        staffName: report.assignedTo,
+        studentId: report.studentId,
+        createdAt: new Date().toISOString(),
+        read: false
+      });
+      await studentNotification.save();
     }
     
     await report.save();
@@ -1090,6 +1074,245 @@ app.get('/api/notifications/student', async (req, res) => {
   } catch (error) {
     console.error('Notifications error:', error);
     res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+// UNIFIED NOTIFICATIONS ENDPOINT - Gets all notifications for a student
+// Includes: timetable notifications, general notifications, bookings, help requests, issue reports
+app.get('/api/campus-notifications', async (req, res) => {
+  try {
+    const { studentId, specialization } = req.query;
+    
+    if (!studentId) {
+      return res.status(400).json({ error: 'Student ID is required' });
+    }
+    
+    const allNotifications = [];
+    
+    // 1. Timetable Notifications (filtered by specialization)
+    try {
+      const TimetableNotification = require('./models/TimetableNotification');
+      const timetableNotifs = await TimetableNotification.find({
+        $or: [
+          { specialization: specialization || '' },
+          { specialization: { $exists: false } },
+          { specialization: null },
+          { specialization: '' }
+        ]
+      }).sort({ createdAt: -1 }).limit(50).lean();
+      
+      timetableNotifs.forEach(n => {
+        allNotifications.push({
+          _id: `tt_${n._id}`,
+          type: 'timetable',
+          title: n.title || n.moduleName || 'Timetable Update',
+          message: n.message || `${n.type}: ${n.moduleCode || ''} - ${n.venueName || ''} at ${n.time || ''}`,
+          category: 'timetable',
+          createdAt: n.createdAt,
+          readBy: n.readBy || [],
+          data: n
+        });
+      });
+    } catch (e) {
+      console.error('Error fetching timetable notifications:', e);
+    }
+    
+    // 2. General Notifications for the student
+    try {
+      const studentNotifs = await Notification.find({ 
+        recipientType: 'student', 
+        recipientId: studentId 
+      }).sort({ createdAt: -1 }).limit(50).lean();
+      
+      studentNotifs.forEach(n => {
+        let category = 'general';
+        let title = n.message;
+        
+        if (n.type === 'student_fixed') {
+          category = 'issue';
+          title = 'Issue Fixed';
+        } else if (n.type === 'new_report') {
+          category = 'issue';
+          title = 'Issue Update';
+        }
+        
+        allNotifications.push({
+          _id: `notif_${n._id}`,
+          type: 'notification',
+          title,
+          message: n.message,
+          category,
+          issueType: n.issueType,
+          location: n.location,
+          reportId: n.reportId,
+          createdAt: n.createdAt,
+          read: n.read,
+          data: n
+        });
+      });
+    } catch (e) {
+      console.error('Error fetching student notifications:', e);
+    }
+    
+    // 3. Help Request Notifications
+    try {
+      const HelpRequest = require('./models/HelpRequest');
+      const helpRequests = await HelpRequest.find({
+        studentName: { $regex: new RegExp(studentId.replace(/[STU0-9]/gi, '').split(' ')[0] || '.', 'i') }
+      }).sort({ updatedAt: -1 }).limit(20).lean();
+      
+      // Also check by numeric ID patterns
+      const helpRequestsById = await HelpRequest.find({}).sort({ numericId: -1 }).limit(50).lean();
+      
+      // Filter help requests that have status updates (Scheduled or Completed) for this student
+      helpRequestsById.forEach(req => {
+        // Create notification for scheduled/completed help requests
+        if (req.status === 'Scheduled') {
+          allNotifications.push({
+            _id: `help_${req._id}`,
+            type: 'help_request',
+            title: 'Help Request Scheduled',
+            message: `Your help request for ${req.moduleCode} - ${req.topic} has been scheduled`,
+            category: 'help',
+            moduleCode: req.moduleCode,
+            moduleName: req.moduleName,
+            status: req.status,
+            createdAt: req.updatedAt || req.createdAt,
+            read: false,
+            data: req
+          });
+        } else if (req.status === 'Completed') {
+          allNotifications.push({
+            _id: `help_${req._id}`,
+            type: 'help_request',
+            title: 'Help Request Completed',
+            message: `Your help request for ${req.moduleCode} - ${req.topic} has been completed`,
+            category: 'help',
+            moduleCode: req.moduleCode,
+            moduleName: req.moduleName,
+            status: req.status,
+            createdAt: req.updatedAt || req.createdAt,
+            read: false,
+            data: req
+          });
+        }
+      });
+    } catch (e) {
+      console.error('Error fetching help requests:', e);
+    }
+    
+    // 4. Issue Report Notifications for this student
+    try {
+      const reports = await Report.find({ studentId: studentId }).sort({ createdAt: -1 }).limit(20).lean();
+      
+      reports.forEach(report => {
+        let title = 'Issue Update';
+        let message = report.comment || `${report.issueType} at ${report.location}`;
+        
+        if (report.status === 'Assigned' && report.assignedTo) {
+          title = 'Staff Assigned';
+          message = `${report.assignedTo} has been assigned to fix: ${report.issueType} at ${report.location}`;
+        } else if (report.status === 'In Progress') {
+          title = 'Issue Being Fixed';
+          message = `${report.issueType} at ${report.location} is being worked on`;
+        } else if (report.status === 'Fixed') {
+          title = 'Issue Fixed';
+          message = `${report.issueType} at ${report.location} has been fixed`;
+        }
+        
+        allNotifications.push({
+          _id: `report_${report._id}`,
+          type: 'issue_report',
+          title,
+          message,
+          category: 'issue',
+          status: report.status,
+          location: report.location,
+          issueType: report.issueType,
+          createdAt: report.updatedAt || report.createdAt,
+          read: report.status === 'Fixed',
+          data: report
+        });
+      });
+    } catch (e) {
+      console.error('Error fetching reports:', e);
+    }
+    
+    // 5. Booking Notifications
+    try {
+      const StudyAreaBooking = require('./models/StudyAreaBooking');
+      const bookings = await StudyAreaBooking.find({ user: studentId })
+        .populate('studyArea', 'name location')
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean();
+      
+      bookings.forEach(booking => {
+        const areaName = booking.studyArea?.name || 'Study Area';
+        const areaLocation = booking.studyArea?.location || '';
+        
+        if (booking.status === 'confirmed') {
+          allNotifications.push({
+            _id: `booking_${booking._id}`,
+            type: 'booking',
+            title: 'Booking Confirmed',
+            message: `Your booking for ${areaName} on ${new Date(booking.date).toLocaleDateString()} (${booking.startTime} - ${booking.endTime}) is confirmed`,
+            category: 'booking',
+            date: booking.date,
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+            areaName,
+            areaLocation,
+            createdAt: booking.createdAt,
+            read: false,
+            data: booking
+          });
+        } else if (booking.status === 'cancelled') {
+          allNotifications.push({
+            _id: `booking_${booking._id}`,
+            type: 'booking',
+            title: 'Booking Cancelled',
+            message: `Your booking for ${areaName} on ${new Date(booking.date).toLocaleDateString()} has been cancelled`,
+            category: 'booking',
+            date: booking.date,
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+            areaName,
+            areaLocation,
+            createdAt: booking.updatedAt || booking.createdAt,
+            read: false,
+            data: booking
+          });
+        }
+      });
+    } catch (e) {
+      console.error('Error fetching bookings:', e);
+    }
+    
+    // Sort all notifications by createdAt descending
+    allNotifications.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0);
+      const dateB = new Date(b.createdAt || 0);
+      return dateB - dateA;
+    });
+    
+    // Remove duplicates based on type and data
+    const seen = new Set();
+    const uniqueNotifications = allNotifications.filter(n => {
+      const key = `${n.type}_${n._id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    
+    res.json({ 
+      notifications: uniqueNotifications.slice(0, 50),
+      total: uniqueNotifications.length
+    });
+    
+  } catch (error) {
+    console.error('Campus notifications error:', error);
+    res.status(500).json({ error: 'Failed to fetch campus notifications' });
   }
 });
 
